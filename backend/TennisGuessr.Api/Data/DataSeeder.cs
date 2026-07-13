@@ -1,0 +1,82 @@
+using Microsoft.EntityFrameworkCore;
+using TennisGuessr.Api.Models;
+
+namespace TennisGuessr.Api.Data;
+
+// Seeds a 20-player ATP sample dataset spanning three eras, matching the
+// era-weighted design used for difficulty tiers (current / 2005-2015 / legend).
+// Stats are accurate as of mid-2026; re-run/update seeding periodically as
+// rankings and title counts change for active players.
+public static class DataSeeder
+{
+    public static async Task SeedAsync(GameDbContext db)
+    {
+        if (await db.Sports.AnyAsync(s => s.Slug == "tennis"))
+            return; // already seeded
+
+        var tennis = new Sport { Name = "Tennis", Slug = "tennis" };
+        db.Sports.Add(tennis);
+        await db.SaveChangesAsync();
+
+        var attributeDefs = new List<AttributeDefinition>
+        {
+            new() { SportId = tennis.Id, Key = "plays",               Label = "Plays",              Type = AttributeType.Categorical, DisplayOrder = 1 },
+            new() { SportId = tennis.Id, Key = "backhand",             Label = "Backhand",           Type = AttributeType.Categorical, DisplayOrder = 2 },
+            new() { SportId = tennis.Id, Key = "country",              Label = "Country",            Type = AttributeType.Categorical, DisplayOrder = 3 },
+            new() { SportId = tennis.Id, Key = "grand_slam_titles",    Label = "Grand Slams",        Type = AttributeType.Numeric,     DisplayOrder = 4 },
+            new() { SportId = tennis.Id, Key = "career_high_ranking",  Label = "Career-High Rank",   Type = AttributeType.Numeric,     DisplayOrder = 5 },
+            new() { SportId = tennis.Id, Key = "turned_pro_year",      Label = "Turned Pro",         Type = AttributeType.Numeric,     DisplayOrder = 6 },
+            new() { SportId = tennis.Id, Key = "career_titles",        Label = "Career Titles",      Type = AttributeType.Numeric,     DisplayOrder = 7 },
+        };
+        db.AttributeDefinitions.AddRange(attributeDefs);
+        await db.SaveChangesAsync();
+
+        var attrByKey = attributeDefs.ToDictionary(a => a.Key, a => a.Id);
+
+        var players = new (string Name, string Era, string Plays, string Backhand, string Country, int Slams, int HighRank, int ProYear, int Titles)[]
+        {
+            ("Pete Sampras", "legend", "Right", "One-Handed", "USA", 14, 1, 1988, 64),
+            ("Andre Agassi", "legend", "Right", "Two-Handed", "USA", 8, 1, 1986, 60),
+            ("Boris Becker", "legend", "Right", "One-Handed", "Germany", 6, 1, 1984, 49),
+            ("John McEnroe", "legend", "Left", "One-Handed", "USA", 7, 1, 1978, 77),
+
+            ("Roger Federer", "2005_2015", "Right", "One-Handed", "Switzerland", 20, 1, 1998, 103),
+            ("Rafael Nadal", "2005_2015", "Left", "Two-Handed", "Spain", 22, 1, 2001, 92),
+            ("Novak Djokovic", "2005_2015", "Right", "Two-Handed", "Serbia", 24, 1, 2003, 100),
+            ("Andy Murray", "2005_2015", "Right", "Two-Handed", "United Kingdom", 3, 1, 2005, 46),
+            ("Stan Wawrinka", "2005_2015", "Right", "One-Handed", "Switzerland", 3, 3, 2002, 16),
+            ("Lleyton Hewitt", "2005_2015", "Right", "Two-Handed", "Australia", 2, 1, 1998, 30),
+            ("David Ferrer", "2005_2015", "Right", "Two-Handed", "Spain", 0, 3, 2000, 27),
+
+            ("Carlos Alcaraz", "current", "Right", "Two-Handed", "Spain", 7, 1, 2018, 22),
+            ("Jannik Sinner", "current", "Right", "Two-Handed", "Italy", 5, 1, 2018, 20),
+            ("Daniil Medvedev", "current", "Right", "Two-Handed", "Russia", 1, 1, 2014, 20),
+            ("Alexander Zverev", "current", "Right", "Two-Handed", "Germany", 0, 2, 2013, 24),
+            ("Stefanos Tsitsipas", "current", "Right", "One-Handed", "Greece", 0, 3, 2016, 12),
+            ("Casper Ruud", "current", "Right", "Two-Handed", "Norway", 0, 2, 2015, 10),
+            ("Taylor Fritz", "current", "Right", "Two-Handed", "USA", 0, 4, 2015, 9),
+            ("Holger Rune", "current", "Right", "Two-Handed", "Denmark", 0, 4, 2019, 6),
+            ("Andrey Rublev", "current", "Right", "Two-Handed", "Russia", 0, 5, 2014, 17),
+        };
+
+        foreach (var p in players)
+        {
+            var player = new Player { SportId = tennis.Id, Name = p.Name, EraGroup = p.Era };
+            db.Players.Add(player);
+            await db.SaveChangesAsync();
+
+            db.PlayerAttributeValues.AddRange(new[]
+            {
+                new PlayerAttributeValue { PlayerId = player.Id, AttributeDefinitionId = attrByKey["plays"], Value = p.Plays },
+                new PlayerAttributeValue { PlayerId = player.Id, AttributeDefinitionId = attrByKey["backhand"], Value = p.Backhand },
+                new PlayerAttributeValue { PlayerId = player.Id, AttributeDefinitionId = attrByKey["country"], Value = p.Country },
+                new PlayerAttributeValue { PlayerId = player.Id, AttributeDefinitionId = attrByKey["grand_slam_titles"], Value = p.Slams.ToString() },
+                new PlayerAttributeValue { PlayerId = player.Id, AttributeDefinitionId = attrByKey["career_high_ranking"], Value = p.HighRank.ToString() },
+                new PlayerAttributeValue { PlayerId = player.Id, AttributeDefinitionId = attrByKey["turned_pro_year"], Value = p.ProYear.ToString() },
+                new PlayerAttributeValue { PlayerId = player.Id, AttributeDefinitionId = attrByKey["career_titles"], Value = p.Titles.ToString() },
+            });
+        }
+
+        await db.SaveChangesAsync();
+    }
+}

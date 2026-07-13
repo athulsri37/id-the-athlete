@@ -1,0 +1,105 @@
+import { useEffect, useState } from "react";
+import { fetchPlayerPool, startPracticeGame, submitGuess } from "../api/client";
+import { PlayerSummary, GuessResponse, Difficulty } from "../types";
+import PlayerSearch from "../components/PlayerSearch";
+import ClueGrid from "../components/ClueGrid";
+import ModeSelector from "../components/ModeSelector";
+import ShareResult from "../components/ShareResult";
+
+const MAX_GUESSES = 8;
+
+export default function GameBoard() {
+  const [players, setPlayers] = useState<PlayerSummary[]>([]);
+  const [mode, setMode] = useState<Difficulty>("daily");
+  const [sessionId, setSessionId] = useState<string | undefined>(undefined);
+  const [guesses, setGuesses] = useState<GuessResponse[]>([]);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchPlayerPool().then(setPlayers).catch(() => setError("Couldn't load player list."));
+  }, []);
+
+  const resetForMode = async (nextMode: Difficulty) => {
+    setMode(nextMode);
+    setGuesses([]);
+    setError("");
+    setSessionId(undefined);
+
+    if (nextMode !== "daily") {
+      setLoading(true);
+      try {
+        const res = await startPracticeGame(nextMode);
+        setSessionId(res.sessionId);
+      } catch {
+        setError("Couldn't start a new game. Try again.");
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const gameOver = guesses.length > 0 && (guesses[guesses.length - 1].isCorrect || guesses.length >= MAX_GUESSES);
+  const won = guesses.length > 0 && guesses[guesses.length - 1].isCorrect;
+
+  const handleGuess = async (player: PlayerSummary) => {
+    if (gameOver) return;
+    setError("");
+    setLoading(true);
+    try {
+      const result = await submitGuess(player.id, mode, guesses.length + 1, sessionId);
+      setGuesses((prev) => [...prev, result]);
+    } catch {
+      setError("Something went wrong submitting that guess.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const guessedIds = new Set(
+    guesses.map((g) => players.find((p) => p.name === g.guessedPlayerName)?.id).filter((id): id is number => id !== undefined)
+  );
+
+  return (
+    <div className="min-h-screen bg-court-green flex flex-col items-center px-4 py-10">
+      <h1 className="font-display text-5xl tracking-wide text-ace-500 mb-1">AceGuessr</h1>
+      <p className="text-court-chalk/70 text-sm mb-6">Guess the mystery ATP player in 8 tries</p>
+
+      <ModeSelector mode={mode} onChange={resetForMode} />
+
+      <div className="mt-8 flex flex-col items-center w-full">
+        <PlayerSearch
+          players={players}
+          guessedIds={guessedIds}
+          disabled={gameOver || loading}
+          onGuess={handleGuess}
+        />
+
+        {error && <p className="text-court-clay mt-2 text-sm">{error}</p>}
+
+        <p className="text-court-chalk/60 text-xs mt-2">
+          {guesses.length} / {MAX_GUESSES} guesses
+        </p>
+
+        <ClueGrid guesses={guesses} />
+
+        {gameOver && (
+          <div className="mt-6 text-center">
+            <p className="text-court-chalk text-lg font-semibold">
+              {won ? "🎾 Nice read!" : `The player was ${guesses[guesses.length - 1].answerName}`}
+            </p>
+            <ShareResult guesses={guesses} won={won} mode={mode} />
+            {mode !== "daily" && (
+              <button
+                onClick={() => resetForMode(mode)}
+                className="block mx-auto mt-3 text-sm text-court-chalk/70 underline hover:text-court-chalk"
+              >
+                Play another
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
