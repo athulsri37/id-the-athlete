@@ -30,6 +30,7 @@ public class GuessResponseDto
     public List<ClueResultDto> Clues { get; set; } = new();
     public bool GameOver { get; set; }
     public string? AnswerName { get; set; } // populated only when game is over
+    public string? TriviaBlurb { get; set; } // populated only when game is over
 }
 
 public class StartGameResponseDto

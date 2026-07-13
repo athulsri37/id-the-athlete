@@ -88,6 +88,11 @@ export default function GameBoard() {
             <p className="text-court-chalk text-lg font-semibold">
               {won ? "🎾 Nice read!" : `The player was ${guesses[guesses.length - 1].answerName}`}
             </p>
+            {guesses[guesses.length - 1].triviaBlurb && (
+              <p className="text-court-chalk/60 text-xs italic mt-2 max-w-sm mx-auto">
+                {guesses[guesses.length - 1].triviaBlurb}
+              </p>
+            )}
             <ShareResult guesses={guesses} won={won} mode={mode} />
             {mode !== "daily" && (
               <button

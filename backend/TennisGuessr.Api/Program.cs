@@ -12,6 +12,7 @@ builder.Services.AddDbContext<GameDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<GameService>();
+builder.Services.AddHttpClient<AiTriviaService>();
 
 builder.Services.AddCors(options =>
 {

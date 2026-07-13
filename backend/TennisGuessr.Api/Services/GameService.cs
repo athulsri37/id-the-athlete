@@ -9,6 +9,7 @@ namespace TennisGuessr.Api.Services;
 public class GameService
 {
     private readonly GameDbContext _db;
+    private readonly AiTriviaService _aiTriviaService;
 
     // In-memory store for practice-mode sessions (sessionId -> playerId).
     // Fine for a small hobby project; would move to a DB table or Redis
@@ -18,9 +19,10 @@ public class GameService
     private const int MaxGuesses = 8;
     private static readonly Random Rng = new();
 
-    public GameService(GameDbContext db)
+    public GameService(GameDbContext db, AiTriviaService aiTriviaService)
     {
         _db = db;
+        _aiTriviaService = aiTriviaService;
     }
 
     public async Task<List<PlayerSummaryDto>> GetPlayerPoolAsync(string sportSlug)
@@ -129,13 +131,16 @@ public class GameService
             PracticeSessions.TryRemove(request.SessionId, out _);
         }
 
+        string? triviaBlurb = gameOver ? await _aiTriviaService.GetTriviaBlurbAsync(mysteryPlayer) : null;
+
         return new GuessResponseDto
         {
             GuessedPlayerName = guessedPlayer.Name,
             IsCorrect = isCorrect,
             Clues = clues,
             GameOver = gameOver,
-            AnswerName = gameOver ? mysteryPlayer.Name : null
+            AnswerName = gameOver ? mysteryPlayer.Name : null,
+            TriviaBlurb = triviaBlurb
         };
     }
 

@@ -18,6 +18,7 @@ export interface GuessResponse {
   clues: ClueResult[];
   gameOver: boolean;
   answerName: string | null;
+  triviaBlurb: string | null;
 }
 
 export type Difficulty = "daily" | "easy" | "medium" | "hard";
