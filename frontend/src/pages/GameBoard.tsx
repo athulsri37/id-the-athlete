@@ -3,14 +3,17 @@ import { fetchPlayerPool, startPracticeGame, submitGuess } from "../api/client";
 import { PlayerSummary, GuessResponse, Difficulty } from "../types";
 import PlayerSearch from "../components/PlayerSearch";
 import ClueGrid from "../components/ClueGrid";
-import ModeSelector from "../components/ModeSelector";
 import ShareResult from "../components/ShareResult";
 
 const MAX_GUESSES = 8;
 
-export default function GameBoard() {
+interface Props {
+  mode: Difficulty;
+  onBackToHome: () => void;
+}
+
+export default function GameBoard({ mode, onBackToHome }: Props) {
   const [players, setPlayers] = useState<PlayerSummary[]>([]);
-  const [mode, setMode] = useState<Difficulty>("daily");
   const [sessionId, setSessionId] = useState<string | undefined>(undefined);
   const [guesses, setGuesses] = useState<GuessResponse[]>([]);
   const [error, setError] = useState("");
@@ -20,16 +23,15 @@ export default function GameBoard() {
     fetchPlayerPool().then(setPlayers).catch(() => setError("Couldn't load player list."));
   }, []);
 
-  const resetForMode = async (nextMode: Difficulty) => {
-    setMode(nextMode);
+  const startNewGame = async () => {
     setGuesses([]);
     setError("");
     setSessionId(undefined);
 
-    if (nextMode !== "daily") {
+    if (mode !== "daily") {
       setLoading(true);
       try {
-        const res = await startPracticeGame(nextMode);
+        const res = await startPracticeGame(mode);
         setSessionId(res.sessionId);
       } catch {
         setError("Couldn't start a new game. Try again.");
@@ -38,6 +40,11 @@ export default function GameBoard() {
       }
     }
   };
+
+  useEffect(() => {
+    startNewGame();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
 
   const gameOver = guesses.length > 0 && (guesses[guesses.length - 1].isCorrect || guesses.length >= MAX_GUESSES);
   const won = guesses.length > 0 && guesses[guesses.length - 1].isCorrect;
@@ -64,8 +71,6 @@ export default function GameBoard() {
     <div className="min-h-screen bg-court-green flex flex-col items-center px-4 py-10">
       <h1 className="font-display text-5xl tracking-wide text-ace-500 mb-1">AceGuessr</h1>
       <p className="text-court-chalk/70 text-sm mb-6">Guess the mystery ATP player in 8 tries</p>
-
-      <ModeSelector mode={mode} onChange={resetForMode} />
 
       <div className="mt-8 flex flex-col items-center w-full">
         <PlayerSearch
@@ -94,14 +99,22 @@ export default function GameBoard() {
               </p>
             )}
             <ShareResult guesses={guesses} won={won} mode={mode} />
-            {mode !== "daily" && (
+            <div className="flex items-center justify-center gap-4 mt-3">
+              {mode !== "daily" && (
+                <button
+                  onClick={() => startNewGame()}
+                  className="text-sm text-court-chalk/70 underline hover:text-court-chalk"
+                >
+                  Play another
+                </button>
+              )}
               <button
-                onClick={() => resetForMode(mode)}
-                className="block mx-auto mt-3 text-sm text-court-chalk/70 underline hover:text-court-chalk"
+                onClick={onBackToHome}
+                className="text-sm text-court-chalk/70 underline hover:text-court-chalk"
               >
-                Play another
+                Back to Home
               </button>
-            )}
+            </div>
           </div>
         )}
       </div>
