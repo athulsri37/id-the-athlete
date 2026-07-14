@@ -3,6 +3,11 @@ export interface PlayerSummary {
   name: string;
 }
 
+export interface Sport {
+  slug: string;
+  name: string;
+}
+
 export interface ClueResult {
   attributeKey: string;
   label: string;
