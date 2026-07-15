@@ -12,7 +12,7 @@ function buildShareText(guesses: GuessResponse[], won: boolean, mode: Difficulty
   const lines = guesses.map((g) =>
     g.clues.map((c) => (c.isMatch ? "🟩" : "⬜")).join("")
   );
-  const header = `AceGuessr — ${modeLabel} ${won ? guesses.length + "/8" : "X/8"}`;
+  const header = `ID the Tennis Player — ${modeLabel} ${won ? guesses.length + "/8" : "X/8"}`;
   return [header, ...lines].join("\n");
 }
 

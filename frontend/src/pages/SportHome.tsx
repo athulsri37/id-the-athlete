@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Sport, Difficulty } from "../types";
 
 interface Props {
@@ -14,6 +15,10 @@ const MODES: { key: Difficulty; label: string }[] = [
 ];
 
 export default function SportHome({ sport, onSelectMode, onBack }: Props) {
+  useEffect(() => {
+    document.title = `ID the ${sport.name} Player | ID the Athlete`;
+  }, [sport]);
+
   return (
     <div className="min-h-screen bg-court-green flex flex-col items-center px-4 py-10">
       <button

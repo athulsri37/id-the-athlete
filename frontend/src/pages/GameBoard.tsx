@@ -46,6 +46,12 @@ export default function GameBoard({ mode, onBackToHome }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
+  const modeLabel = mode === "daily" ? "Daily" : mode[0].toUpperCase() + mode.slice(1);
+
+  useEffect(() => {
+    document.title = `ID the Tennis Player — ${modeLabel} | ID the Athlete`;
+  }, [modeLabel]);
+
   const gameOver = guesses.length > 0 && (guesses[guesses.length - 1].isCorrect || guesses.length >= MAX_GUESSES);
   const won = guesses.length > 0 && guesses[guesses.length - 1].isCorrect;
 
@@ -69,7 +75,7 @@ export default function GameBoard({ mode, onBackToHome }: Props) {
 
   return (
     <div className="min-h-screen bg-court-green flex flex-col items-center px-4 py-10">
-      <h1 className="font-display text-5xl tracking-wide text-ace-500 mb-1">AceGuessr</h1>
+      <h1 className="font-display text-5xl tracking-wide text-ace-500 mb-1">ID the Tennis Player</h1>
       <p className="text-court-chalk/70 text-sm mb-6">Guess the mystery ATP player in 8 tries</p>
 
       <div className="mt-8 flex flex-col items-center w-full">

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Sport } from "../types";
 
 interface Props {
@@ -7,6 +8,10 @@ interface Props {
 const SPORTS: Sport[] = [{ slug: "tennis", name: "Tennis" }];
 
 export default function HomeScreen({ onSelectSport }: Props) {
+  useEffect(() => {
+    document.title = "ID the Athlete";
+  }, []);
+
   return (
     <div className="min-h-screen bg-court-green flex flex-col items-center px-4 py-10">
       <h1 className="font-display text-5xl tracking-wide text-ace-500 mb-1">ID the Athlete</h1>
