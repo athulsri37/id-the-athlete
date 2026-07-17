@@ -41,23 +41,24 @@ export default function SportHome({ sport, onSelectMode, onBack }: Props) {
         Tap "How to play ?" below to learn the rules
       </p>
 
-      <div className="flex flex-col gap-3 w-full max-w-xs">
+      <div className="flex flex-wrap justify-center gap-3 max-w-lg">
         {MODES.map((m) => (
           <button
             key={m.key}
             onClick={() => onSelectMode(m.key)}
-            className="btn-card px-5 py-3 rounded-md font-semibold text-lg"
+            className="btn-card px-6 py-3 rounded-md font-semibold text-lg"
           >
             {m.label}
           </button>
         ))}
-        <button
-          onClick={() => setShowHowToPlay((v) => !v)}
-          className="btn-card px-5 py-2 rounded-md font-semibold text-sm mt-1"
-        >
-          How to play ?
-        </button>
       </div>
+
+      <button
+        onClick={() => setShowHowToPlay((v) => !v)}
+        className="btn-card px-5 py-2 rounded-md font-semibold text-sm mt-6"
+      >
+        How to play ?
+      </button>
 
       {showHowToPlay && (
         <div className="card rounded-md p-5 mt-4 w-full max-w-md text-left">

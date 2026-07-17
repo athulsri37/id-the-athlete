@@ -121,7 +121,7 @@ export default function GameBoard({ mode, onBackToHome }: Props) {
         {gameOver && (
           <div className="mt-6 text-center">
             <p className="text-[var(--text-primary)] text-lg font-semibold">
-              {won ? "🎾 Nailed it!" : `The player was ${guesses[guesses.length - 1].answerName}`}
+              {won ? "🎾 Nailed it !" : `The player was ${guesses[guesses.length - 1].answerName}`}
             </p>
             {guesses[guesses.length - 1].triviaBlurb && (
               <p className="text-[var(--text-muted)] text-xs italic mt-2 max-w-sm mx-auto">
