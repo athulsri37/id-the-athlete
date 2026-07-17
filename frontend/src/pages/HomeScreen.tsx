@@ -14,7 +14,10 @@ export default function HomeScreen({ onSelectSport }: Props) {
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] flex flex-col items-center px-4 py-10">
-      <h1 className="font-heading text-5xl tracking-wide text-[var(--accent)] mb-1">ID the Athlete</h1>
+      <h1 className="font-heading text-5xl tracking-wide mb-1">
+        <span className="text-[var(--text-primary)]">ID the </span>
+        <span className="text-[var(--accent-alt)]">Athlete</span>
+      </h1>
       <p className="text-[var(--text-secondary)] text-sm mb-10 max-w-md text-center">
         Somewhere in the roster is a mystery athlete. Guess players and use the
         color-coded stat clues you get back — country, style, career numbers —

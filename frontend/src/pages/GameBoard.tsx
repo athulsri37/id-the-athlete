@@ -75,7 +75,11 @@ export default function GameBoard({ mode, onBackToHome }: Props) {
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] flex flex-col items-center px-4 py-10">
-      <h1 className="font-heading text-5xl tracking-wide text-[var(--accent)] mb-1">ID the Tennis Player</h1>
+      <h1 className="font-heading text-5xl tracking-wide mb-1">
+        <span className="text-[var(--text-primary)]">ID the </span>
+        <span className="text-[var(--accent-alt)]">Tennis</span>
+        <span className="text-[var(--text-primary)]"> Player</span>
+      </h1>
       <p className="text-[var(--text-secondary)] text-sm mb-6">Guess the mystery ATP player in 8 tries</p>
 
       <div className="mt-8 flex flex-col items-center w-full">

@@ -28,8 +28,10 @@ export default function SportHome({ sport, onSelectMode, onBack }: Props) {
         ← Back
       </button>
 
-      <h1 className="font-heading text-5xl tracking-wide text-[var(--accent)] mb-1">
-        ID the {sport.name} Player
+      <h1 className="font-heading text-5xl tracking-wide mb-1">
+        <span className="text-[var(--text-primary)]">ID the </span>
+        <span className="text-[var(--accent-alt)]">{sport.name}</span>
+        <span className="text-[var(--text-primary)]"> Player</span>
       </h1>
       <p className="text-[var(--text-secondary)] text-sm mb-10">Choose a mode to get started</p>
 
