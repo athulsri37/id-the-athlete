@@ -42,15 +42,17 @@ cleanly.
 ```
 tennis-guessr/
 ├── backend/TennisGuessr.Api/
-│   ├── Models/          # Sport, Player, AttributeDefinition, PlayerAttributeValue, DailyPuzzle
+│   ├── Models/          # Sport, Player, AttributeDefinition, PlayerAttributeValue, DailyPuzzle, AppSetting
 │   ├── Data/            # GameDbContext, DataSeeder (20-player ATP sample dataset)
-│   ├── Services/        # GameService — comparison logic, daily puzzle selection, practice sessions
-│   ├── Controllers/     # PlayersController, GameController
+│   ├── Migrations/      # EF Core migrations (generated, committed)
+│   ├── Services/        # GameService (comparison logic, daily puzzle, practice sessions), AiTriviaService (AI trivia blurbs)
+│   ├── Controllers/     # PlayersController, GameController, SettingsController
 │   └── Dtos/            # Request/response contracts
 └── frontend/src/
     ├── api/             # Axios client
-    ├── components/      # PlayerSearch, ClueGrid, ModeSelector, ShareResult
-    ├── pages/           # GameBoard (main game screen)
+    ├── components/      # PlayerSearch, ClueGrid, ShareResult
+    ├── pages/           # HomeScreen, SportHome, GameBoard (home → sport → game flow)
+    ├── styles/          # index.css (Tailwind entry), themes.css (retro/stadium theme variables)
     └── types/
 ```
 
