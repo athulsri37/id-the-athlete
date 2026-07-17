@@ -6,9 +6,14 @@ interface Props {
 
 const LABELS = ["Plays", "Backhand", "Country", "Slams", "High Rank", "Pro Yr", "Titles"];
 
-function ArrowIcon({ direction }: { direction: "up" | "down" | null }) {
-  if (!direction) return null;
-  return <span className="ml-1 text-xs">{direction === "up" ? "▲" : "▼"}</span>;
+// Responsive cell padding: generous on wide screens, compresses on narrow ones
+// instead of forcing the table to overflow.
+const CELL_PADDING = "[padding:clamp(14px,2vw,24px)_clamp(8px,1.8vw,22px)]";
+
+function ResultIcon({ isMatch, direction }: { isMatch: boolean; direction: "up" | "down" | null }) {
+  if (isMatch) return <span className="ml-1 text-xs">✓</span>;
+  if (direction) return <span className="ml-1 text-xs">{direction === "up" ? "▲" : "▼"}</span>;
+  return <span className="ml-1 text-xs">✕</span>;
 }
 
 export default function ClueGrid({ guesses }: Props) {
@@ -21,32 +26,43 @@ export default function ClueGrid({ guesses }: Props) {
   }
 
   return (
-    <div className="mt-6 overflow-x-auto">
+    <div className="mt-6 max-w-[96vw] overflow-x-auto">
       <div className="min-w-[640px]">
-        <div className="grid grid-cols-8 gap-1.5 mb-1.5">
-          <div className="text-xs font-semibold text-[var(--text-secondary)] self-end pb-1">Player</div>
+        <div className="grid grid-cols-9 gap-1.5 mb-1.5 rounded-md bg-[var(--text-primary)] p-1">
+          <div className={`text-xs font-semibold text-[var(--bg-primary)] ${CELL_PADDING}`}></div>
+          <div className={`text-xs font-semibold text-[var(--bg-primary)] ${CELL_PADDING}`}>Player</div>
           {LABELS.map((l) => (
-            <div key={l} className="text-xs font-semibold text-[var(--text-secondary)] text-center self-end pb-1">
+            <div key={l} className={`text-xs font-semibold text-[var(--bg-primary)] text-center ${CELL_PADDING}`}>
               {l}
             </div>
           ))}
         </div>
 
         {guesses.map((g, idx) => (
-          <div key={idx} className="grid grid-cols-8 gap-1.5 mb-1.5">
-            <div className="flex items-center px-2 py-2 rounded border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-primary)] text-sm font-medium truncate">
+          <div
+            key={idx}
+            className={`grid grid-cols-9 gap-1.5 mb-1.5 rounded-md p-1 ${idx % 2 === 1 ? "bg-[var(--row-alt-bg)]" : ""}`}
+          >
+            <div className="flex items-center justify-center">
+              <span className="flex items-center justify-center w-7 h-7 rounded-full bg-[var(--accent-alt)] text-[var(--on-accent-alt)] text-xs font-bold">
+                {idx + 1}
+              </span>
+            </div>
+            <div
+              className={`flex items-center rounded-full border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-primary)] text-sm font-medium truncate ${CELL_PADDING}`}
+            >
               {g.guessedPlayerName}
             </div>
             {g.clues.map((c) => (
               <div
                 key={c.attributeKey}
-                className={`flex items-center justify-center px-1 py-2 rounded text-sm font-semibold ${
+                className={`flex items-center justify-center rounded-full text-sm font-semibold ${CELL_PADDING} ${
                   c.isMatch ? "bg-[var(--accent)] text-[var(--on-accent)]" : "bg-[var(--miss-bg)] text-[var(--text-primary)]"
                 }`}
                 title={c.label}
               >
                 {c.value}
-                <ArrowIcon direction={c.direction} />
+                <ResultIcon isMatch={c.isMatch} direction={c.direction} />
               </div>
             ))}
           </div>

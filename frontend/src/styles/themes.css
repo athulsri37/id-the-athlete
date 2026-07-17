@@ -9,9 +9,11 @@
   --accent-alt: #B5602B;
   --accent-alt-hover: #9c5225;
   --on-accent: #2B2118;
+  --on-accent-alt: #FFFCF2;
   --border: rgba(43, 33, 24, 0.25);
   --border-strong: #2B2118;
-  --miss-bg: rgba(181, 96, 43, 0.18);
+  --miss-bg: rgba(181, 96, 43, 0.35);
+  --row-alt-bg: rgba(43, 33, 24, 0.05);
   --font-heading: 'Archivo Black';
   --font-body: 'Inter';
 }
@@ -27,9 +29,11 @@
   --accent-alt: #ff5470;
   --accent-alt-hover: #e6415f;
   --on-accent: #0a0e14;
+  --on-accent-alt: #0a0e14;
   --border: #1f2833;
   --border-strong: #39FF88;
-  --miss-bg: rgba(255, 84, 112, 0.18);
+  --miss-bg: rgba(255, 84, 112, 0.28);
+  --row-alt-bg: rgba(226, 232, 240, 0.05);
   --font-heading: 'Orbitron';
   --font-body: 'Inter';
 }
