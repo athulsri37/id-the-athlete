@@ -88,10 +88,16 @@ public static class DataSeeder
 
     private static async Task SeedAppSettingsAsync(GameDbContext db)
     {
-        if (await db.AppSettings.AnyAsync(s => s.Key == "ActiveTheme"))
-            return; // already seeded
+        if (!await db.AppSettings.AnyAsync(s => s.Key == "ActiveTheme"))
+        {
+            db.AppSettings.Add(new AppSetting { Key = "ActiveTheme", Value = "retro" });
+        }
 
-        db.AppSettings.Add(new AppSetting { Key = "ActiveTheme", Value = "retro" });
+        if (!await db.AppSettings.AnyAsync(s => s.Key == "AiTriviaEnabled"))
+        {
+            db.AppSettings.Add(new AppSetting { Key = "AiTriviaEnabled", Value = "false" });
+        }
+
         await db.SaveChangesAsync();
     }
 }

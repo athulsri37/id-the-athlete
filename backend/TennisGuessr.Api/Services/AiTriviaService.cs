@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
+using Microsoft.EntityFrameworkCore;
+using TennisGuessr.Api.Data;
 using TennisGuessr.Api.Models;
 
 namespace TennisGuessr.Api.Services;
@@ -18,21 +20,46 @@ public class AiTriviaService
 
     private readonly HttpClient _httpClient;
     private readonly IConfiguration _configuration;
+    private readonly GameDbContext _db;
 
-    public AiTriviaService(HttpClient httpClient, IConfiguration configuration)
+    public AiTriviaService(HttpClient httpClient, IConfiguration configuration, GameDbContext db)
     {
         _httpClient = httpClient;
         _configuration = configuration;
+        _db = db;
     }
 
     public async Task<string?> GetTriviaBlurbAsync(Player player)
     {
+        // Checked ahead of the cache lookup (not just the API key check) so a
+        // disabled flag never gets baked into a cached null — otherwise
+        // re-enabling later would leave every already-seen player stuck null.
+        if (!await IsEnabledAsync())
+            return null;
+
         if (Cache.TryGetValue(player.Id, out var cached))
             return cached;
 
         var blurb = await GenerateBlurbAsync(player);
         Cache[player.Id] = blurb;
         return blurb;
+    }
+
+    private async Task<bool> IsEnabledAsync()
+    {
+        try
+        {
+            var value = await _db.AppSettings
+                .Where(s => s.Key == "AiTriviaEnabled")
+                .Select(s => s.Value)
+                .FirstOrDefaultAsync();
+
+            return value == "true";
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private async Task<string?> GenerateBlurbAsync(Player player)
