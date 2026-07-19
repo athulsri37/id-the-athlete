@@ -12,7 +12,7 @@ public static class DataSeeder
     private static readonly HashSet<string> RetiredPlayers = new()
     {
         "Pete Sampras", "Andre Agassi", "Boris Becker", "John McEnroe",
-        "Roger Federer", "Rafael Nadal", "Stan Wawrinka", "Lleyton Hewitt", "David Ferrer",
+        "Roger Federer", "Rafael Nadal", "Lleyton Hewitt", "David Ferrer",
     };
 
     public static async Task SeedAsync(GameDbContext db)
