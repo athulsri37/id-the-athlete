@@ -4,7 +4,7 @@ interface Props {
   guesses: GuessResponse[];
 }
 
-const LABELS = ["Plays", "Backhand", "Country", "Slams", "High Rank", "Pro Yr", "Titles"];
+const LABELS = ["Status", "Plays", "Backhand", "Country", "Slams", "High Rank", "Pro Yr", "Titles"];
 
 // Responsive cell padding: generous on wide screens, compresses on narrow ones
 // instead of forcing the table to overflow.
@@ -27,8 +27,8 @@ export default function ClueGrid({ guesses }: Props) {
 
   return (
     <div className="mt-6 max-w-[96vw] overflow-x-auto">
-      <div className="min-w-[640px]">
-        <div className="grid grid-cols-9 gap-1.5 mb-1.5 rounded-md bg-[var(--text-primary)] p-1">
+      <div className="min-w-[720px]">
+        <div className="grid grid-cols-10 gap-1.5 mb-1.5 rounded-md bg-[var(--text-primary)] p-1">
           <div className={`text-xs font-semibold text-[var(--bg-primary)] ${CELL_PADDING}`}></div>
           <div className={`text-xs font-semibold text-[var(--bg-primary)] ${CELL_PADDING}`}>Player</div>
           {LABELS.map((l) => (
@@ -41,7 +41,7 @@ export default function ClueGrid({ guesses }: Props) {
         {guesses.map((g, idx) => (
           <div
             key={idx}
-            className={`grid grid-cols-9 gap-1.5 mb-1.5 rounded-md p-1 ${idx % 2 === 1 ? "bg-[var(--row-alt-bg)]" : ""}`}
+            className={`grid grid-cols-10 gap-1.5 mb-1.5 rounded-md p-1 ${idx % 2 === 1 ? "bg-[var(--row-alt-bg)]" : ""}`}
           >
             <div className="flex items-center justify-center">
               <span className="flex items-center justify-center w-7 h-7 rounded-full bg-[var(--accent-alt)] text-[var(--on-accent-alt)] text-xs font-bold">
