@@ -30,6 +30,10 @@ public class GameDbContext : DbContext
             .WithMany(s => s.Players)
             .HasForeignKey(p => p.SportId);
 
+        modelBuilder.Entity<Player>()
+            .Property(p => p.IsOverridden)
+            .HasDefaultValue(false);
+
         modelBuilder.Entity<PlayerAttributeValue>()
             .HasOne(v => v.Player)
             .WithMany(p => p.AttributeValues)

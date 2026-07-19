@@ -55,35 +55,37 @@ public static class DataSeeder
 
         var attrByKey = attributeDefs.ToDictionary(a => a.Key, a => a.Id);
 
-        var players = new (string Name, string Era, string Plays, string Backhand, string Country, int Slams, int HighRank, int ProYear, int Titles)[]
+        // Grouped by era purely for readability; era is no longer persisted
+        // (difficulty is computed from stats instead — see GameService).
+        var players = new (string Name, string Plays, string Backhand, string Country, int Slams, int HighRank, int ProYear, int Titles)[]
         {
-            ("Pete Sampras", "legend", "Right", "One-Handed", "USA", 14, 1, 1988, 64),
-            ("Andre Agassi", "legend", "Right", "Two-Handed", "USA", 8, 1, 1986, 60),
-            ("Boris Becker", "legend", "Right", "One-Handed", "Germany", 6, 1, 1984, 49),
-            ("John McEnroe", "legend", "Left", "One-Handed", "USA", 7, 1, 1978, 77),
+            ("Pete Sampras", "Right", "One-Handed", "USA", 14, 1, 1988, 64),
+            ("Andre Agassi", "Right", "Two-Handed", "USA", 8, 1, 1986, 60),
+            ("Boris Becker", "Right", "One-Handed", "Germany", 6, 1, 1984, 49),
+            ("John McEnroe", "Left", "One-Handed", "USA", 7, 1, 1978, 77),
 
-            ("Roger Federer", "2005_2015", "Right", "One-Handed", "Switzerland", 20, 1, 1998, 103),
-            ("Rafael Nadal", "2005_2015", "Left", "Two-Handed", "Spain", 22, 1, 2001, 92),
-            ("Novak Djokovic", "2005_2015", "Right", "Two-Handed", "Serbia", 24, 1, 2003, 100),
-            ("Andy Murray", "2005_2015", "Right", "Two-Handed", "United Kingdom", 3, 1, 2005, 46),
-            ("Stan Wawrinka", "2005_2015", "Right", "One-Handed", "Switzerland", 3, 3, 2002, 16),
-            ("Lleyton Hewitt", "2005_2015", "Right", "Two-Handed", "Australia", 2, 1, 1998, 30),
-            ("David Ferrer", "2005_2015", "Right", "Two-Handed", "Spain", 0, 3, 2000, 27),
+            ("Roger Federer", "Right", "One-Handed", "Switzerland", 20, 1, 1998, 103),
+            ("Rafael Nadal", "Left", "Two-Handed", "Spain", 22, 1, 2001, 92),
+            ("Novak Djokovic", "Right", "Two-Handed", "Serbia", 24, 1, 2003, 100),
+            ("Andy Murray", "Right", "Two-Handed", "United Kingdom", 3, 1, 2005, 46),
+            ("Stan Wawrinka", "Right", "One-Handed", "Switzerland", 3, 3, 2002, 16),
+            ("Lleyton Hewitt", "Right", "Two-Handed", "Australia", 2, 1, 1998, 30),
+            ("David Ferrer", "Right", "Two-Handed", "Spain", 0, 3, 2000, 27),
 
-            ("Carlos Alcaraz", "current", "Right", "Two-Handed", "Spain", 7, 1, 2018, 22),
-            ("Jannik Sinner", "current", "Right", "Two-Handed", "Italy", 5, 1, 2018, 20),
-            ("Daniil Medvedev", "current", "Right", "Two-Handed", "Russia", 1, 1, 2014, 20),
-            ("Alexander Zverev", "current", "Right", "Two-Handed", "Germany", 0, 2, 2013, 24),
-            ("Stefanos Tsitsipas", "current", "Right", "One-Handed", "Greece", 0, 3, 2016, 12),
-            ("Casper Ruud", "current", "Right", "Two-Handed", "Norway", 0, 2, 2015, 10),
-            ("Taylor Fritz", "current", "Right", "Two-Handed", "USA", 0, 4, 2015, 9),
-            ("Holger Rune", "current", "Right", "Two-Handed", "Denmark", 0, 4, 2019, 6),
-            ("Andrey Rublev", "current", "Right", "Two-Handed", "Russia", 0, 5, 2014, 17),
+            ("Carlos Alcaraz", "Right", "Two-Handed", "Spain", 7, 1, 2018, 22),
+            ("Jannik Sinner", "Right", "Two-Handed", "Italy", 5, 1, 2018, 20),
+            ("Daniil Medvedev", "Right", "Two-Handed", "Russia", 1, 1, 2014, 20),
+            ("Alexander Zverev", "Right", "Two-Handed", "Germany", 0, 2, 2013, 24),
+            ("Stefanos Tsitsipas", "Right", "One-Handed", "Greece", 0, 3, 2016, 12),
+            ("Casper Ruud", "Right", "Two-Handed", "Norway", 0, 2, 2015, 10),
+            ("Taylor Fritz", "Right", "Two-Handed", "USA", 0, 4, 2015, 9),
+            ("Holger Rune", "Right", "Two-Handed", "Denmark", 0, 4, 2019, 6),
+            ("Andrey Rublev", "Right", "Two-Handed", "Russia", 0, 5, 2014, 17),
         };
 
         foreach (var p in players)
         {
-            var player = new Player { SportId = tennis.Id, Name = p.Name, EraGroup = p.Era };
+            var player = new Player { SportId = tennis.Id, Name = p.Name };
             db.Players.Add(player);
             await db.SaveChangesAsync();
 

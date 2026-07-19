@@ -42,17 +42,23 @@ public class GameService
         var sport = await _db.Sports.FirstOrDefaultAsync(s => s.Slug == sportSlug)
             ?? throw new InvalidOperationException($"Sport '{sportSlug}' not found");
 
-        var eraGroups = difficulty switch
+        var tiersAllowed = difficulty switch
         {
-            "easy" => new[] { "current" },
-            "medium" => new[] { "current", "2005_2015" },
-            "hard" => new[] { "current", "2005_2015", "legend" },
+            "easy" => new[] { "easy" },
+            "medium" => new[] { "easy", "medium" },
+            "hard" => new[] { "easy", "medium", "hard" },
             _ => throw new ArgumentException("Invalid difficulty. Use easy, medium, or hard.")
         };
 
-        var pool = await _db.Players
-            .Where(p => p.SportId == sport.Id && eraGroups.Contains(p.EraGroup))
+        var players = await _db.Players
+            .Include(p => p.AttributeValues)
+                .ThenInclude(v => v.AttributeDefinition)
+            .Where(p => p.SportId == sport.Id)
             .ToListAsync();
+
+        var pool = players
+            .Where(p => tiersAllowed.Contains(ComputeDifficultyTier(p)))
+            .ToList();
 
         if (pool.Count == 0)
             throw new InvalidOperationException("No players available for this difficulty yet.");
@@ -67,6 +73,37 @@ public class GameService
             SessionId = sessionId,
             MaxGuesses = MaxGuesses
         };
+    }
+
+    // Computes a player's practice-mode difficulty tier from their stats,
+    // unless a curator has explicitly overridden it (e.g. a well-known
+    // player whose title count alone would compute too hard). Checked in
+    // order — easy, then medium, then hard as the fallback — so the hard
+    // branch never needs its own explicit condition: by the time a player
+    // falls through both easy (high rank #1 or 30+ titles) and medium
+    // (10-29 titles), they're guaranteed to have never reached #1 and have
+    // fewer than 10 titles, which already satisfies the stated hard rule.
+    private static string ComputeDifficultyTier(Player player)
+    {
+        if (player.IsOverridden && !string.IsNullOrWhiteSpace(player.DifficultyOverride))
+            return player.DifficultyOverride!.ToLowerInvariant();
+
+        var highRank = GetNumericAttribute(player, "career_high_ranking");
+        var titles = GetNumericAttribute(player, "career_titles");
+
+        if (highRank == 1 || titles >= 30)
+            return "easy";
+
+        if (titles >= 10 && titles <= 29)
+            return "medium";
+
+        return "hard";
+    }
+
+    private static int GetNumericAttribute(Player player, string key)
+    {
+        var value = player.AttributeValues.FirstOrDefault(v => v.AttributeDefinition?.Key == key)?.Value;
+        return value != null && int.TryParse(value, out var parsed) ? parsed : 0;
     }
 
     public async Task<GuessResponseDto> SubmitGuessAsync(string sportSlug, GuessRequestDto request, int guessNumber)
