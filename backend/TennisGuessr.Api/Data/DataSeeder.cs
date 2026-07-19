@@ -9,6 +9,15 @@ namespace TennisGuessr.Api.Data;
 // rankings and title counts change for active players.
 public static class DataSeeder
 {
+    // One-time seed/backfill data only, consumed solely by
+    // SeedActiveStatusAttributeAsync below to populate a player's initial
+    // active_status value. Gameplay (GameService.SubmitGuessAsync) never
+    // reads this set — every clue, Status included, comes exclusively from
+    // AttributeDefinitions + PlayerAttributeValues in the database, so
+    // there's no runtime duplication risk. Once a player has an
+    // active_status row, changing it is a database update, not a code
+    // change. This set will naturally go away once player seed data moves
+    // out of C# and into SQL scripts; no separate fix needed before then.
     private static readonly HashSet<string> RetiredPlayers = new()
     {
         "Pete Sampras", "Andre Agassi", "Boris Becker", "John McEnroe",
