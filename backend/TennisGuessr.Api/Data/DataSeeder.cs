@@ -9,9 +9,16 @@ namespace TennisGuessr.Api.Data;
 // rankings and title counts change for active players.
 public static class DataSeeder
 {
+    private static readonly HashSet<string> RetiredPlayers = new()
+    {
+        "Pete Sampras", "Andre Agassi", "Boris Becker", "John McEnroe",
+        "Roger Federer", "Rafael Nadal", "Stan Wawrinka", "Lleyton Hewitt", "David Ferrer",
+    };
+
     public static async Task SeedAsync(GameDbContext db)
     {
         await SeedTennisAsync(db);
+        await SeedActiveStatusAttributeAsync(db);
         await SeedAppSettingsAsync(db);
     }
 
@@ -83,6 +90,55 @@ public static class DataSeeder
             });
         }
 
+        await db.SaveChangesAsync();
+    }
+
+    // Runs unconditionally on every startup (unlike SeedTennisAsync, which
+    // bails out entirely once the sport exists) so new attributes can be
+    // added to a database that was already seeded in the past. Both the
+    // AttributeDefinition and each player's value are checked and inserted
+    // independently, so re-running is always safe.
+    private static async Task SeedActiveStatusAttributeAsync(GameDbContext db)
+    {
+        var tennis = await db.Sports.FirstOrDefaultAsync(s => s.Slug == "tennis");
+        if (tennis == null)
+            return; // tennis hasn't been seeded yet; nothing to attach this to
+
+        var activeStatusDef = await db.AttributeDefinitions
+            .FirstOrDefaultAsync(a => a.SportId == tennis.Id && a.Key == "active_status");
+
+        if (activeStatusDef == null)
+        {
+            activeStatusDef = new AttributeDefinition
+            {
+                SportId = tennis.Id,
+                Key = "active_status",
+                Label = "Status",
+                Type = AttributeType.Categorical,
+                DisplayOrder = 0, // sorts before Plays (1) so it leads the clue row
+            };
+            db.AttributeDefinitions.Add(activeStatusDef);
+            await db.SaveChangesAsync();
+        }
+
+        var players = await db.Players.Where(p => p.SportId == tennis.Id).ToListAsync();
+
+        var playerIdsWithValue = await db.PlayerAttributeValues
+            .Where(v => v.AttributeDefinitionId == activeStatusDef.Id)
+            .Select(v => v.PlayerId)
+            .ToListAsync();
+        var playerIdsWithValueSet = playerIdsWithValue.ToHashSet();
+
+        var missingValues = players
+            .Where(p => !playerIdsWithValueSet.Contains(p.Id))
+            .Select(p => new PlayerAttributeValue
+            {
+                PlayerId = p.Id,
+                AttributeDefinitionId = activeStatusDef.Id,
+                Value = RetiredPlayers.Contains(p.Name) ? "Retired" : "Active",
+            });
+
+        db.PlayerAttributeValues.AddRange(missingValues);
         await db.SaveChangesAsync();
     }
 
