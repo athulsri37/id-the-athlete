@@ -31,27 +31,40 @@ public static class DataSeeder
         await SeedAppSettingsAsync(db);
     }
 
+    // Sport and AttributeDefinitions are still created once and skipped if
+    // they exist. The player loop below is idempotent per-player instead of
+    // being gated behind the sport's existence, so adding new entries to the
+    // players array and restarting picks up just the new ones — no manual
+    // SQL or full re-seed needed.
     private static async Task SeedTennisAsync(GameDbContext db)
     {
-        if (await db.Sports.AnyAsync(s => s.Slug == "tennis"))
-            return; // already seeded
-
-        var tennis = new Sport { Name = "Tennis", Slug = "tennis" };
-        db.Sports.Add(tennis);
-        await db.SaveChangesAsync();
-
-        var attributeDefs = new List<AttributeDefinition>
+        var tennis = await db.Sports.FirstOrDefaultAsync(s => s.Slug == "tennis");
+        if (tennis == null)
         {
-            new() { SportId = tennis.Id, Key = "plays",               Label = "Plays",              Type = AttributeType.Categorical, DisplayOrder = 1 },
-            new() { SportId = tennis.Id, Key = "backhand",             Label = "Backhand",           Type = AttributeType.Categorical, DisplayOrder = 2 },
-            new() { SportId = tennis.Id, Key = "country",              Label = "Country",            Type = AttributeType.Categorical, DisplayOrder = 3 },
-            new() { SportId = tennis.Id, Key = "grand_slam_titles",    Label = "Grand Slams",        Type = AttributeType.Numeric,     DisplayOrder = 4 },
-            new() { SportId = tennis.Id, Key = "career_high_ranking",  Label = "Career-High Rank",   Type = AttributeType.Numeric,     DisplayOrder = 5 },
-            new() { SportId = tennis.Id, Key = "turned_pro_year",      Label = "Turned Pro",         Type = AttributeType.Numeric,     DisplayOrder = 6 },
-            new() { SportId = tennis.Id, Key = "career_titles",        Label = "Career Titles",      Type = AttributeType.Numeric,     DisplayOrder = 7 },
-        };
-        db.AttributeDefinitions.AddRange(attributeDefs);
-        await db.SaveChangesAsync();
+            tennis = new Sport { Name = "Tennis", Slug = "tennis" };
+            db.Sports.Add(tennis);
+            await db.SaveChangesAsync();
+        }
+
+        var attributeDefs = await db.AttributeDefinitions
+            .Where(a => a.SportId == tennis.Id)
+            .ToListAsync();
+
+        if (attributeDefs.Count == 0)
+        {
+            attributeDefs = new List<AttributeDefinition>
+            {
+                new() { SportId = tennis.Id, Key = "plays",               Label = "Plays",              Type = AttributeType.Categorical, DisplayOrder = 1 },
+                new() { SportId = tennis.Id, Key = "backhand",             Label = "Backhand",           Type = AttributeType.Categorical, DisplayOrder = 2 },
+                new() { SportId = tennis.Id, Key = "country",              Label = "Country",            Type = AttributeType.Categorical, DisplayOrder = 3 },
+                new() { SportId = tennis.Id, Key = "grand_slam_titles",    Label = "Grand Slams",        Type = AttributeType.Numeric,     DisplayOrder = 4 },
+                new() { SportId = tennis.Id, Key = "career_high_ranking",  Label = "Career-High Rank",   Type = AttributeType.Numeric,     DisplayOrder = 5 },
+                new() { SportId = tennis.Id, Key = "turned_pro_year",      Label = "Turned Pro",         Type = AttributeType.Numeric,     DisplayOrder = 6 },
+                new() { SportId = tennis.Id, Key = "career_titles",        Label = "Career Titles",      Type = AttributeType.Numeric,     DisplayOrder = 7 },
+            };
+            db.AttributeDefinitions.AddRange(attributeDefs);
+            await db.SaveChangesAsync();
+        }
 
         var attrByKey = attributeDefs.ToDictionary(a => a.Key, a => a.Id);
 
@@ -83,8 +96,17 @@ public static class DataSeeder
             ("Andrey Rublev", "Right", "Two-Handed", "Russia", 0, 5, 2014, 17),
         };
 
+        var existingPlayerNames = await db.Players
+            .Where(p => p.SportId == tennis.Id)
+            .Select(p => p.Name)
+            .ToListAsync();
+        var existingPlayerNameSet = existingPlayerNames.ToHashSet();
+
         foreach (var p in players)
         {
+            if (existingPlayerNameSet.Contains(p.Name))
+                continue; // already seeded
+
             var player = new Player { SportId = tennis.Id, Name = p.Name };
             db.Players.Add(player);
             await db.SaveChangesAsync();

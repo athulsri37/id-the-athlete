@@ -4,7 +4,7 @@ interface Props {
   guesses: GuessResponse[];
 }
 
-const LABELS = ["Status", "Plays", "Backhand", "Country", "Slams", "High Rank", "Pro Yr", "Titles"];
+const LABELS = ["Status", "Plays", "Backhand", "Country", "Slams", "Highest Rank", "Pro Yr", "Titles"];
 
 // Responsive cell padding: generous on wide screens, compresses on narrow ones
 // instead of forcing the table to overflow.
