@@ -17,14 +17,6 @@ function ResultIcon({ isMatch, direction }: { isMatch: boolean; direction: "up" 
 }
 
 export default function ClueGrid({ guesses }: Props) {
-  if (guesses.length === 0) {
-    return (
-      <p className="text-[var(--text-muted)] text-sm italic mt-6">
-        Make your first guess to see clues appear here.
-      </p>
-    );
-  }
-
   return (
     <div className="mt-6 max-w-[96vw] overflow-x-auto">
       <div className="min-w-[720px]">
@@ -38,35 +30,41 @@ export default function ClueGrid({ guesses }: Props) {
           ))}
         </div>
 
-        {guesses.map((g, idx) => (
-          <div
-            key={idx}
-            className={`grid grid-cols-10 gap-1.5 mb-1.5 rounded-md p-1 ${idx % 2 === 1 ? "bg-[var(--row-alt-bg)]" : ""}`}
-          >
-            <div className="flex items-center justify-center">
-              <span className="flex items-center justify-center w-7 h-7 rounded-full bg-[var(--accent-alt)] text-[var(--on-accent-alt)] text-xs font-bold">
-                {idx + 1}
-              </span>
-            </div>
+        {guesses.length === 0 ? (
+          <p className="text-[var(--text-muted)] text-sm italic text-center py-4">
+            Make your first guess to see clues appear here.
+          </p>
+        ) : (
+          guesses.map((g, idx) => (
             <div
-              className={`flex items-center rounded-full border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-primary)] text-sm font-medium truncate ${CELL_PADDING}`}
+              key={idx}
+              className={`grid grid-cols-10 gap-1.5 mb-1.5 rounded-md p-1 ${idx % 2 === 1 ? "bg-[var(--row-alt-bg)]" : ""}`}
             >
-              {g.guessedPlayerName}
-            </div>
-            {g.clues.map((c) => (
-              <div
-                key={c.attributeKey}
-                className={`flex items-center justify-center rounded-full text-sm font-semibold ${CELL_PADDING} ${
-                  c.isMatch ? "bg-[var(--accent)] text-[var(--on-accent)]" : "bg-[var(--miss-bg)] text-[var(--text-primary)]"
-                }`}
-                title={c.label}
-              >
-                {c.value}
-                <ResultIcon isMatch={c.isMatch} direction={c.direction} />
+              <div className="flex items-center justify-center">
+                <span className="flex items-center justify-center w-7 h-7 rounded-full bg-[var(--accent-alt)] text-[var(--on-accent-alt)] text-xs font-bold">
+                  {idx + 1}
+                </span>
               </div>
-            ))}
-          </div>
-        ))}
+              <div
+                className={`flex items-center rounded-full border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-primary)] text-sm font-medium truncate ${CELL_PADDING}`}
+              >
+                {g.guessedPlayerName}
+              </div>
+              {g.clues.map((c) => (
+                <div
+                  key={c.attributeKey}
+                  className={`flex items-center justify-center rounded-full text-sm font-semibold ${CELL_PADDING} ${
+                    c.isMatch ? "bg-[var(--accent)] text-[var(--on-accent)]" : "bg-[var(--miss-bg)] text-[var(--text-primary)]"
+                  }`}
+                  title={c.label}
+                >
+                  {c.value}
+                  <ResultIcon isMatch={c.isMatch} direction={c.direction} />
+                </div>
+              ))}
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
