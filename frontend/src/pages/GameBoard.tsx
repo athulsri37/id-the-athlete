@@ -133,13 +133,19 @@ export default function GameBoard({ mode, onBackToHome }: Props) {
 
         {error && <p className="text-[var(--accent-alt)] mt-2 text-sm">{error}</p>}
 
-        {hintDeclined && revealedCountry === null && (
-          <button
-            onClick={() => setShowHintModal(true)}
-            className="btn-card animate-hint-pulse mt-3 px-4 py-1.5 rounded-full text-xs font-semibold"
-          >
-            Hint available
-          </button>
+        {revealedCountry !== null ? (
+          <div className="card mt-3 px-4 py-1.5 rounded-full text-xs font-semibold text-[var(--text-primary)]">
+            Country: {revealedCountry}
+          </div>
+        ) : (
+          hintDeclined && (
+            <button
+              onClick={() => setShowHintModal(true)}
+              className="btn-card animate-hint-pulse mt-3 px-4 py-1.5 rounded-full text-xs font-semibold"
+            >
+              Hint available
+            </button>
+          )
         )}
 
         <div className="flex items-center gap-2 mt-2">
