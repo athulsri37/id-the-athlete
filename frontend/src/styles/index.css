@@ -39,3 +39,14 @@ body {
   opacity: 0.5;
   cursor: default;
 }
+
+/* Breathing scale pulse for the persistent hint button. Pure transform, no
+   color, so it reads correctly under any theme's .btn-card styling. */
+@keyframes hint-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
+.animate-hint-pulse {
+  animation: hint-pulse 1.6s ease-in-out infinite;
+}

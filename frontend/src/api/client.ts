@@ -34,3 +34,10 @@ export async function submitGuess(
   );
   return res.data;
 }
+
+export async function fetchCountryHint(mode: Difficulty, sessionId?: string): Promise<string> {
+  const res = await client.get(`/sports/${SPORT}/game/hint/country`, {
+    params: { mode, sessionId },
+  });
+  return res.data.country as string;
+}

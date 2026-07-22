@@ -181,6 +181,38 @@ public class GameService
         };
     }
 
+    // Free hint: reveals only the mystery player's country, nothing else.
+    // Validation mirrors SubmitGuessAsync's mystery-player resolution:
+    // - Practice mode: ResolvePracticeSessionPlayerId throws if the session
+    //   is missing, which is also what happens once a practice game ends
+    //   (SubmitGuessAsync removes the session on game-over), so an
+    //   already-finished practice game is naturally rejected here too.
+    // - Daily mode has no server-side per-player session/guess-count state
+    //   at all (by design — see GetTodaysMysteryPlayerIdAsync), so there's
+    //   nothing server-side to check for "already over" there; the
+    //   frontend is responsible for only requesting the hint when it makes
+    //   sense, same trust boundary as the client-enforced guess limit.
+    public async Task<string> GetCountryHintAsync(string sportSlug, string mode, string? sessionId)
+    {
+        var sport = await _db.Sports.FirstOrDefaultAsync(s => s.Slug == sportSlug)
+            ?? throw new InvalidOperationException($"Sport '{sportSlug}' not found");
+
+        int mysteryPlayerId = mode == "daily"
+            ? await GetTodaysMysteryPlayerIdAsync(sport.Id)
+            : ResolvePracticeSessionPlayerId(sessionId);
+
+        var mysteryPlayer = await _db.Players
+            .Include(p => p.AttributeValues)
+                .ThenInclude(v => v.AttributeDefinition)
+            .FirstOrDefaultAsync(p => p.Id == mysteryPlayerId)
+            ?? throw new InvalidOperationException("Mystery player not found");
+
+        var country = mysteryPlayer.AttributeValues
+            .FirstOrDefault(v => v.AttributeDefinition?.Key == "country")?.Value;
+
+        return country ?? throw new InvalidOperationException("Country not available for this player.");
+    }
+
     private int ResolvePracticeSessionPlayerId(string? sessionId)
     {
         if (string.IsNullOrEmpty(sessionId) || !PracticeSessions.TryGetValue(sessionId, out var playerId))
