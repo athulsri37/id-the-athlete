@@ -1,0 +1,280 @@
+-- Tennis (men's) players, batch 3 (25 players, bringing the roster to 70
+-- total: batch 1's 20 + batch 2's 25 + this batch's 25). Same upsert
+-- pattern as batches 1 and 2: Players upserts on the unique Name
+-- constraint, PlayerAttributeValues upserts on the existing unique
+-- (PlayerId, AttributeDefinitionId) constraint. No overrides in this
+-- batch -- every row is IsOverridden = false, DifficultyOverride = NULL.
+
+INSERT INTO "Players" ("SportId", "Name", "IsOverridden", "DifficultyOverride")
+SELECT s."Id", v."Name", v."IsOverridden", v."DifficultyOverride"
+FROM "Sports" s
+CROSS JOIN (VALUES
+    ('Nick Kyrgios',                 false, NULL),
+    ('Fabio Fognini',                false, NULL),
+    ('Denis Shapovalov',             false, NULL),
+    ('Matteo Berrettini',            false, NULL),
+    ('Lorenzo Musetti',              false, NULL),
+    ('John Isner',                   false, NULL),
+    ('Milos Raonic',                 false, NULL),
+    ('Kevin Anderson',               false, NULL),
+    ('Dominic Thiem',                false, NULL),
+    ('Alejandro Davidovich Fokina',  false, NULL),
+
+    ('Andy Roddick',                 false, NULL),
+    ('Marat Safin',                  false, NULL),
+    ('Goran Ivanišević',             false, NULL),
+    ('Pat Rafter',                   false, NULL),
+    ('Yevgeny Kafelnikov',           false, NULL),
+    ('Carlos Moyá',                  false, NULL),
+    ('Gustavo Kuerten',              false, NULL),
+    ('Thomas Muster',                false, NULL),
+    ('Michael Chang',                false, NULL),
+    ('Stefan Edberg',                false, NULL),
+    ('Mats Wilander',                false, NULL),
+    ('David Nalbandian',             false, NULL),
+    ('Tommy Haas',                   false, NULL),
+    ('Nikolay Davydenko',            false, NULL),
+    ('James Blake',                  false, NULL)
+) AS v("Name", "IsOverridden", "DifficultyOverride")
+WHERE s."Slug" = 'tennis'
+ON CONFLICT ("Name") DO UPDATE SET
+    "SportId" = EXCLUDED."SportId",
+    "IsOverridden" = EXCLUDED."IsOverridden",
+    "DifficultyOverride" = EXCLUDED."DifficultyOverride";
+
+-- One row per (player, attribute) pair. PlayerId/AttributeDefinitionId are
+-- resolved by name/key lookup rather than hardcoded ids, so this file has
+-- no dependency on insertion order or id values.
+INSERT INTO "PlayerAttributeValues" ("PlayerId", "AttributeDefinitionId", "Value")
+SELECT p."Id", ad."Id", v."Value"
+FROM (VALUES
+    -- Player,                       AttrKey,                Value
+    ('Nick Kyrgios',                 'active_status',        'Active'),
+    ('Nick Kyrgios',                 'plays',                'Right'),
+    ('Nick Kyrgios',                 'backhand',             'Two-Handed'),
+    ('Nick Kyrgios',                 'country',              'Australia'),
+    ('Nick Kyrgios',                 'grand_slam_titles',    '0'),
+    ('Nick Kyrgios',                 'career_high_ranking',  '13'),
+    ('Nick Kyrgios',                 'turned_pro_year',      '2013'),
+    ('Nick Kyrgios',                 'career_titles',        '7'),
+
+    ('Fabio Fognini',                'active_status',        'Retired'),
+    ('Fabio Fognini',                'plays',                'Right'),
+    ('Fabio Fognini',                'backhand',             'Two-Handed'),
+    ('Fabio Fognini',                'country',              'Italy'),
+    ('Fabio Fognini',                'grand_slam_titles',    '0'),
+    ('Fabio Fognini',                'career_high_ranking',  '9'),
+    ('Fabio Fognini',                'turned_pro_year',      '2004'),
+    ('Fabio Fognini',                'career_titles',        '9'),
+
+    ('Denis Shapovalov',             'active_status',        'Active'),
+    ('Denis Shapovalov',             'plays',                'Left'),
+    ('Denis Shapovalov',             'backhand',             'One-Handed'),
+    ('Denis Shapovalov',             'country',              'Canada'),
+    ('Denis Shapovalov',             'grand_slam_titles',    '0'),
+    ('Denis Shapovalov',             'career_high_ranking',  '10'),
+    ('Denis Shapovalov',             'turned_pro_year',      '2017'),
+    ('Denis Shapovalov',             'career_titles',        '4'),
+
+    ('Matteo Berrettini',            'active_status',        'Active'),
+    ('Matteo Berrettini',            'plays',                'Right'),
+    ('Matteo Berrettini',            'backhand',             'Two-Handed'),
+    ('Matteo Berrettini',            'country',              'Italy'),
+    ('Matteo Berrettini',            'grand_slam_titles',    '0'),
+    ('Matteo Berrettini',            'career_high_ranking',  '6'),
+    ('Matteo Berrettini',            'turned_pro_year',      '2015'),
+    ('Matteo Berrettini',            'career_titles',        '10'),
+
+    ('Lorenzo Musetti',              'active_status',        'Active'),
+    ('Lorenzo Musetti',              'plays',                'Right'),
+    ('Lorenzo Musetti',              'backhand',             'One-Handed'),
+    ('Lorenzo Musetti',              'country',              'Italy'),
+    ('Lorenzo Musetti',              'grand_slam_titles',    '0'),
+    ('Lorenzo Musetti',              'career_high_ranking',  '5'),
+    ('Lorenzo Musetti',              'turned_pro_year',      '2019'),
+    ('Lorenzo Musetti',              'career_titles',        '2'),
+
+    ('John Isner',                   'active_status',        'Retired'),
+    ('John Isner',                   'plays',                'Right'),
+    ('John Isner',                   'backhand',             'Two-Handed'),
+    ('John Isner',                   'country',              'USA'),
+    ('John Isner',                   'grand_slam_titles',    '0'),
+    ('John Isner',                   'career_high_ranking',  '8'),
+    ('John Isner',                   'turned_pro_year',      '2007'),
+    ('John Isner',                   'career_titles',        '16'),
+
+    ('Milos Raonic',                 'active_status',        'Retired'),
+    ('Milos Raonic',                 'plays',                'Right'),
+    ('Milos Raonic',                 'backhand',             'Two-Handed'),
+    ('Milos Raonic',                 'country',              'Canada'),
+    ('Milos Raonic',                 'grand_slam_titles',    '0'),
+    ('Milos Raonic',                 'career_high_ranking',  '3'),
+    ('Milos Raonic',                 'turned_pro_year',      '2008'),
+    ('Milos Raonic',                 'career_titles',        '8'),
+
+    ('Kevin Anderson',               'active_status',        'Retired'),
+    ('Kevin Anderson',               'plays',                'Right'),
+    ('Kevin Anderson',               'backhand',             'Two-Handed'),
+    ('Kevin Anderson',               'country',              'South Africa'),
+    ('Kevin Anderson',               'grand_slam_titles',    '0'),
+    ('Kevin Anderson',               'career_high_ranking',  '5'),
+    ('Kevin Anderson',               'turned_pro_year',      '2007'),
+    ('Kevin Anderson',               'career_titles',        '7'),
+
+    ('Dominic Thiem',                'active_status',        'Retired'),
+    ('Dominic Thiem',                'plays',                'Right'),
+    ('Dominic Thiem',                'backhand',             'One-Handed'),
+    ('Dominic Thiem',                'country',              'Austria'),
+    ('Dominic Thiem',                'grand_slam_titles',    '1'),
+    ('Dominic Thiem',                'career_high_ranking',  '3'),
+    ('Dominic Thiem',                'turned_pro_year',      '2011'),
+    ('Dominic Thiem',                'career_titles',        '17'),
+
+    ('Alejandro Davidovich Fokina',  'active_status',        'Active'),
+    ('Alejandro Davidovich Fokina',  'plays',                'Right'),
+    ('Alejandro Davidovich Fokina',  'backhand',             'Two-Handed'),
+    ('Alejandro Davidovich Fokina',  'country',              'Spain'),
+    ('Alejandro Davidovich Fokina',  'grand_slam_titles',    '0'),
+    ('Alejandro Davidovich Fokina',  'career_high_ranking',  '14'),
+    ('Alejandro Davidovich Fokina',  'turned_pro_year',      '2017'),
+    ('Alejandro Davidovich Fokina',  'career_titles',        '1'),
+
+    ('Andy Roddick',                 'active_status',        'Retired'),
+    ('Andy Roddick',                 'plays',                'Right'),
+    ('Andy Roddick',                 'backhand',             'Two-Handed'),
+    ('Andy Roddick',                 'country',              'USA'),
+    ('Andy Roddick',                 'grand_slam_titles',    '1'),
+    ('Andy Roddick',                 'career_high_ranking',  '1'),
+    ('Andy Roddick',                 'turned_pro_year',      '2000'),
+    ('Andy Roddick',                 'career_titles',        '32'),
+
+    ('Marat Safin',                  'active_status',        'Retired'),
+    ('Marat Safin',                  'plays',                'Right'),
+    ('Marat Safin',                  'backhand',             'Two-Handed'),
+    ('Marat Safin',                  'country',              'Russia'),
+    ('Marat Safin',                  'grand_slam_titles',    '2'),
+    ('Marat Safin',                  'career_high_ranking',  '1'),
+    ('Marat Safin',                  'turned_pro_year',      '1997'),
+    ('Marat Safin',                  'career_titles',        '15'),
+
+    ('Goran Ivanišević',             'active_status',        'Retired'),
+    ('Goran Ivanišević',             'plays',                'Left'),
+    ('Goran Ivanišević',             'backhand',             'Two-Handed'),
+    ('Goran Ivanišević',             'country',              'Croatia'),
+    ('Goran Ivanišević',             'grand_slam_titles',    '1'),
+    ('Goran Ivanišević',             'career_high_ranking',  '2'),
+    ('Goran Ivanišević',             'turned_pro_year',      '1988'),
+    ('Goran Ivanišević',             'career_titles',        '22'),
+
+    ('Pat Rafter',                   'active_status',        'Retired'),
+    ('Pat Rafter',                   'plays',                'Right'),
+    ('Pat Rafter',                   'backhand',             'One-Handed'),
+    ('Pat Rafter',                   'country',              'Australia'),
+    ('Pat Rafter',                   'grand_slam_titles',    '2'),
+    ('Pat Rafter',                   'career_high_ranking',  '1'),
+    ('Pat Rafter',                   'turned_pro_year',      '1991'),
+    ('Pat Rafter',                   'career_titles',        '11'),
+
+    ('Yevgeny Kafelnikov',           'active_status',        'Retired'),
+    ('Yevgeny Kafelnikov',           'plays',                'Right'),
+    ('Yevgeny Kafelnikov',           'backhand',             'Two-Handed'),
+    ('Yevgeny Kafelnikov',           'country',              'Russia'),
+    ('Yevgeny Kafelnikov',           'grand_slam_titles',    '2'),
+    ('Yevgeny Kafelnikov',           'career_high_ranking',  '1'),
+    ('Yevgeny Kafelnikov',           'turned_pro_year',      '1992'),
+    ('Yevgeny Kafelnikov',           'career_titles',        '26'),
+
+    ('Carlos Moyá',                  'active_status',        'Retired'),
+    ('Carlos Moyá',                  'plays',                'Right'),
+    ('Carlos Moyá',                  'backhand',             'Two-Handed'),
+    ('Carlos Moyá',                  'country',              'Spain'),
+    ('Carlos Moyá',                  'grand_slam_titles',    '1'),
+    ('Carlos Moyá',                  'career_high_ranking',  '1'),
+    ('Carlos Moyá',                  'turned_pro_year',      '1995'),
+    ('Carlos Moyá',                  'career_titles',        '20'),
+
+    ('Gustavo Kuerten',              'active_status',        'Retired'),
+    ('Gustavo Kuerten',              'plays',                'Right'),
+    ('Gustavo Kuerten',              'backhand',             'One-Handed'),
+    ('Gustavo Kuerten',              'country',              'Brazil'),
+    ('Gustavo Kuerten',              'grand_slam_titles',    '3'),
+    ('Gustavo Kuerten',              'career_high_ranking',  '1'),
+    ('Gustavo Kuerten',              'turned_pro_year',      '1995'),
+    ('Gustavo Kuerten',              'career_titles',        '20'),
+
+    ('Thomas Muster',                'active_status',        'Retired'),
+    ('Thomas Muster',                'plays',                'Left'),
+    ('Thomas Muster',                'backhand',             'One-Handed'),
+    ('Thomas Muster',                'country',              'Austria'),
+    ('Thomas Muster',                'grand_slam_titles',    '1'),
+    ('Thomas Muster',                'career_high_ranking',  '1'),
+    ('Thomas Muster',                'turned_pro_year',      '1985'),
+    ('Thomas Muster',                'career_titles',        '44'),
+
+    ('Michael Chang',                'active_status',        'Retired'),
+    ('Michael Chang',                'plays',                'Right'),
+    ('Michael Chang',                'backhand',             'Two-Handed'),
+    ('Michael Chang',                'country',              'USA'),
+    ('Michael Chang',                'grand_slam_titles',    '1'),
+    ('Michael Chang',                'career_high_ranking',  '2'),
+    ('Michael Chang',                'turned_pro_year',      '1988'),
+    ('Michael Chang',                'career_titles',        '34'),
+
+    ('Stefan Edberg',                'active_status',        'Retired'),
+    ('Stefan Edberg',                'plays',                'Right'),
+    ('Stefan Edberg',                'backhand',             'One-Handed'),
+    ('Stefan Edberg',                'country',              'Sweden'),
+    ('Stefan Edberg',                'grand_slam_titles',    '6'),
+    ('Stefan Edberg',                'career_high_ranking',  '1'),
+    ('Stefan Edberg',                'turned_pro_year',      '1983'),
+    ('Stefan Edberg',                'career_titles',        '41'),
+
+    ('Mats Wilander',                'active_status',        'Retired'),
+    ('Mats Wilander',                'plays',                'Right'),
+    ('Mats Wilander',                'backhand',             'Two-Handed'),
+    ('Mats Wilander',                'country',              'Sweden'),
+    ('Mats Wilander',                'grand_slam_titles',    '7'),
+    ('Mats Wilander',                'career_high_ranking',  '1'),
+    ('Mats Wilander',                'turned_pro_year',      '1979'),
+    ('Mats Wilander',                'career_titles',        '33'),
+
+    ('David Nalbandian',             'active_status',        'Retired'),
+    ('David Nalbandian',             'plays',                'Right'),
+    ('David Nalbandian',             'backhand',             'Two-Handed'),
+    ('David Nalbandian',             'country',              'Argentina'),
+    ('David Nalbandian',             'grand_slam_titles',    '0'),
+    ('David Nalbandian',             'career_high_ranking',  '3'),
+    ('David Nalbandian',             'turned_pro_year',      '2000'),
+    ('David Nalbandian',             'career_titles',        '11'),
+
+    ('Tommy Haas',                   'active_status',        'Retired'),
+    ('Tommy Haas',                   'plays',                'Right'),
+    ('Tommy Haas',                   'backhand',             'One-Handed'),
+    ('Tommy Haas',                   'country',              'Germany'),
+    ('Tommy Haas',                   'grand_slam_titles',    '0'),
+    ('Tommy Haas',                   'career_high_ranking',  '2'),
+    ('Tommy Haas',                   'turned_pro_year',      '1996'),
+    ('Tommy Haas',                   'career_titles',        '15'),
+
+    ('Nikolay Davydenko',            'active_status',        'Retired'),
+    ('Nikolay Davydenko',            'plays',                'Right'),
+    ('Nikolay Davydenko',            'backhand',             'Two-Handed'),
+    ('Nikolay Davydenko',            'country',              'Russia'),
+    ('Nikolay Davydenko',            'grand_slam_titles',    '0'),
+    ('Nikolay Davydenko',            'career_high_ranking',  '3'),
+    ('Nikolay Davydenko',            'turned_pro_year',      '1999'),
+    ('Nikolay Davydenko',            'career_titles',        '21'),
+
+    ('James Blake',                  'active_status',        'Retired'),
+    ('James Blake',                  'plays',                'Right'),
+    ('James Blake',                  'backhand',             'One-Handed'),
+    ('James Blake',                  'country',              'USA'),
+    ('James Blake',                  'grand_slam_titles',    '0'),
+    ('James Blake',                  'career_high_ranking',  '4'),
+    ('James Blake',                  'turned_pro_year',      '1999'),
+    ('James Blake',                  'career_titles',        '10')
+) AS v("PlayerName", "AttrKey", "Value")
+JOIN "Players" p ON p."Name" = v."PlayerName"
+JOIN "AttributeDefinitions" ad ON ad."Key" = v."AttrKey" AND ad."SportId" = p."SportId"
+ON CONFLICT ("PlayerId", "AttributeDefinitionId") DO UPDATE SET
+    "Value" = EXCLUDED."Value";
