@@ -80,9 +80,9 @@ public class GameService
     // player whose title count alone would compute too hard). Checked in
     // order — easy, then medium, then hard as the fallback — so the hard
     // branch never needs its own explicit condition: by the time a player
-    // falls through both easy (high rank #1 or 30+ titles) and medium
-    // (10-29 titles), they're guaranteed to have never reached #1 and have
-    // fewer than 10 titles, which already satisfies the stated hard rule.
+    // falls through both easy (high rank #1 or 20+ titles) and medium
+    // (5-19 titles), they're guaranteed to have never reached #1 and have
+    // fewer than 5 titles, which already satisfies the stated hard rule.
     private static string ComputeDifficultyTier(Player player)
     {
         if (player.IsOverridden && !string.IsNullOrWhiteSpace(player.DifficultyOverride))
@@ -91,10 +91,10 @@ public class GameService
         var highRank = GetNumericAttribute(player, "career_high_ranking");
         var titles = GetNumericAttribute(player, "career_titles");
 
-        if (highRank == 1 || titles >= 30)
+        if (highRank == 1 || titles >= 20)
             return "easy";
 
-        if (titles >= 10 && titles <= 29)
+        if (titles >= 5 && titles < 20)
             return "medium";
 
         return "hard";
