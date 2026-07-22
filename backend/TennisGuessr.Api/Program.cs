@@ -24,12 +24,12 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Apply pending migrations and seed data on startup.
+// Apply pending migrations on startup. Data seeding is handled separately
+// and manually via SeedTool (see backend/SeedTool) — never automatically.
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<GameDbContext>();
     db.Database.Migrate();
-    await DataSeeder.SeedAsync(db);
 }
 
 if (app.Environment.IsDevelopment())

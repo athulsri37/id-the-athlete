@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>SeedTool</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TennisGuessr.Api\TennisGuessr.Api.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- SeedData isn't code, so it needs an explicit copy-to-output rule
+         to be discoverable at runtime relative to the built exe. -->
+    <None Include="SeedData\**\*.sql" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

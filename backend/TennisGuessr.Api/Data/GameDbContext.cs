@@ -25,6 +25,13 @@ public class GameDbContext : DbContext
             .WithMany(s => s.Attributes)
             .HasForeignKey(a => a.SportId);
 
+        // Required for the SeedTool's "ON CONFLICT (SportId, Key)" upsert
+        // pattern against AttributeDefinitions — Postgres needs a matching
+        // unique constraint/index for that clause to be valid.
+        modelBuilder.Entity<AttributeDefinition>()
+            .HasIndex(a => new { a.SportId, a.Key })
+            .IsUnique();
+
         modelBuilder.Entity<Player>()
             .HasOne(p => p.Sport)
             .WithMany(s => s.Players)
@@ -33,6 +40,11 @@ public class GameDbContext : DbContext
         modelBuilder.Entity<Player>()
             .Property(p => p.IsOverridden)
             .HasDefaultValue(false);
+
+        // Key used for the SeedTool's upsert matching (ON CONFLICT "Name").
+        modelBuilder.Entity<Player>()
+            .HasIndex(p => p.Name)
+            .IsUnique();
 
         modelBuilder.Entity<PlayerAttributeValue>()
             .HasOne(v => v.Player)
