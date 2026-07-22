@@ -7,42 +7,51 @@
 --
 -- Note: Jack Draper's country is normalized to "United Kingdom" (not
 -- "UK") to match the value already used for Andy Murray in batch 1.
+--
+-- Grigor Dimitrov is overridden to Medium difficulty. His raw stats
+-- (9 titles, never reached #1, no Grand Slam) would compute to Hard, but
+-- that undersells his real-world recognizability -- former World No. 3,
+-- well-known nickname ("Baby Fed"), ATP Finals champion, long
+-- high-profile career -- so Medium is the more accurate difficulty for
+-- casual player recognition.
 
-INSERT INTO "Players" ("SportId", "Name")
-SELECT s."Id", v."Name"
+INSERT INTO "Players" ("SportId", "Name", "IsOverridden", "DifficultyOverride")
+SELECT s."Id", v."Name", v."IsOverridden", v."DifficultyOverride"
 FROM "Sports" s
 CROSS JOIN (VALUES
-    ('Frances Tiafoe'),
-    ('Grigor Dimitrov'),
-    ('Ben Shelton'),
-    ('Tommy Paul'),
-    ('Ugo Humbert'),
-    ('Alex de Minaur'),
-    ('Karen Khachanov'),
-    ('Hubert Hurkacz'),
-    ('Felix Auger-Aliassime'),
-    ('Sebastian Korda'),
-    ('Francisco Cerundolo'),
-    ('Alexander Bublik'),
-    ('Flavio Cobolli'),
-    ('Jack Draper'),
+    ('Frances Tiafoe',        false, NULL),
+    ('Grigor Dimitrov',       true,  'Medium'),
+    ('Ben Shelton',           false, NULL),
+    ('Tommy Paul',            false, NULL),
+    ('Ugo Humbert',           false, NULL),
+    ('Alex de Minaur',        false, NULL),
+    ('Karen Khachanov',       false, NULL),
+    ('Hubert Hurkacz',        false, NULL),
+    ('Felix Auger-Aliassime', false, NULL),
+    ('Sebastian Korda',       false, NULL),
+    ('Francisco Cerundolo',   false, NULL),
+    ('Alexander Bublik',      false, NULL),
+    ('Flavio Cobolli',        false, NULL),
+    ('Jack Draper',           false, NULL),
 
-    ('Juan Martín del Potro'),
-    ('Marin Čilić'),
-    ('Kei Nishikori'),
-    ('Gaël Monfils'),
-    ('Tomáš Berdych'),
-    ('Richard Gasquet'),
-    ('Nicolás Almagro'),
+    ('Juan Martín del Potro', false, NULL),
+    ('Marin Čilić',           false, NULL),
+    ('Kei Nishikori',         false, NULL),
+    ('Gaël Monfils',          false, NULL),
+    ('Tomáš Berdych',         false, NULL),
+    ('Richard Gasquet',       false, NULL),
+    ('Nicolás Almagro',       false, NULL),
 
-    ('Ivan Lendl'),
-    ('Björn Borg'),
-    ('Jimmy Connors'),
-    ('Guillermo Vilas')
-) AS v("Name")
+    ('Ivan Lendl',            false, NULL),
+    ('Björn Borg',            false, NULL),
+    ('Jimmy Connors',         false, NULL),
+    ('Guillermo Vilas',       false, NULL)
+) AS v("Name", "IsOverridden", "DifficultyOverride")
 WHERE s."Slug" = 'tennis'
 ON CONFLICT ("Name") DO UPDATE SET
-    "SportId" = EXCLUDED."SportId";
+    "SportId" = EXCLUDED."SportId",
+    "IsOverridden" = EXCLUDED."IsOverridden",
+    "DifficultyOverride" = EXCLUDED."DifficultyOverride";
 
 -- One row per (player, attribute) pair. PlayerId/AttributeDefinitionId are
 -- resolved by name/key lookup rather than hardcoded ids, so this file has
