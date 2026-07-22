@@ -1,0 +1,280 @@
+-- Tennis (men's) players, batch 4 (25 players, bringing the roster to 95
+-- total: batch 1's 20 + batch 2's 25 + batch 3's 25 + this batch's 25).
+-- Same upsert pattern as prior batches: Players upserts on the unique
+-- Name constraint, PlayerAttributeValues upserts on the existing unique
+-- (PlayerId, AttributeDefinitionId) constraint. No overrides in this
+-- batch -- every row is IsOverridden = false, DifficultyOverride = NULL.
+
+INSERT INTO "Players" ("SportId", "Name", "IsOverridden", "DifficultyOverride")
+SELECT s."Id", v."Name", v."IsOverridden", v."DifficultyOverride"
+FROM "Sports" s
+CROSS JOIN (VALUES
+    ('Jo-Wilfried Tsonga',      false, NULL),
+    ('Juan Carlos Ferrero',     false, NULL),
+    ('Robin Söderling',         false, NULL),
+    ('Fernando Verdasco',       false, NULL),
+    ('Feliciano López',         false, NULL),
+    ('Gilles Simon',            false, NULL),
+    ('Diego Schwartzman',       false, NULL),
+    ('Philipp Kohlschreiber',   false, NULL),
+    ('Radek Štěpánek',          false, NULL),
+    ('Viktor Troicki',          false, NULL),
+    ('Ernests Gulbis',          false, NULL),
+    ('Jack Sock',               false, NULL),
+    ('Sam Querrey',             false, NULL),
+    ('Janko Tipsarević',        false, NULL),
+    ('Mardy Fish',              false, NULL),
+
+    ('Rod Laver',               false, NULL),
+    ('Arthur Ashe',             false, NULL),
+    ('John Newcombe',           false, NULL),
+    ('Yannick Noah',            false, NULL),
+    ('Jim Courier',             false, NULL),
+    ('Marcos Baghdatis',        false, NULL),
+    ('Michael Stich',           false, NULL),
+    ('Sergi Bruguera',          false, NULL),
+    ('Petr Korda',              false, NULL),
+    ('Fernando González',       false, NULL)
+) AS v("Name", "IsOverridden", "DifficultyOverride")
+WHERE s."Slug" = 'tennis'
+ON CONFLICT ("Name") DO UPDATE SET
+    "SportId" = EXCLUDED."SportId",
+    "IsOverridden" = EXCLUDED."IsOverridden",
+    "DifficultyOverride" = EXCLUDED."DifficultyOverride";
+
+-- One row per (player, attribute) pair. PlayerId/AttributeDefinitionId are
+-- resolved by name/key lookup rather than hardcoded ids, so this file has
+-- no dependency on insertion order or id values.
+INSERT INTO "PlayerAttributeValues" ("PlayerId", "AttributeDefinitionId", "Value")
+SELECT p."Id", ad."Id", v."Value"
+FROM (VALUES
+    -- Player,                    AttrKey,                Value
+    ('Jo-Wilfried Tsonga',        'active_status',        'Retired'),
+    ('Jo-Wilfried Tsonga',        'plays',                'Right'),
+    ('Jo-Wilfried Tsonga',        'backhand',             'Two-Handed'),
+    ('Jo-Wilfried Tsonga',        'country',              'France'),
+    ('Jo-Wilfried Tsonga',        'grand_slam_titles',    '0'),
+    ('Jo-Wilfried Tsonga',        'career_high_ranking',  '5'),
+    ('Jo-Wilfried Tsonga',        'turned_pro_year',      '2004'),
+    ('Jo-Wilfried Tsonga',        'career_titles',        '18'),
+
+    ('Juan Carlos Ferrero',       'active_status',        'Retired'),
+    ('Juan Carlos Ferrero',       'plays',                'Right'),
+    ('Juan Carlos Ferrero',       'backhand',             'Two-Handed'),
+    ('Juan Carlos Ferrero',       'country',              'Spain'),
+    ('Juan Carlos Ferrero',       'grand_slam_titles',    '1'),
+    ('Juan Carlos Ferrero',       'career_high_ranking',  '1'),
+    ('Juan Carlos Ferrero',       'turned_pro_year',      '1998'),
+    ('Juan Carlos Ferrero',       'career_titles',        '16'),
+
+    ('Robin Söderling',           'active_status',        'Retired'),
+    ('Robin Söderling',           'plays',                'Right'),
+    ('Robin Söderling',           'backhand',             'Two-Handed'),
+    ('Robin Söderling',           'country',              'Sweden'),
+    ('Robin Söderling',           'grand_slam_titles',    '0'),
+    ('Robin Söderling',           'career_high_ranking',  '4'),
+    ('Robin Söderling',           'turned_pro_year',      '2001'),
+    ('Robin Söderling',           'career_titles',        '10'),
+
+    ('Fernando Verdasco',         'active_status',        'Retired'),
+    ('Fernando Verdasco',         'plays',                'Left'),
+    ('Fernando Verdasco',         'backhand',             'Two-Handed'),
+    ('Fernando Verdasco',         'country',              'Spain'),
+    ('Fernando Verdasco',         'grand_slam_titles',    '0'),
+    ('Fernando Verdasco',         'career_high_ranking',  '7'),
+    ('Fernando Verdasco',         'turned_pro_year',      '2001'),
+    ('Fernando Verdasco',         'career_titles',        '7'),
+
+    ('Feliciano López',           'active_status',        'Retired'),
+    ('Feliciano López',           'plays',                'Left'),
+    ('Feliciano López',           'backhand',             'One-Handed'),
+    ('Feliciano López',           'country',              'Spain'),
+    ('Feliciano López',           'grand_slam_titles',    '0'),
+    ('Feliciano López',           'career_high_ranking',  '12'),
+    ('Feliciano López',           'turned_pro_year',      '1997'),
+    ('Feliciano López',           'career_titles',        '7'),
+
+    ('Gilles Simon',              'active_status',        'Retired'),
+    ('Gilles Simon',              'plays',                'Right'),
+    ('Gilles Simon',              'backhand',             'Two-Handed'),
+    ('Gilles Simon',              'country',              'France'),
+    ('Gilles Simon',              'grand_slam_titles',    '0'),
+    ('Gilles Simon',              'career_high_ranking',  '6'),
+    ('Gilles Simon',              'turned_pro_year',      '2002'),
+    ('Gilles Simon',              'career_titles',        '14'),
+
+    ('Diego Schwartzman',         'active_status',        'Retired'),
+    ('Diego Schwartzman',         'plays',                'Right'),
+    ('Diego Schwartzman',         'backhand',             'Two-Handed'),
+    ('Diego Schwartzman',         'country',              'Argentina'),
+    ('Diego Schwartzman',         'grand_slam_titles',    '0'),
+    ('Diego Schwartzman',         'career_high_ranking',  '8'),
+    ('Diego Schwartzman',         'turned_pro_year',      '2010'),
+    ('Diego Schwartzman',         'career_titles',        '4'),
+
+    ('Philipp Kohlschreiber',     'active_status',        'Retired'),
+    ('Philipp Kohlschreiber',     'plays',                'Right'),
+    ('Philipp Kohlschreiber',     'backhand',             'One-Handed'),
+    ('Philipp Kohlschreiber',     'country',              'Germany'),
+    ('Philipp Kohlschreiber',     'grand_slam_titles',    '0'),
+    ('Philipp Kohlschreiber',     'career_high_ranking',  '16'),
+    ('Philipp Kohlschreiber',     'turned_pro_year',      '2001'),
+    ('Philipp Kohlschreiber',     'career_titles',        '8'),
+
+    ('Radek Štěpánek',            'active_status',        'Retired'),
+    ('Radek Štěpánek',            'plays',                'Right'),
+    ('Radek Štěpánek',            'backhand',             'Two-Handed'),
+    ('Radek Štěpánek',            'country',              'Czech Republic'),
+    ('Radek Štěpánek',            'grand_slam_titles',    '0'),
+    ('Radek Štěpánek',            'career_high_ranking',  '8'),
+    ('Radek Štěpánek',            'turned_pro_year',      '1996'),
+    ('Radek Štěpánek',            'career_titles',        '5'),
+
+    ('Viktor Troicki',            'active_status',        'Retired'),
+    ('Viktor Troicki',            'plays',                'Right'),
+    ('Viktor Troicki',            'backhand',             'Two-Handed'),
+    ('Viktor Troicki',            'country',              'Serbia'),
+    ('Viktor Troicki',            'grand_slam_titles',    '0'),
+    ('Viktor Troicki',            'career_high_ranking',  '12'),
+    ('Viktor Troicki',            'turned_pro_year',      '2006'),
+    ('Viktor Troicki',            'career_titles',        '3'),
+
+    ('Ernests Gulbis',            'active_status',        'Retired'),
+    ('Ernests Gulbis',            'plays',                'Right'),
+    ('Ernests Gulbis',            'backhand',             'Two-Handed'),
+    ('Ernests Gulbis',            'country',              'Latvia'),
+    ('Ernests Gulbis',            'grand_slam_titles',    '0'),
+    ('Ernests Gulbis',            'career_high_ranking',  '10'),
+    ('Ernests Gulbis',            'turned_pro_year',      '2004'),
+    ('Ernests Gulbis',            'career_titles',        '6'),
+
+    ('Jack Sock',                 'active_status',        'Retired'),
+    ('Jack Sock',                 'plays',                'Right'),
+    ('Jack Sock',                 'backhand',             'Two-Handed'),
+    ('Jack Sock',                 'country',              'USA'),
+    ('Jack Sock',                 'grand_slam_titles',    '0'),
+    ('Jack Sock',                 'career_high_ranking',  '8'),
+    ('Jack Sock',                 'turned_pro_year',      '2011'),
+    ('Jack Sock',                 'career_titles',        '4'),
+
+    ('Sam Querrey',               'active_status',        'Retired'),
+    ('Sam Querrey',               'plays',                'Right'),
+    ('Sam Querrey',               'backhand',             'Two-Handed'),
+    ('Sam Querrey',               'country',              'USA'),
+    ('Sam Querrey',               'grand_slam_titles',    '0'),
+    ('Sam Querrey',               'career_high_ranking',  '11'),
+    ('Sam Querrey',               'turned_pro_year',      '2006'),
+    ('Sam Querrey',               'career_titles',        '10'),
+
+    ('Janko Tipsarević',          'active_status',        'Retired'),
+    ('Janko Tipsarević',          'plays',                'Right'),
+    ('Janko Tipsarević',          'backhand',             'Two-Handed'),
+    ('Janko Tipsarević',          'country',              'Serbia'),
+    ('Janko Tipsarević',          'grand_slam_titles',    '0'),
+    ('Janko Tipsarević',          'career_high_ranking',  '8'),
+    ('Janko Tipsarević',          'turned_pro_year',      '2002'),
+    ('Janko Tipsarević',          'career_titles',        '4'),
+
+    ('Mardy Fish',                'active_status',        'Retired'),
+    ('Mardy Fish',                'plays',                'Right'),
+    ('Mardy Fish',                'backhand',             'Two-Handed'),
+    ('Mardy Fish',                'country',              'USA'),
+    ('Mardy Fish',                'grand_slam_titles',    '0'),
+    ('Mardy Fish',                'career_high_ranking',  '7'),
+    ('Mardy Fish',                'turned_pro_year',      '2000'),
+    ('Mardy Fish',                'career_titles',        '6'),
+
+    ('Rod Laver',                 'active_status',        'Retired'),
+    ('Rod Laver',                 'plays',                'Left'),
+    ('Rod Laver',                 'backhand',             'One-Handed'),
+    ('Rod Laver',                 'country',              'Australia'),
+    ('Rod Laver',                 'grand_slam_titles',    '11'),
+    ('Rod Laver',                 'career_high_ranking',  '1'),
+    ('Rod Laver',                 'turned_pro_year',      '1963'),
+    ('Rod Laver',                 'career_titles',        '72'),
+
+    ('Arthur Ashe',               'active_status',        'Retired'),
+    ('Arthur Ashe',               'plays',                'Right'),
+    ('Arthur Ashe',               'backhand',             'One-Handed'),
+    ('Arthur Ashe',               'country',              'USA'),
+    ('Arthur Ashe',               'grand_slam_titles',    '3'),
+    ('Arthur Ashe',               'career_high_ranking',  '2'),
+    ('Arthur Ashe',               'turned_pro_year',      '1969'),
+    ('Arthur Ashe',               'career_titles',        '44'),
+
+    ('John Newcombe',             'active_status',        'Retired'),
+    ('John Newcombe',             'plays',                'Right'),
+    ('John Newcombe',             'backhand',             'One-Handed'),
+    ('John Newcombe',             'country',              'Australia'),
+    ('John Newcombe',             'grand_slam_titles',    '7'),
+    ('John Newcombe',             'career_high_ranking',  '1'),
+    ('John Newcombe',             'turned_pro_year',      '1967'),
+    ('John Newcombe',             'career_titles',        '41'),
+
+    ('Yannick Noah',              'active_status',        'Retired'),
+    ('Yannick Noah',              'plays',                'Right'),
+    ('Yannick Noah',              'backhand',             'One-Handed'),
+    ('Yannick Noah',              'country',              'France'),
+    ('Yannick Noah',              'grand_slam_titles',    '1'),
+    ('Yannick Noah',              'career_high_ranking',  '3'),
+    ('Yannick Noah',              'turned_pro_year',      '1977'),
+    ('Yannick Noah',              'career_titles',        '23'),
+
+    ('Jim Courier',               'active_status',        'Retired'),
+    ('Jim Courier',               'plays',                'Right'),
+    ('Jim Courier',               'backhand',             'Two-Handed'),
+    ('Jim Courier',               'country',              'USA'),
+    ('Jim Courier',               'grand_slam_titles',    '4'),
+    ('Jim Courier',               'career_high_ranking',  '1'),
+    ('Jim Courier',               'turned_pro_year',      '1988'),
+    ('Jim Courier',               'career_titles',        '23'),
+
+    ('Marcos Baghdatis',          'active_status',        'Retired'),
+    ('Marcos Baghdatis',          'plays',                'Right'),
+    ('Marcos Baghdatis',          'backhand',             'Two-Handed'),
+    ('Marcos Baghdatis',          'country',              'Cyprus'),
+    ('Marcos Baghdatis',          'grand_slam_titles',    '0'),
+    ('Marcos Baghdatis',          'career_high_ranking',  '8'),
+    ('Marcos Baghdatis',          'turned_pro_year',      '2003'),
+    ('Marcos Baghdatis',          'career_titles',        '4'),
+
+    ('Michael Stich',             'active_status',        'Retired'),
+    ('Michael Stich',             'plays',                'Right'),
+    ('Michael Stich',             'backhand',             'One-Handed'),
+    ('Michael Stich',             'country',              'Germany'),
+    ('Michael Stich',             'grand_slam_titles',    '1'),
+    ('Michael Stich',             'career_high_ranking',  '2'),
+    ('Michael Stich',             'turned_pro_year',      '1988'),
+    ('Michael Stich',             'career_titles',        '18'),
+
+    ('Sergi Bruguera',            'active_status',        'Retired'),
+    ('Sergi Bruguera',            'plays',                'Right'),
+    ('Sergi Bruguera',            'backhand',             'Two-Handed'),
+    ('Sergi Bruguera',            'country',              'Spain'),
+    ('Sergi Bruguera',            'grand_slam_titles',    '2'),
+    ('Sergi Bruguera',            'career_high_ranking',  '3'),
+    ('Sergi Bruguera',            'turned_pro_year',      '1988'),
+    ('Sergi Bruguera',            'career_titles',        '14'),
+
+    ('Petr Korda',                'active_status',        'Retired'),
+    ('Petr Korda',                'plays',                'Left'),
+    ('Petr Korda',                'backhand',             'One-Handed'),
+    ('Petr Korda',                'country',              'Czech Republic'),
+    ('Petr Korda',                'grand_slam_titles',    '1'),
+    ('Petr Korda',                'career_high_ranking',  '2'),
+    ('Petr Korda',                'turned_pro_year',      '1987'),
+    ('Petr Korda',                'career_titles',        '10'),
+
+    ('Fernando González',        'active_status',        'Retired'),
+    ('Fernando González',        'plays',                'Right'),
+    ('Fernando González',        'backhand',             'One-Handed'),
+    ('Fernando González',        'country',              'Chile'),
+    ('Fernando González',        'grand_slam_titles',    '0'),
+    ('Fernando González',        'career_high_ranking',  '5'),
+    ('Fernando González',        'turned_pro_year',      '1999'),
+    ('Fernando González',        'career_titles',        '11')
+) AS v("PlayerName", "AttrKey", "Value")
+JOIN "Players" p ON p."Name" = v."PlayerName"
+JOIN "AttributeDefinitions" ad ON ad."Key" = v."AttrKey" AND ad."SportId" = p."SportId"
+ON CONFLICT ("PlayerId", "AttributeDefinitionId") DO UPDATE SET
+    "Value" = EXCLUDED."Value";
