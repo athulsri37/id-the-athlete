@@ -2,6 +2,7 @@ import { GuessResponse } from "../types";
 
 interface Props {
   guesses: GuessResponse[];
+  revealedCountry?: string | null;
 }
 
 const LABELS = ["Status", "Plays", "Backhand", "Country", "Slams", "Highest Rank", "Pro Yr", "Titles"];
@@ -16,7 +17,7 @@ function ResultIcon({ isMatch, direction }: { isMatch: boolean; direction: "up" 
   return <span className="ml-1 text-xs">✕</span>;
 }
 
-export default function ClueGrid({ guesses }: Props) {
+export default function ClueGrid({ guesses, revealedCountry }: Props) {
   return (
     <div className="mt-6 max-w-[96vw] overflow-x-auto">
       <div className="min-w-[720px]">
@@ -50,18 +51,31 @@ export default function ClueGrid({ guesses }: Props) {
               >
                 {g.guessedPlayerName}
               </div>
-              {g.clues.map((c) => (
-                <div
-                  key={c.attributeKey}
-                  className={`flex items-center justify-center rounded-full text-sm font-semibold ${CELL_PADDING} ${
-                    c.isMatch ? "bg-[var(--accent)] text-[var(--on-accent)]" : "bg-[var(--miss-bg)] text-[var(--text-primary)]"
-                  }`}
-                  title={c.label}
-                >
-                  {c.value}
-                  <ResultIcon isMatch={c.isMatch} direction={c.direction} />
-                </div>
-              ))}
+              {g.clues.map((c) => {
+                // Once the country hint is revealed, drive that column's
+                // match state off the revealed value instead of the
+                // server-computed isMatch, per the hint feature's spec —
+                // in practice these always agree (isMatch was already
+                // computed against the same true country), this just makes
+                // the dependency on the revealed value explicit.
+                const isMatch =
+                  c.attributeKey === "country" && revealedCountry
+                    ? c.value.toLowerCase() === revealedCountry.toLowerCase()
+                    : c.isMatch;
+
+                return (
+                  <div
+                    key={c.attributeKey}
+                    className={`flex items-center justify-center rounded-full text-sm font-semibold ${CELL_PADDING} ${
+                      isMatch ? "bg-[var(--accent)] text-[var(--on-accent)]" : "bg-[var(--miss-bg)] text-[var(--text-primary)]"
+                    }`}
+                    title={c.label}
+                  >
+                    {c.value}
+                    <ResultIcon isMatch={isMatch} direction={c.direction} />
+                  </div>
+                );
+              })}
             </div>
           ))
         )}

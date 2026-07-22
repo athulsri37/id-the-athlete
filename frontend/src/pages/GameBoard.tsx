@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchPlayerPool, startPracticeGame, submitGuess } from "../api/client";
+import { fetchPlayerPool, startPracticeGame, submitGuess, fetchCountryHint } from "../api/client";
 import { PlayerSummary, GuessResponse, Difficulty } from "../types";
 import PlayerSearch from "../components/PlayerSearch";
 import ClueGrid from "../components/ClueGrid";
@@ -7,6 +7,7 @@ import ClueLegend from "../components/ClueLegend";
 import ShareResult from "../components/ShareResult";
 
 const MAX_GUESSES = 8;
+const HINT_AFTER_GUESS = 5;
 
 interface Props {
   mode: Difficulty;
@@ -21,6 +22,11 @@ export default function GameBoard({ mode, onBackToHome }: Props) {
   const [loading, setLoading] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
 
+  const [showHintModal, setShowHintModal] = useState(false);
+  const [hintOffered, setHintOffered] = useState(false);
+  const [hintDeclined, setHintDeclined] = useState(false);
+  const [revealedCountry, setRevealedCountry] = useState<string | null>(null);
+
   useEffect(() => {
     fetchPlayerPool().then(setPlayers).catch(() => setError("Couldn't load player list."));
   }, []);
@@ -29,6 +35,10 @@ export default function GameBoard({ mode, onBackToHome }: Props) {
     setGuesses([]);
     setError("");
     setSessionId(undefined);
+    setShowHintModal(false);
+    setHintOffered(false);
+    setHintDeclined(false);
+    setRevealedCountry(null);
 
     if (mode !== "daily") {
       setLoading(true);
@@ -57,6 +67,18 @@ export default function GameBoard({ mode, onBackToHome }: Props) {
   const gameOver = guesses.length > 0 && (guesses[guesses.length - 1].isCorrect || guesses.length >= MAX_GUESSES);
   const won = guesses.length > 0 && guesses[guesses.length - 1].isCorrect;
 
+  // Offer the country hint once, right after the 5th guess, unless the
+  // player already matched the country naturally or the game just ended.
+  useEffect(() => {
+    if (guesses.length !== HINT_AFTER_GUESS || hintOffered || gameOver) return;
+
+    const countryAlreadyMatched = guesses.some((g) => g.clues.some((c) => c.attributeKey === "country" && c.isMatch));
+    if (!countryAlreadyMatched) {
+      setShowHintModal(true);
+    }
+    setHintOffered(true);
+  }, [guesses, hintOffered, gameOver]);
+
   const handleGuess = async (player: PlayerSummary) => {
     if (gameOver) return;
     setError("");
@@ -69,6 +91,23 @@ export default function GameBoard({ mode, onBackToHome }: Props) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleHintYes = async () => {
+    try {
+      const country = await fetchCountryHint(mode, sessionId);
+      setRevealedCountry(country);
+      setHintDeclined(false);
+    } catch {
+      setError("Couldn't fetch the hint right now.");
+    } finally {
+      setShowHintModal(false);
+    }
+  };
+
+  const handleHintNo = () => {
+    setShowHintModal(false);
+    setHintDeclined(true);
   };
 
   const guessedIds = new Set(
@@ -94,6 +133,21 @@ export default function GameBoard({ mode, onBackToHome }: Props) {
 
         {error && <p className="text-[var(--accent-alt)] mt-2 text-sm">{error}</p>}
 
+        {revealedCountry !== null ? (
+          <div className="card mt-3 px-4 py-1.5 rounded-full text-xs font-semibold text-[var(--text-primary)]">
+            Country: {revealedCountry}
+          </div>
+        ) : (
+          hintDeclined && (
+            <button
+              onClick={() => setShowHintModal(true)}
+              className="btn-card animate-hint-pulse mt-3 px-4 py-1.5 rounded-full text-xs font-semibold"
+            >
+              Hint available
+            </button>
+          )
+        )}
+
         <div className="flex items-center gap-2 mt-2">
           <p className="text-[var(--text-muted)] text-xs">
             {guesses.length} / {MAX_GUESSES} guesses
@@ -116,7 +170,7 @@ export default function GameBoard({ mode, onBackToHome }: Props) {
           </div>
         )}
 
-        <ClueGrid guesses={guesses} />
+        <ClueGrid guesses={guesses} revealedCountry={revealedCountry} />
 
         {gameOver && (
           <div className="mt-6 text-center">
@@ -148,6 +202,24 @@ export default function GameBoard({ mode, onBackToHome }: Props) {
           </div>
         )}
       </div>
+
+      {showHintModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="card rounded-md p-6 max-w-sm w-full text-center">
+            <p className="text-[var(--text-primary)] text-base font-semibold mb-5">
+              Want a hint? Reveal the mystery player's country?
+            </p>
+            <div className="flex items-center justify-center gap-3">
+              <button onClick={handleHintYes} className="btn-card px-6 py-2 rounded-md font-semibold">
+                Yes
+              </button>
+              <button onClick={handleHintNo} className="btn-card px-6 py-2 rounded-md font-semibold">
+                No
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

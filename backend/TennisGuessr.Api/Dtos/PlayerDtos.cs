@@ -39,3 +39,8 @@ public class StartGameResponseDto
     public string SessionId { get; set; } = string.Empty;
     public int MaxGuesses { get; set; }
 }
+
+public class CountryHintDto
+{
+    public string Country { get; set; } = string.Empty;
+}

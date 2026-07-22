@@ -8,15 +8,25 @@ interface Props {
   onGuess: (player: PlayerSummary) => void;
 }
 
+// Strips diacritics for matching only (e.g. "López" -> "lopez") so plain
+// ASCII input finds accented names. Display always uses the original,
+// unmodified name — this is never used for anything user-visible.
+function normalizeForSearch(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+}
+
 export default function PlayerSearch({ players, guessedIds, disabled, onGuess }: Props) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
 
   const matches = useMemo(() => {
     if (!query.trim()) return [];
-    const q = query.toLowerCase();
+    const q = normalizeForSearch(query);
     return players
-      .filter((p) => !guessedIds.has(p.id) && p.name.toLowerCase().includes(q))
+      .filter((p) => !guessedIds.has(p.id) && normalizeForSearch(p.name).includes(q))
       .slice(0, 8);
   }, [query, players, guessedIds]);
 

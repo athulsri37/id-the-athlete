@@ -47,4 +47,22 @@ public class GameController : ControllerBase
             return BadRequest(new { message = ex.Message });
         }
     }
+
+    // GET /api/sports/tennis/game/hint/country?mode=easy&sessionId=...
+    // Free hint that reveals only the mystery player's country — nothing
+    // else about them. mode/sessionId identify the mystery player the same
+    // way the guess endpoint does (sessionId is omitted for mode=daily).
+    [HttpGet("hint/country")]
+    public async Task<IActionResult> GetCountryHint(string sportSlug, [FromQuery] string mode = "daily", [FromQuery] string? sessionId = null)
+    {
+        try
+        {
+            var country = await _gameService.GetCountryHintAsync(sportSlug, mode, sessionId);
+            return Ok(new CountryHintDto { Country = country });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
 }
