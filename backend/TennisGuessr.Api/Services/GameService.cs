@@ -18,7 +18,6 @@ public class GameService
     private static readonly ConcurrentDictionary<string, int> PracticeSessions = new();
 
     private const int MaxGuesses = 8;
-    private const double CountryCloseThresholdKm = 800;
     private static readonly Random Rng = new();
 
     // "Close" tolerance per numeric attribute, applied only when a guess
@@ -181,7 +180,7 @@ public class GameService
 
                 if (!clue.IsMatch && def.Key == "country" && countryClosenessEnabled)
                 {
-                    clue.IsClose = CountryProximity.IsWithin(guessedValue, mysteryValue, CountryCloseThresholdKm);
+                    clue.IsClose = CountryProximity.IsClose(guessedValue, mysteryValue);
                 }
             }
 
