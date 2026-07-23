@@ -14,6 +14,7 @@ export interface ClueResult {
   type: "categorical" | "numeric";
   value: string;
   isMatch: boolean;
+  isClose: boolean;
   direction: "up" | "down" | null;
 }
 

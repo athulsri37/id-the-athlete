@@ -11,9 +11,22 @@ const LABELS = ["Status", "Plays", "Backhand", "Country", "Slams", "Highest Rank
 // instead of forcing the table to overflow.
 const CELL_PADDING = "[padding:clamp(14px,2vw,24px)_clamp(8px,1.8vw,22px)]";
 
-function ResultIcon({ isMatch, direction }: { isMatch: boolean; direction: "up" | "down" | null }) {
+function ResultIcon({
+  isMatch,
+  isClose,
+  direction,
+}: {
+  isMatch: boolean;
+  isClose: boolean;
+  direction: "up" | "down" | null;
+}) {
   if (isMatch) return <span className="ml-1 text-xs">✓</span>;
+  // Direction takes priority over closeness for numeric attributes -- the
+  // arrow is still the more useful signal, closeness only changes the pill
+  // color. Categorical attributes (only country can be "close") have no
+  // direction, so they get a distinct "approximately" mark instead.
   if (direction) return <span className="ml-1 text-xs">{direction === "up" ? "▲" : "▼"}</span>;
+  if (isClose) return <span className="ml-1 text-xs">~</span>;
   return <span className="ml-1 text-xs">✕</span>;
 }
 
@@ -62,17 +75,22 @@ export default function ClueGrid({ guesses, revealedCountry }: Props) {
                   c.attributeKey === "country" && revealedCountry
                     ? c.value.toLowerCase() === revealedCountry.toLowerCase()
                     : c.isMatch;
+                const isClose = !isMatch && c.isClose;
 
                 return (
                   <div
                     key={c.attributeKey}
                     className={`flex items-center justify-center rounded-full text-sm font-semibold ${CELL_PADDING} ${
-                      isMatch ? "bg-[var(--accent)] text-[var(--on-accent)]" : "bg-[var(--miss-bg)] text-[var(--text-primary)]"
+                      isMatch
+                        ? "bg-[var(--accent)] text-[var(--on-accent)]"
+                        : isClose
+                        ? "bg-[var(--close-bg)] text-[var(--text-primary)]"
+                        : "bg-[var(--miss-bg)] text-[var(--text-primary)]"
                     }`}
                     title={c.label}
                   >
                     {c.value}
-                    <ResultIcon isMatch={isMatch} direction={c.direction} />
+                    <ResultIcon isMatch={isMatch} isClose={isClose} direction={c.direction} />
                   </div>
                 );
               })}

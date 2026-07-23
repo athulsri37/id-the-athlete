@@ -20,6 +20,7 @@ public class ClueResultDto
     public string Type { get; set; } = string.Empty; // "categorical" | "numeric"
     public string Value { get; set; } = string.Empty;
     public bool IsMatch { get; set; }
+    public bool IsClose { get; set; } // near-but-not-exact; only meaningful when IsMatch is false
     public string? Direction { get; set; } // "up" | "down" | null (numeric only, null if match)
 }
 

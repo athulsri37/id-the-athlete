@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using Microsoft.EntityFrameworkCore;
 using TennisGuessr.Api.Data;
 using TennisGuessr.Api.Dtos;
+using TennisGuessr.Api.Geo;
 using TennisGuessr.Api.Models;
 
 namespace TennisGuessr.Api.Services;
@@ -17,7 +18,19 @@ public class GameService
     private static readonly ConcurrentDictionary<string, int> PracticeSessions = new();
 
     private const int MaxGuesses = 8;
+    private const double CountryCloseThresholdKm = 800;
     private static readonly Random Rng = new();
+
+    // "Close" tolerance per numeric attribute, applied only when a guess
+    // isn't an exact match. Attributes with no entry here never show a
+    // close state.
+    private static readonly Dictionary<string, decimal> NumericCloseThresholds = new()
+    {
+        ["grand_slam_titles"] = 2,
+        ["career_high_ranking"] = 5,
+        ["turned_pro_year"] = 3,
+        ["career_titles"] = 5,
+    };
 
     public GameService(GameDbContext db, AiTriviaService aiTriviaService)
     {
@@ -135,6 +148,8 @@ public class GameService
             .OrderBy(a => a.DisplayOrder)
             .ToListAsync();
 
+        var countryClosenessEnabled = await IsCountryClosenessEnabledAsync();
+
         var clues = attributeDefs.Select(def =>
         {
             var guessedValue = guessedPlayer.AttributeValues.FirstOrDefault(v => v.AttributeDefinitionId == def.Id)?.Value ?? "";
@@ -154,10 +169,20 @@ public class GameService
                 var mysteryNum = decimal.Parse(mysteryValue);
                 clue.IsMatch = guessedNum == mysteryNum;
                 clue.Direction = clue.IsMatch ? null : (mysteryNum > guessedNum ? "up" : "down");
+
+                if (!clue.IsMatch && NumericCloseThresholds.TryGetValue(def.Key, out var threshold))
+                {
+                    clue.IsClose = Math.Abs(mysteryNum - guessedNum) <= threshold;
+                }
             }
             else
             {
                 clue.IsMatch = string.Equals(guessedValue, mysteryValue, StringComparison.OrdinalIgnoreCase);
+
+                if (!clue.IsMatch && def.Key == "country" && countryClosenessEnabled)
+                {
+                    clue.IsClose = CountryProximity.IsWithin(guessedValue, mysteryValue, CountryCloseThresholdKm);
+                }
             }
 
             return clue;
@@ -219,6 +244,23 @@ public class GameService
             throw new InvalidOperationException("Practice session not found or has expired. Start a new game.");
 
         return playerId;
+    }
+
+    private async Task<bool> IsCountryClosenessEnabledAsync()
+    {
+        try
+        {
+            var value = await _db.AppSettings
+                .Where(s => s.Key == "CountryClosenessEnabled")
+                .Select(s => s.Value)
+                .FirstOrDefaultAsync();
+
+            return value == "true";
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private async Task<int> GetTodaysMysteryPlayerIdAsync(int sportId)
