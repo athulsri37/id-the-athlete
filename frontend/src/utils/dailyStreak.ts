@@ -1,5 +1,7 @@
 // Per-sport Daily Challenge streak tracking, persisted in localStorage under
 // `dailyStreak:${sportSlug}` so each sport's streak is fully independent.
+import { todayLocalDateString } from "./localDate";
+
 export interface StreakData {
   lastWonDate: string; // YYYY-MM-DD, local date of the most recent win
   currentStreak: number;
@@ -8,14 +10,6 @@ export interface StreakData {
 
 function storageKey(sportSlug: string): string {
   return `dailyStreak:${sportSlug}`;
-}
-
-function todayLocalDateString(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
 }
 
 function isExactlyOneDayBefore(earlier: string, later: string): boolean {

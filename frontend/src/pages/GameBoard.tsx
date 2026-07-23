@@ -5,7 +5,8 @@ import PlayerSearch from "../components/PlayerSearch";
 import ClueGrid from "../components/ClueGrid";
 import ClueLegend from "../components/ClueLegend";
 import ShareResult from "../components/ShareResult";
-import { recordDailyResult, StreakData } from "../utils/dailyStreak";
+import { recordDailyResult, getStreak, StreakData } from "../utils/dailyStreak";
+import { getTodaysCompletion, recordDailyCompletion } from "../utils/dailyCompletion";
 
 const MAX_GUESSES = 8;
 const HINT_AFTER_GUESS = 5;
@@ -32,12 +33,15 @@ export default function GameBoard({ mode, sportSlug, onBackToHome }: Props) {
   const [streak, setStreak] = useState<StreakData | null>(null);
   const streakRecordedRef = useRef(false);
 
+  // True when today's Daily Challenge was already completed in a previous
+  // visit and we're showing that result read-only instead of a live game.
+  const [isDailyReplay, setIsDailyReplay] = useState(false);
+
   useEffect(() => {
     fetchPlayerPool().then(setPlayers).catch(() => setError("Couldn't load player list."));
   }, []);
 
   const startNewGame = async () => {
-    setGuesses([]);
     setError("");
     setSessionId(undefined);
     setShowHintModal(false);
@@ -45,7 +49,23 @@ export default function GameBoard({ mode, sportSlug, onBackToHome }: Props) {
     setHintDeclined(false);
     setRevealedCountry(null);
     setStreak(null);
+    setIsDailyReplay(false);
     streakRecordedRef.current = false;
+
+    if (mode === "daily") {
+      const completed = getTodaysCompletion(sportSlug);
+      if (completed) {
+        setGuesses(completed.guesses);
+        setRevealedCountry(completed.revealedCountry);
+        setStreak(getStreak(sportSlug));
+        setHintOffered(true);
+        setIsDailyReplay(true);
+        streakRecordedRef.current = true;
+        return;
+      }
+    }
+
+    setGuesses([]);
 
     if (mode !== "daily") {
       setLoading(true);
@@ -86,14 +106,17 @@ export default function GameBoard({ mode, sportSlug, onBackToHome }: Props) {
     setHintOffered(true);
   }, [guesses, hintOffered, gameOver]);
 
-  // Update this sport's Daily Challenge streak exactly once per finished
-  // game. Guarded by a ref (not just state) so a re-render after gameOver
-  // is already true can't record the same result twice.
+  // Update this sport's Daily Challenge streak and mark today's puzzle as
+  // completed exactly once per finished game. Guarded by a ref (not just
+  // state) so a re-render after gameOver is already true can't record the
+  // same result twice, and so restoring an already-completed game (see
+  // startNewGame) doesn't re-record it.
   useEffect(() => {
     if (mode !== "daily" || !gameOver || streakRecordedRef.current) return;
     streakRecordedRef.current = true;
     setStreak(recordDailyResult(sportSlug, won));
-  }, [mode, gameOver, won, sportSlug]);
+    recordDailyCompletion(sportSlug, won, guesses, revealedCountry);
+  }, [mode, gameOver, won, sportSlug, guesses, revealedCountry]);
 
   const handleGuess = async (player: PlayerSummary) => {
     if (gameOver) return;
@@ -144,6 +167,7 @@ export default function GameBoard({ mode, sportSlug, onBackToHome }: Props) {
           players={players}
           guessedIds={guessedIds}
           disabled={gameOver || loading}
+          placeholderOverride={isDailyReplay ? "Come back tomorrow!" : undefined}
           onGuess={handleGuess}
         />
 
@@ -190,6 +214,11 @@ export default function GameBoard({ mode, sportSlug, onBackToHome }: Props) {
 
         {gameOver && (
           <div className="mt-6 text-center">
+            {isDailyReplay && (
+              <p className="text-[var(--text-muted)] text-xs italic mb-2">
+                You've already completed today's Daily Challenge — here's your result.
+              </p>
+            )}
             <p className="text-[var(--text-primary)] text-lg font-semibold">
               {won ? "🎾 Nailed it !" : `The player was ${guesses[guesses.length - 1].answerName}`}
             </p>
