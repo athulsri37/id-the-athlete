@@ -1,60 +1,64 @@
 namespace TennisGuessr.Api.Geo;
 
-// Fixed geographic reference data (approximate country centroids), used only
-// to judge "closeness" between a guessed and the actual country for the
-// closeness-tier clue feature. This is static geographic fact, not
-// app-specific mutable data like player stats, so it's embedded directly in
-// code rather than the database. Covers every country present in the
-// Players seed data as of this writing -- add new entries here if a future
-// player batch introduces a country not yet listed.
+// Fixed geographic reference data (capital-city coordinates), used only to
+// judge "closeness" between a guessed and the actual country for the
+// closeness-tier clue feature. Capital cities are used instead of true
+// geographic centroids because a centroid can be wildly unrepresentative of
+// a large country's practical "location" -- e.g. Canada's geometric center
+// sits in the far north near Nunavut, which made Canada register as not
+// "close" to the USA despite their shared border. This is static geographic
+// fact, not app-specific mutable data like player stats, so it's embedded
+// directly in code rather than the database. Covers every country present
+// in the Players seed data as of this writing -- add new entries here if a
+// future player batch introduces a country not yet listed.
 public static class CountryProximity
 {
     private static readonly Dictionary<string, (double Lat, double Lon)> Coordinates = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["Argentina"] = (-38.4161, -63.6167),
-        ["Australia"] = (-25.2744, 133.7751),
-        ["Austria"] = (47.5162, 14.5501),
-        ["Belgium"] = (50.5039, 4.4699),
-        ["Bosnia and Herzegovina"] = (43.9159, 17.6791),
-        ["Brazil"] = (-14.2350, -51.9253),
-        ["Bulgaria"] = (42.7339, 25.4858),
-        ["Canada"] = (56.1304, -106.3468),
-        ["Chile"] = (-35.6751, -71.5430),
-        ["China"] = (35.8617, 104.1954),
-        ["Croatia"] = (45.1000, 15.2000),
-        ["Cyprus"] = (35.1264, 33.4299),
-        ["Czech Republic"] = (49.8175, 15.4730),
-        ["Denmark"] = (56.2639, 9.5018),
-        ["Finland"] = (61.9241, 25.7482),
-        ["France"] = (46.2276, 2.2137),
-        ["Germany"] = (51.1657, 10.4515),
-        ["Greece"] = (39.0742, 21.8243),
-        ["Hungary"] = (47.1625, 19.5033),
-        ["Italy"] = (41.8719, 12.5674),
-        ["Japan"] = (36.2048, 138.2529),
-        ["Kazakhstan"] = (48.0196, 66.9237),
-        ["Latvia"] = (56.8796, 24.6032),
-        ["Monaco"] = (43.7384, 7.4246),
-        ["Morocco"] = (31.7917, -7.0926),
-        ["Netherlands"] = (52.1326, 5.2913),
-        ["Norway"] = (60.4720, 8.4689),
-        ["Peru"] = (-9.1900, -75.0152),
-        ["Poland"] = (51.9194, 19.1451),
-        ["Portugal"] = (39.3999, -8.2245),
-        ["Russia"] = (61.5240, 105.3188),
-        ["Serbia"] = (44.0165, 21.0059),
-        ["South Africa"] = (-30.5595, 22.9375),
-        ["Spain"] = (40.4637, -3.7492),
-        ["Sweden"] = (60.1282, 18.6435),
-        ["Switzerland"] = (46.8182, 8.2275),
-        ["USA"] = (37.0902, -95.7129),
-        ["Ukraine"] = (48.3794, 31.1656),
-        ["United Kingdom"] = (55.3781, -3.4360),
-        ["Uruguay"] = (-32.5228, -55.7658),
-        ["Uzbekistan"] = (41.3775, 64.5853),
+        ["Argentina"] = (-34.6037, -58.3816), // Buenos Aires
+        ["Australia"] = (-35.2809, 149.1300), // Canberra
+        ["Austria"] = (48.2082, 16.3738), // Vienna
+        ["Belgium"] = (50.8503, 4.3517), // Brussels
+        ["Bosnia and Herzegovina"] = (43.8563, 18.4131), // Sarajevo
+        ["Brazil"] = (-15.8267, -47.9218), // Brasília
+        ["Bulgaria"] = (42.6977, 23.3219), // Sofia
+        ["Canada"] = (45.4215, -75.6972), // Ottawa
+        ["Chile"] = (-33.4489, -70.6693), // Santiago
+        ["China"] = (39.9042, 116.4074), // Beijing
+        ["Croatia"] = (45.8150, 15.9819), // Zagreb
+        ["Cyprus"] = (35.1856, 33.3823), // Nicosia
+        ["Czech Republic"] = (50.0755, 14.4378), // Prague
+        ["Denmark"] = (55.6761, 12.5683), // Copenhagen
+        ["Finland"] = (60.1699, 24.9384), // Helsinki
+        ["France"] = (48.8566, 2.3522), // Paris
+        ["Germany"] = (52.5200, 13.4050), // Berlin
+        ["Greece"] = (37.9838, 23.7275), // Athens
+        ["Hungary"] = (47.4979, 19.0402), // Budapest
+        ["Italy"] = (41.9028, 12.4964), // Rome
+        ["Japan"] = (35.6762, 139.6503), // Tokyo
+        ["Kazakhstan"] = (51.1694, 71.4491), // Astana
+        ["Latvia"] = (56.9496, 24.1052), // Riga
+        ["Monaco"] = (43.7384, 7.4246), // Monaco (city-state)
+        ["Morocco"] = (34.0209, -6.8416), // Rabat
+        ["Netherlands"] = (52.3676, 4.9041), // Amsterdam
+        ["Norway"] = (59.9139, 10.7522), // Oslo
+        ["Peru"] = (-12.0464, -77.0428), // Lima
+        ["Poland"] = (52.2297, 21.0122), // Warsaw
+        ["Portugal"] = (38.7223, -9.1393), // Lisbon
+        ["Russia"] = (55.7558, 37.6173), // Moscow
+        ["Serbia"] = (44.7866, 20.4489), // Belgrade
+        ["South Africa"] = (-25.7479, 28.2293), // Pretoria
+        ["Spain"] = (40.4168, -3.7038), // Madrid
+        ["Sweden"] = (59.3293, 18.0686), // Stockholm
+        ["Switzerland"] = (46.9480, 7.4474), // Bern
+        ["USA"] = (38.9072, -77.0369), // Washington, D.C.
+        ["Ukraine"] = (50.4501, 30.5234), // Kyiv
+        ["United Kingdom"] = (51.5074, -0.1278), // London
+        ["Uruguay"] = (-34.9011, -56.1645), // Montevideo
+        ["Uzbekistan"] = (41.2995, 69.2401), // Tashkent
     };
 
-    // True if both countries are known and their centroids are within
+    // True if both countries are known and their capitals are within
     // thresholdKm of each other (haversine great-circle distance). Unknown
     // countries never count as close.
     public static bool IsWithin(string countryA, string countryB, double thresholdKm)
