@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using TennisGuessr.Api.Data;
+using IdTheAthlete.Api.Data;
 
 namespace SeedTool;
 

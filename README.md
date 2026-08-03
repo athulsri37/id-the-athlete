@@ -62,8 +62,8 @@ and `npm run build` (frontend) have been verified to pass cleanly.
 ## Architecture
 
 ```
-tennis-guessr/
-├── backend/TennisGuessr.Api/
+id-the-athlete/
+├── backend/IdTheAthlete.Api/
 │   ├── Models/          # Sport, Player, AttributeDefinition, PlayerAttributeValue, DailyPuzzle, AppSetting
 │   ├── Data/            # GameDbContext
 │   ├── Migrations/      # EF Core migrations (generated, committed)
@@ -103,7 +103,7 @@ own local Postgres instance.
 Migrations are already committed to the repo (`Migrations/`), so a fresh
 clone just needs to apply them:
 ```bash
-cd backend/TennisGuessr.Api
+cd backend/IdTheAthlete.Api
 dotnet tool install --global dotnet-ef   # if you don't have it already
 dotnet ef database update
 ```
@@ -115,7 +115,7 @@ Player data is loaded separately, via the standalone `SeedTool` console
 project (see [Player Data & Seeding](#player-data--seeding) below):
 ```bash
 cd backend/SeedTool
-dotnet run --project . --connection "Host=localhost;Database=tennisguessr;Username=tennisguessr;Password=tennisguessr_dev_pw"
+dotnet run --project . --connection "Host=localhost;Database=idtheathlete;Username=idtheathlete;Password=idtheathlete_dev_pw"
 ```
 Run this once against a fresh database. It's safe to re-run anytime — it's
 idempotent (upserts on player name and attribute), so it inserts new
@@ -132,7 +132,7 @@ mystery player. This is optional — without a key configured, the game works
 exactly the same, just without the blurb. Set your Anthropic API key via
 `dotnet user-secrets` rather than committing it to `appsettings.json`:
 ```bash
-cd backend/TennisGuessr.Api
+cd backend/IdTheAthlete.Api
 dotnet user-secrets init
 dotnet user-secrets set "Anthropic:ApiKey" "sk-ant-..."
 ```
@@ -141,7 +141,7 @@ Trivia generation is also gated by a separate `AiTriviaEnabled` row in the
 so configuring an API key alone isn't enough to turn the feature on, and
 removing the key isn't the only way to turn it off:
 ```bash
-docker exec tennis-guesser-postgres-1 psql -U tennisguessr -d tennisguessr \
+docker exec tennis-guesser-postgres-1 psql -U idtheathlete -d idtheathlete \
   -c "INSERT INTO \"AppSettings\" (\"Key\", \"Value\") VALUES ('AiTriviaEnabled', 'true') ON CONFLICT (\"Key\") DO UPDATE SET \"Value\" = EXCLUDED.\"Value\";"
 ```
 
@@ -195,7 +195,7 @@ active theme from `GET /api/settings/theme` on load and applies it via a
 To switch themes, update that row directly against the running Postgres
 container:
 ```bash
-docker exec tennis-guesser-postgres-1 psql -U tennisguessr -d tennisguessr \
+docker exec tennis-guesser-postgres-1 psql -U idtheathlete -d idtheathlete \
   -c "UPDATE \"AppSettings\" SET \"Value\" = 'stadium' WHERE \"Key\" = 'ActiveTheme';"
 ```
 Swap `'stadium'` for `'retro'` to switch back. Refresh the frontend to see
