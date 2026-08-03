@@ -12,7 +12,7 @@ services:
       - pgdata:/var/lib/postgresql/data
 
   backend:
-    build: ./backend/TennisGuessr.Api
+    build: ./backend/IdTheAthlete.Api
     ports:
       - "5080:8080"
     environment:

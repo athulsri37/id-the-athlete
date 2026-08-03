@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using TennisGuessr.Api.Data;
+using IdTheAthlete.Api.Data;
 
 namespace SeedTool;
 
@@ -7,7 +7,7 @@ namespace SeedTool;
 // Invoke manually:
 //   dotnet run --project SeedTool -- --connection "Host=localhost;Database=tennisguessr;Username=tennisguessr;Password=tennisguessr_dev_pw"
 // Never run automatically — the web app only migrates on boot (see
-// TennisGuessr.Api/Program.cs).
+// IdTheAthlete.Api/Program.cs).
 public static class Program
 {
     public static async Task<int> Main(string[] args)

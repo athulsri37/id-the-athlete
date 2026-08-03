@@ -62,8 +62,8 @@ and `npm run build` (frontend) have been verified to pass cleanly.
 ## Architecture
 
 ```
-tennis-guessr/
-├── backend/TennisGuessr.Api/
+id-the-athlete/
+├── backend/IdTheAthlete.Api/
 │   ├── Models/          # Sport, Player, AttributeDefinition, PlayerAttributeValue, DailyPuzzle, AppSetting
 │   ├── Data/            # GameDbContext
 │   ├── Migrations/      # EF Core migrations (generated, committed)
@@ -103,7 +103,7 @@ own local Postgres instance.
 Migrations are already committed to the repo (`Migrations/`), so a fresh
 clone just needs to apply them:
 ```bash
-cd backend/TennisGuessr.Api
+cd backend/IdTheAthlete.Api
 dotnet tool install --global dotnet-ef   # if you don't have it already
 dotnet ef database update
 ```
@@ -132,7 +132,7 @@ mystery player. This is optional — without a key configured, the game works
 exactly the same, just without the blurb. Set your Anthropic API key via
 `dotnet user-secrets` rather than committing it to `appsettings.json`:
 ```bash
-cd backend/TennisGuessr.Api
+cd backend/IdTheAthlete.Api
 dotnet user-secrets init
 dotnet user-secrets set "Anthropic:ApiKey" "sk-ant-..."
 ```
