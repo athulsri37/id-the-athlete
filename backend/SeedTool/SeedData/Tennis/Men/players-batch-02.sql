@@ -47,7 +47,7 @@ CROSS JOIN (VALUES
     ('Jimmy Connors',         false, NULL),
     ('Guillermo Vilas',       false, NULL)
 ) AS v("Name", "IsOverridden", "DifficultyOverride")
-WHERE s."Slug" = 'tennis'
+WHERE s."Slug" = 'tennis-men'
 ON CONFLICT ("Name") DO UPDATE SET
     "SportId" = EXCLUDED."SportId",
     "IsOverridden" = EXCLUDED."IsOverridden",

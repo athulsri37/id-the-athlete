@@ -2,7 +2,7 @@ import axios from "axios";
 import { PlayerSummary, GuessResponse, Difficulty } from "../types";
 
 const client = axios.create({ baseURL: "/api" });
-const SPORT = "tennis";
+const SPORT = "tennis-men";
 
 export async function fetchPlayerPool(): Promise<PlayerSummary[]> {
   const res = await client.get(`/sports/${SPORT}/players`);

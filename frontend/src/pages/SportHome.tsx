@@ -67,7 +67,7 @@ export default function SportHome({ sport, onSelectMode, onBack }: Props) {
               Objective
             </h2>
             <p className="text-[var(--text-secondary)] text-sm">
-              Guess the mystery ATP player in 8 tries using clues.
+              Guess the mystery tennis player in 8 tries using clues.
             </p>
           </div>
 

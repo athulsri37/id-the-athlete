@@ -14,10 +14,11 @@ const HINT_AFTER_GUESS = 5;
 interface Props {
   mode: Difficulty;
   sportSlug: string;
+  sportName: string;
   onBackToHome: () => void;
 }
 
-export default function GameBoard({ mode, sportSlug, onBackToHome }: Props) {
+export default function GameBoard({ mode, sportSlug, sportName, onBackToHome }: Props) {
   const [players, setPlayers] = useState<PlayerSummary[]>([]);
   const [sessionId, setSessionId] = useState<string | undefined>(undefined);
   const [guesses, setGuesses] = useState<GuessResponse[]>([]);
@@ -88,8 +89,8 @@ export default function GameBoard({ mode, sportSlug, onBackToHome }: Props) {
   const modeLabel = mode === "daily" ? "Daily" : mode[0].toUpperCase() + mode.slice(1);
 
   useEffect(() => {
-    document.title = `ID the Tennis Player — ${modeLabel} | ID the Athlete`;
-  }, [modeLabel]);
+    document.title = `ID the ${sportName} Player — ${modeLabel} | ID the Athlete`;
+  }, [modeLabel, sportName]);
 
   const gameOver = guesses.length > 0 && (guesses[guesses.length - 1].isCorrect || guesses.length >= MAX_GUESSES);
   const won = guesses.length > 0 && guesses[guesses.length - 1].isCorrect;
@@ -157,10 +158,10 @@ export default function GameBoard({ mode, sportSlug, onBackToHome }: Props) {
     <div className="min-h-screen bg-[var(--bg-primary)] flex flex-col items-center px-4 py-10">
       <h1 className="font-heading text-5xl tracking-wide mb-1">
         <span className="text-[var(--text-primary)]">ID the </span>
-        <span className="text-[var(--accent-alt)]">Tennis</span>
+        <span className="text-[var(--accent-alt)]">{sportName}</span>
         <span className="text-[var(--text-primary)]"> Player</span>
       </h1>
-      <p className="text-[var(--text-secondary)] text-sm mb-6">Guess the mystery ATP player in 8 tries</p>
+      <p className="text-[var(--text-secondary)] text-sm mb-6">Guess the mystery tennis player in 8 tries</p>
 
       <div className="mt-8 flex flex-col items-center w-full">
         <PlayerSearch
@@ -235,7 +236,7 @@ export default function GameBoard({ mode, sportSlug, onBackToHome }: Props) {
                 )}
               </p>
             )}
-            <ShareResult guesses={guesses} won={won} mode={mode} />
+            <ShareResult guesses={guesses} won={won} mode={mode} sportName={sportName} />
             <div className="flex items-center justify-center gap-4 mt-3">
               {mode !== "daily" && (
                 <button

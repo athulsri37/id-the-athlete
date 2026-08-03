@@ -5,7 +5,7 @@ interface Props {
   onSelectSport: (sport: Sport) => void;
 }
 
-const SPORTS: Sport[] = [{ slug: "tennis", name: "Tennis" }];
+const SPORTS: Sport[] = [{ slug: "tennis-men", name: "Men's Tennis" }];
 
 export default function HomeScreen({ onSelectSport }: Props) {
   useEffect(() => {

@@ -5,22 +5,23 @@ interface Props {
   guesses: GuessResponse[];
   won: boolean;
   mode: Difficulty;
+  sportName: string;
 }
 
-function buildShareText(guesses: GuessResponse[], won: boolean, mode: Difficulty): string {
+function buildShareText(guesses: GuessResponse[], won: boolean, mode: Difficulty, sportName: string): string {
   const modeLabel = mode === "daily" ? "Daily" : mode[0].toUpperCase() + mode.slice(1);
   const lines = guesses.map((g) =>
     g.clues.map((c) => (c.isMatch ? "🟩" : "⬜")).join("")
   );
-  const header = `ID the Tennis Player — ${modeLabel} ${won ? guesses.length + "/8" : "X/8"}`;
+  const header = `ID the ${sportName} Player — ${modeLabel} ${won ? guesses.length + "/8" : "X/8"}`;
   return [header, ...lines].join("\n");
 }
 
-export default function ShareResult({ guesses, won, mode }: Props) {
+export default function ShareResult({ guesses, won, mode, sportName }: Props) {
   const [copied, setCopied] = useState(false);
 
   const handleShare = async () => {
-    const text = buildShareText(guesses, won, mode);
+    const text = buildShareText(guesses, won, mode, sportName);
 
     if (navigator.share) {
       try {

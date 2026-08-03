@@ -33,7 +33,7 @@ CROSS JOIN (VALUES
     ('Holger Rune'),
     ('Andrey Rublev')
 ) AS v("Name")
-WHERE s."Slug" = 'tennis'
+WHERE s."Slug" = 'tennis-men'
 ON CONFLICT ("Name") DO UPDATE SET
     "SportId" = EXCLUDED."SportId";
 
