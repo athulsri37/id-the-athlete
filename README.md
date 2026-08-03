@@ -12,9 +12,15 @@ More sports will be added in the future.
 The .NET 10 upgrade, the AI trivia feature (short blurb about the mystery
 player shown on game over), the retro/stadium theme system, and the
 guesses-table UI refinements (numbered badges, pill-shaped match/miss
-cells, row striping) are all implemented and merged. `dotnet build`
-(backend) and `npm run build` (frontend) have been verified to pass
-cleanly.
+cells, row striping) are all implemented and merged. So are computed
+difficulty tiers (Easy/Medium/Hard, calculated from career-high ranking
+and career titles, with a manual override system), the Active/Retired
+player status clue, an AI trivia enable/disable toggle (separate from
+just having an API key configured), closeness tiers for numeric clues
+and country (both feature-flagged via `AppSettings`), the country hint
+feature (available after the 5th guess), and daily streak tracking with
+a replay-lock (per-sport, localStorage-based). `dotnet build` (backend)
+and `npm run build` (frontend) have been verified to pass cleanly.
 
 ## Features
 
@@ -27,6 +33,22 @@ cleanly.
 - **Generic, sport-agnostic schema** — tennis is fully playable standalone
   today; the data model (Sport → Player → Attribute → PlayerAttributeValue)
   is designed so additional sports could be added later as data, not code
+- **Computed difficulty tiers** — Easy/Medium/Hard is calculated live from
+  each player's career-high ranking and title count (not manually tagged),
+  with a small manual override system for cases where raw stats don't
+  reflect real-world recognizability
+- **8 comparison clues** — including Active/Retired career status
+  alongside the original 7 (Plays, Backhand, Country, Grand Slams,
+  Career-High Rank, Turned Pro Year, Career Titles)
+- **Closeness feedback** — numeric clues and country guesses show a
+  distinct "close" state (not just match/miss) when a guess is near the
+  correct answer; country closeness uses true land-border adjacency data,
+  not simple distance; both are toggleable via `AppSettings`
+- **Country hint** — after 5 guesses without identifying the correct
+  country, players can optionally reveal it for free (doesn't count
+  against the guess limit)
+- **Daily streak tracking** — tracked per-sport in the browser, with a
+  replay-lock preventing multiple attempts at the same day's puzzle
 
 ## Tech Stack
 
@@ -43,11 +65,14 @@ cleanly.
 tennis-guessr/
 ├── backend/TennisGuessr.Api/
 │   ├── Models/          # Sport, Player, AttributeDefinition, PlayerAttributeValue, DailyPuzzle, AppSetting
-│   ├── Data/            # GameDbContext, DataSeeder (20-player ATP sample dataset)
+│   ├── Data/            # GameDbContext
 │   ├── Migrations/      # EF Core migrations (generated, committed)
 │   ├── Services/        # GameService (comparison logic, daily puzzle, practice sessions), AiTriviaService (AI trivia blurbs)
 │   ├── Controllers/     # PlayersController, GameController, SettingsController
 │   └── Dtos/            # Request/response contracts
+├── backend/SeedTool/     # Standalone console project — seeds player data via versioned SQL files
+│   └── SeedData/
+│       └── Tennis/Men/   # 00-sport-and-attributes.sql, then players-batch-01.sql … players-batch-08.sql (192 players total)
 └── frontend/src/
     ├── api/             # Axios client
     ├── components/      # PlayerSearch, ClueGrid, ShareResult
@@ -83,8 +108,19 @@ dotnet tool install --global dotnet-ef   # if you don't have it already
 dotnet ef database update
 ```
 The app also calls `db.Database.Migrate()` on startup, so the schema stays
-in sync automatically after that. The 20-player sample dataset seeds
-itself automatically on first run (see `Data/DataSeeder.cs`).
+in sync automatically after that — but startup only runs migrations, it
+does **not** seed any player data.
+
+Player data is loaded separately, via the standalone `SeedTool` console
+project (see [Player Data & Seeding](#player-data--seeding) below):
+```bash
+cd backend/SeedTool
+dotnet run --project . --connection "Host=localhost;Database=tennisguessr;Username=tennisguessr;Password=tennisguessr_dev_pw"
+```
+Run this once against a fresh database. It's safe to re-run anytime — it's
+idempotent (upserts on player name and attribute), so it inserts new
+players and updates existing ones to match the source files, never
+duplicates.
 
 Only run `dotnet ef migrations add <Name>` if you're introducing new
 schema changes going forward — it's not needed for initial setup.
@@ -99,6 +135,14 @@ exactly the same, just without the blurb. Set your Anthropic API key via
 cd backend/TennisGuessr.Api
 dotnet user-secrets init
 dotnet user-secrets set "Anthropic:ApiKey" "sk-ant-..."
+```
+Trivia generation is also gated by a separate `AiTriviaEnabled` row in the
+`AppSettings` table — it defaults to `false`/off (no row means disabled),
+so configuring an API key alone isn't enough to turn the feature on, and
+removing the key isn't the only way to turn it off:
+```bash
+docker exec tennis-guesser-postgres-1 psql -U tennisguessr -d tennisguessr \
+  -c "INSERT INTO \"AppSettings\" (\"Key\", \"Value\") VALUES ('AiTriviaEnabled', 'true') ON CONFLICT (\"Key\") DO UPDATE SET \"Value\" = EXCLUDED.\"Value\";"
 ```
 
 ### 4. Run the backend
@@ -116,11 +160,28 @@ npm run dev
 ```
 App will be available at `http://localhost:5174`.
 
+## Player Data & Seeding
+
+Player data lives in versioned `.sql` files under
+`backend/SeedTool/SeedData/`, not in application code — the app itself
+never seeds anything on its own (see [step 2](#2-set-up-the-database-ef-core-migrations)
+above).
+
+To add a new player or correct an existing one's stats, edit the
+appropriate `players-batch-NN.sql` file, or add a new batch file if all
+existing ones are full — batches are capped at 25 players each — then
+re-run the SeedTool against your target database. Each file upserts on
+player name and attribute, so re-running is always safe.
+
+This design was chosen specifically so player data changes never require
+a code change or redeploy — just a data file edit and a SeedTool run.
+
 ## API Endpoints
 
 - `GET /api/sports/tennis/players` — full player pool (for guess autocomplete)
 - `POST /api/sports/tennis/game/start?difficulty=easy|medium|hard` — start a practice game, returns a `sessionId`
 - `POST /api/sports/tennis/game/guess?guessNumber=N` — submit a guess, returns per-attribute clue feedback
+- `GET /api/sports/{sportSlug}/game/hint/country?mode=...&sessionId=...` — free hint after 5 guesses, reveals only the mystery player's country
 
 ## Theme System
 
@@ -142,11 +203,14 @@ the change take effect.
 
 ## Notes on the dataset
 
-The current dataset is a **20-player sample** (mix of current stars,
-2005–2015 era, and pre-2005 legends) meant to prove the game end-to-end.
-The full design targets 200 players (~110 current / ~60 2005–2015 / ~30
-legends, career-high ranking ≤125) — expanding `DataSeeder.cs` with more
-entries is the main remaining step to reach that.
+The dataset contains **192 real ATP players**, individually researched and
+verified — not placeholder or sample data. It spans current tour players,
+the 2005–2015 golden era, and historical legends going back to the
+pre-Open Era.
+
+The roster is considered substantially complete for now, with no
+immediate plan to expand further, though the architecture supports it
+easily via the SeedTool workflow described above.
 
 Player stats (Grand Slam counts, titles, etc.) are accurate as of mid-2026
 but will drift for active players over time — treat this as a dataset that
