@@ -2,9 +2,15 @@
 -- Safe to re-run: both upserts are keyed on unique constraints
 -- (Sports.Slug, AttributeDefinitions(SportId, Key)) added in migration
 -- AddPlayerNameAndAttributeDefinitionUniqueConstraints.
+--
+-- Slug/Name were migrated from "tennis"/"Tennis" to "tennis-men"/"Men's
+-- Tennis" in place (existing row's Id preserved, so all FKs in
+-- DailyPuzzles/AttributeDefinitions/Players stay intact) ahead of a future
+-- "tennis-women" sport. This upsert now matches ON CONFLICT("Slug") against
+-- that already-renamed row -- it does NOT create a second Sports row.
 
 INSERT INTO "Sports" ("Name", "Slug")
-VALUES ('Tennis', 'tennis')
+VALUES ('Men''s Tennis', 'tennis-men')
 ON CONFLICT ("Slug") DO UPDATE SET
     "Name" = EXCLUDED."Name";
 
@@ -22,7 +28,7 @@ CROSS JOIN (VALUES
     ('turned_pro_year',        'Turned Pro',       1, 6),
     ('career_titles',          'Career Titles',    1, 7)
 ) AS v("Key", "Label", "Type", "DisplayOrder")
-WHERE s."Slug" = 'tennis'
+WHERE s."Slug" = 'tennis-men'
 ON CONFLICT ("SportId", "Key") DO UPDATE SET
     "Label" = EXCLUDED."Label",
     "Type" = EXCLUDED."Type",

@@ -14,7 +14,7 @@ public class PlayersController : ControllerBase
         _gameService = gameService;
     }
 
-    // GET /api/sports/tennis/players
+    // GET /api/sports/tennis-men/players
     // Returns the full player pool for this sport, used to power the
     // guess autocomplete/search box on the frontend.
     [HttpGet]

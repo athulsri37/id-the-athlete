@@ -15,7 +15,7 @@ public class GameController : ControllerBase
         _gameService = gameService;
     }
 
-    // POST /api/sports/tennis/game/start?difficulty=easy
+    // POST /api/sports/tennis-men/game/start?difficulty=easy
     // Starts a new practice-mode game and returns a sessionId to use for guesses.
     [HttpPost("start")]
     public async Task<IActionResult> StartGame(string sportSlug, [FromQuery] string difficulty = "easy")
@@ -31,7 +31,7 @@ public class GameController : ControllerBase
         }
     }
 
-    // POST /api/sports/tennis/game/guess?guessNumber=1
+    // POST /api/sports/tennis-men/game/guess?guessNumber=1
     // Submits a guess for either the daily puzzle (mode=daily) or an
     // active practice session (mode=easy|medium|hard, sessionId required).
     [HttpPost("guess")]
@@ -48,7 +48,7 @@ public class GameController : ControllerBase
         }
     }
 
-    // GET /api/sports/tennis/game/hint/country?mode=easy&sessionId=...
+    // GET /api/sports/tennis-men/game/hint/country?mode=easy&sessionId=...
     // Free hint that reveals only the mystery player's country — nothing
     // else about them. mode/sessionId identify the mystery player the same
     // way the guess endpoint does (sessionId is omitted for mode=daily).

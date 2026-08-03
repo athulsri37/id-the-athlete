@@ -178,9 +178,9 @@ a code change or redeploy — just a data file edit and a SeedTool run.
 
 ## API Endpoints
 
-- `GET /api/sports/tennis/players` — full player pool (for guess autocomplete)
-- `POST /api/sports/tennis/game/start?difficulty=easy|medium|hard` — start a practice game, returns a `sessionId`
-- `POST /api/sports/tennis/game/guess?guessNumber=N` — submit a guess, returns per-attribute clue feedback
+- `GET /api/sports/tennis-men/players` — full player pool (for guess autocomplete)
+- `POST /api/sports/tennis-men/game/start?difficulty=easy|medium|hard` — start a practice game, returns a `sessionId`
+- `POST /api/sports/tennis-men/game/guess?guessNumber=N` — submit a guess, returns per-attribute clue feedback
 - `GET /api/sports/{sportSlug}/game/hint/country?mode=...&sessionId=...` — free hint after 5 guesses, reveals only the mystery player's country
 
 ## Theme System
