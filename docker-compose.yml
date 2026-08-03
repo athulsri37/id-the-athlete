@@ -3,9 +3,9 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: tennisguessr
-      POSTGRES_PASSWORD: tennisguessr_dev_pw
-      POSTGRES_DB: tennisguessr
+      POSTGRES_USER: idtheathlete
+      POSTGRES_PASSWORD: idtheathlete_dev_pw
+      POSTGRES_DB: idtheathlete
     ports:
       - "5432:5432"
     volumes:
@@ -16,7 +16,7 @@ services:
     ports:
       - "5080:8080"
     environment:
-      ConnectionStrings__DefaultConnection: "Host=postgres;Database=tennisguessr;Username=tennisguessr;Password=tennisguessr_dev_pw"
+      ConnectionStrings__DefaultConnection: "Host=postgres;Database=idtheathlete;Username=idtheathlete;Password=idtheathlete_dev_pw"
     depends_on:
       - postgres
 

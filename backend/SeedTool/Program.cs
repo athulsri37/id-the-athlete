@@ -5,7 +5,7 @@ namespace SeedTool;
 
 // Standalone seeding tool, fully decoupled from the web app's startup.
 // Invoke manually:
-//   dotnet run --project SeedTool -- --connection "Host=localhost;Database=tennisguessr;Username=tennisguessr;Password=tennisguessr_dev_pw"
+//   dotnet run --project SeedTool -- --connection "Host=localhost;Database=idtheathlete;Username=idtheathlete;Password=idtheathlete_dev_pw"
 // Never run automatically — the web app only migrates on boot (see
 // IdTheAthlete.Api/Program.cs).
 public static class Program
