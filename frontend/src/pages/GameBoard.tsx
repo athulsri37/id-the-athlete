@@ -39,8 +39,8 @@ export default function GameBoard({ mode, sportSlug, sportName, onBackToHome }: 
   const [isDailyReplay, setIsDailyReplay] = useState(false);
 
   useEffect(() => {
-    fetchPlayerPool().then(setPlayers).catch(() => setError("Couldn't load player list."));
-  }, []);
+    fetchPlayerPool(sportSlug).then(setPlayers).catch(() => setError("Couldn't load player list."));
+  }, [sportSlug]);
 
   const startNewGame = async () => {
     setError("");
@@ -71,7 +71,7 @@ export default function GameBoard({ mode, sportSlug, sportName, onBackToHome }: 
     if (mode !== "daily") {
       setLoading(true);
       try {
-        const res = await startPracticeGame(mode);
+        const res = await startPracticeGame(sportSlug, mode);
         setSessionId(res.sessionId);
       } catch {
         setError("Couldn't start a new game. Try again.");
@@ -124,7 +124,7 @@ export default function GameBoard({ mode, sportSlug, sportName, onBackToHome }: 
     setError("");
     setLoading(true);
     try {
-      const result = await submitGuess(player.id, mode, guesses.length + 1, sessionId);
+      const result = await submitGuess(sportSlug, player.id, mode, guesses.length + 1, sessionId);
       setGuesses((prev) => [...prev, result]);
     } catch {
       setError("Something went wrong submitting that guess.");
@@ -135,7 +135,7 @@ export default function GameBoard({ mode, sportSlug, sportName, onBackToHome }: 
 
   const handleHintYes = async () => {
     try {
-      const country = await fetchCountryHint(mode, sessionId);
+      const country = await fetchCountryHint(sportSlug, mode, sessionId);
       setRevealedCountry(country);
       setHintDeclined(false);
     } catch {
