@@ -1,13 +1,10 @@
 import { useEffect } from "react";
-import { Sport } from "../types";
 
 interface Props {
-  onSelectSport: (sport: Sport) => void;
+  onSelectTennis: () => void;
 }
 
-const SPORTS: Sport[] = [{ slug: "tennis-men", name: "Men's Tennis" }];
-
-export default function HomeScreen({ onSelectSport }: Props) {
+export default function HomeScreen({ onSelectTennis }: Props) {
   useEffect(() => {
     document.title = "ID the Athlete";
   }, []);
@@ -24,15 +21,12 @@ export default function HomeScreen({ onSelectSport }: Props) {
       </p>
 
       <div className="flex flex-col gap-3 w-full max-w-xs">
-        {SPORTS.map((sport) => (
-          <button
-            key={sport.slug}
-            onClick={() => onSelectSport(sport)}
-            className="btn-card px-5 py-3 rounded-md font-semibold text-lg"
-          >
-            {sport.name}
-          </button>
-        ))}
+        <button
+          onClick={onSelectTennis}
+          className="btn-card px-5 py-3 rounded-md font-semibold text-lg"
+        >
+          Tennis
+        </button>
       </div>
 
       <footer className="mt-auto pt-10 flex items-center justify-center gap-3">
