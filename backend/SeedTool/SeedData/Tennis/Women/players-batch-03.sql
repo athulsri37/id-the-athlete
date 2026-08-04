@@ -1,0 +1,267 @@
+-- Tennis (women's) players, batch 3 (23 players, bringing the roster to 60
+-- total: batch 1's 20 + batch 2's 17 + batch 3's 23). Same upsert pattern
+-- as prior batches: Players upserts on the unique Name constraint,
+-- PlayerAttributeValues upserts on the existing unique (PlayerId,
+-- AttributeDefinitionId) constraint, both scoped to the "tennis-women"
+-- Sport. No overrides in this batch -- every row is IsOverridden = false,
+-- DifficultyOverride = NULL.
+--
+-- Note: Ons Jabeur's active_status is "Inactive" -- the first use of this
+-- value in the dataset (distinct from "Active"/"Retired"), reflecting a
+-- tour hiatus rather than retirement. No comparison logic anywhere treats
+-- active_status as a fixed two-value enum, so this is a plain new
+-- categorical value, not a schema change.
+
+INSERT INTO "Players" ("SportId", "Name", "IsOverridden", "DifficultyOverride")
+SELECT s."Id", v."Name", v."IsOverridden", v."DifficultyOverride"
+FROM "Sports" s
+CROSS JOIN (VALUES
+    ('Ons Jabeur',                false, NULL),
+    ('Marion Bartoli',            false, NULL),
+    ('Madison Keys',              false, NULL),
+    ('Barbora Krejčíková',        false, NULL),
+    ('Sofia Kenin',               false, NULL),
+    ('Karolína Plíšková',         false, NULL),
+    ('Jelena Janković',           false, NULL),
+    ('Dinara Safina',             false, NULL),
+    ('Elina Svitolina',           false, NULL),
+    ('Francesca Schiavone',       false, NULL),
+    ('Flavia Pennetta',           false, NULL),
+    ('Roberta Vinci',             false, NULL),
+    ('Samantha Stosur',           false, NULL),
+    ('Belinda Bencic',            false, NULL),
+    ('Amanda Anisimova',          false, NULL),
+    ('Mirra Andreeva',            false, NULL),
+    ('Jasmine Paolini',           false, NULL),
+    ('Mary Pierce',               false, NULL),
+    ('Anastasia Myskina',         false, NULL),
+    ('Markéta Vondroušová',       false, NULL),
+    ('Anastasia Pavlyuchenkova',  false, NULL),
+    ('Vera Zvonareva',            false, NULL),
+    ('Caroline Garcia',           false, NULL)
+) AS v("Name", "IsOverridden", "DifficultyOverride")
+WHERE s."Slug" = 'tennis-women'
+ON CONFLICT ("Name") DO UPDATE SET
+    "SportId" = EXCLUDED."SportId",
+    "IsOverridden" = EXCLUDED."IsOverridden",
+    "DifficultyOverride" = EXCLUDED."DifficultyOverride";
+
+-- One row per (player, attribute) pair. PlayerId/AttributeDefinitionId are
+-- resolved by name/key lookup (scoped to each player's own SportId), so
+-- this file has no dependency on insertion order or id values, and can
+-- never cross-attach to tennis-men's AttributeDefinitions.
+INSERT INTO "PlayerAttributeValues" ("PlayerId", "AttributeDefinitionId", "Value")
+SELECT p."Id", ad."Id", v."Value"
+FROM (VALUES
+    -- Player,                          AttrKey,                Value
+    ('Ons Jabeur',                      'active_status',        'Inactive'),
+    ('Ons Jabeur',                      'plays',                'Right'),
+    ('Ons Jabeur',                      'backhand',             'Two-Handed'),
+    ('Ons Jabeur',                      'country',              'Tunisia'),
+    ('Ons Jabeur',                      'grand_slam_titles',    '0'),
+    ('Ons Jabeur',                      'career_high_ranking',  '2'),
+    ('Ons Jabeur',                      'turned_pro_year',      '2010'),
+    ('Ons Jabeur',                      'career_titles',        '5'),
+
+    ('Marion Bartoli',                  'active_status',        'Retired'),
+    ('Marion Bartoli',                  'plays',                'Right'),
+    ('Marion Bartoli',                  'backhand',             'Two-Handed'),
+    ('Marion Bartoli',                  'country',              'France'),
+    ('Marion Bartoli',                  'grand_slam_titles',    '1'),
+    ('Marion Bartoli',                  'career_high_ranking',  '7'),
+    ('Marion Bartoli',                  'turned_pro_year',      '2000'),
+    ('Marion Bartoli',                  'career_titles',        '8'),
+
+    ('Madison Keys',                    'active_status',        'Active'),
+    ('Madison Keys',                    'plays',                'Right'),
+    ('Madison Keys',                    'backhand',             'Two-Handed'),
+    ('Madison Keys',                    'country',              'USA'),
+    ('Madison Keys',                    'grand_slam_titles',    '1'),
+    ('Madison Keys',                    'career_high_ranking',  '5'),
+    ('Madison Keys',                    'turned_pro_year',      '2009'),
+    ('Madison Keys',                    'career_titles',        '10'),
+
+    ('Barbora Krejčíková',              'active_status',        'Active'),
+    ('Barbora Krejčíková',              'plays',                'Right'),
+    ('Barbora Krejčíková',              'backhand',             'Two-Handed'),
+    ('Barbora Krejčíková',              'country',              'Czech Republic'),
+    ('Barbora Krejčíková',              'grand_slam_titles',    '2'),
+    ('Barbora Krejčíková',              'career_high_ranking',  '2'),
+    ('Barbora Krejčíková',              'turned_pro_year',      '2010'),
+    ('Barbora Krejčíková',              'career_titles',        '8'),
+
+    ('Sofia Kenin',                     'active_status',        'Active'),
+    ('Sofia Kenin',                     'plays',                'Right'),
+    ('Sofia Kenin',                     'backhand',             'Two-Handed'),
+    ('Sofia Kenin',                     'country',              'USA'),
+    ('Sofia Kenin',                     'grand_slam_titles',    '1'),
+    ('Sofia Kenin',                     'career_high_ranking',  '4'),
+    ('Sofia Kenin',                     'turned_pro_year',      '2017'),
+    ('Sofia Kenin',                     'career_titles',        '5'),
+
+    ('Karolína Plíšková',               'active_status',        'Active'),
+    ('Karolína Plíšková',               'plays',                'Right'),
+    ('Karolína Plíšková',               'backhand',             'Two-Handed'),
+    ('Karolína Plíšková',               'country',              'Czech Republic'),
+    ('Karolína Plíšková',               'grand_slam_titles',    '0'),
+    ('Karolína Plíšková',               'career_high_ranking',  '1'),
+    ('Karolína Plíšková',               'turned_pro_year',      '2009'),
+    ('Karolína Plíšková',               'career_titles',        '17'),
+
+    ('Jelena Janković',                 'active_status',        'Retired'),
+    ('Jelena Janković',                 'plays',                'Right'),
+    ('Jelena Janković',                 'backhand',             'Two-Handed'),
+    ('Jelena Janković',                 'country',              'Serbia'),
+    ('Jelena Janković',                 'grand_slam_titles',    '0'),
+    ('Jelena Janković',                 'career_high_ranking',  '1'),
+    ('Jelena Janković',                 'turned_pro_year',      '2000'),
+    ('Jelena Janković',                 'career_titles',        '15'),
+
+    ('Dinara Safina',                   'active_status',        'Retired'),
+    ('Dinara Safina',                   'plays',                'Right'),
+    ('Dinara Safina',                   'backhand',             'Two-Handed'),
+    ('Dinara Safina',                   'country',              'Russia'),
+    ('Dinara Safina',                   'grand_slam_titles',    '0'),
+    ('Dinara Safina',                   'career_high_ranking',  '1'),
+    ('Dinara Safina',                   'turned_pro_year',      '2000'),
+    ('Dinara Safina',                   'career_titles',        '12'),
+
+    ('Elina Svitolina',                 'active_status',        'Active'),
+    ('Elina Svitolina',                 'plays',                'Right'),
+    ('Elina Svitolina',                 'backhand',             'Two-Handed'),
+    ('Elina Svitolina',                 'country',              'Ukraine'),
+    ('Elina Svitolina',                 'grand_slam_titles',    '0'),
+    ('Elina Svitolina',                 'career_high_ranking',  '3'),
+    ('Elina Svitolina',                 'turned_pro_year',      '2008'),
+    ('Elina Svitolina',                 'career_titles',        '20'),
+
+    ('Francesca Schiavone',             'active_status',        'Retired'),
+    ('Francesca Schiavone',             'plays',                'Right'),
+    ('Francesca Schiavone',             'backhand',             'One-Handed'),
+    ('Francesca Schiavone',             'country',              'Italy'),
+    ('Francesca Schiavone',             'grand_slam_titles',    '1'),
+    ('Francesca Schiavone',             'career_high_ranking',  '4'),
+    ('Francesca Schiavone',             'turned_pro_year',      '1998'),
+    ('Francesca Schiavone',             'career_titles',        '8'),
+
+    ('Flavia Pennetta',                 'active_status',        'Retired'),
+    ('Flavia Pennetta',                 'plays',                'Right'),
+    ('Flavia Pennetta',                 'backhand',             'Two-Handed'),
+    ('Flavia Pennetta',                 'country',              'Italy'),
+    ('Flavia Pennetta',                 'grand_slam_titles',    '1'),
+    ('Flavia Pennetta',                 'career_high_ranking',  '6'),
+    ('Flavia Pennetta',                 'turned_pro_year',      '2000'),
+    ('Flavia Pennetta',                 'career_titles',        '11'),
+
+    ('Roberta Vinci',                   'active_status',        'Retired'),
+    ('Roberta Vinci',                   'plays',                'Right'),
+    ('Roberta Vinci',                   'backhand',             'One-Handed'),
+    ('Roberta Vinci',                   'country',              'Italy'),
+    ('Roberta Vinci',                   'grand_slam_titles',    '0'),
+    ('Roberta Vinci',                   'career_high_ranking',  '7'),
+    ('Roberta Vinci',                   'turned_pro_year',      '1999'),
+    ('Roberta Vinci',                   'career_titles',        '10'),
+
+    ('Samantha Stosur',                 'active_status',        'Retired'),
+    ('Samantha Stosur',                 'plays',                'Right'),
+    ('Samantha Stosur',                 'backhand',             'Two-Handed'),
+    ('Samantha Stosur',                 'country',              'Australia'),
+    ('Samantha Stosur',                 'grand_slam_titles',    '1'),
+    ('Samantha Stosur',                 'career_high_ranking',  '4'),
+    ('Samantha Stosur',                 'turned_pro_year',      '1999'),
+    ('Samantha Stosur',                 'career_titles',        '9'),
+
+    ('Belinda Bencic',                  'active_status',        'Active'),
+    ('Belinda Bencic',                  'plays',                'Right'),
+    ('Belinda Bencic',                  'backhand',             'Two-Handed'),
+    ('Belinda Bencic',                  'country',              'Switzerland'),
+    ('Belinda Bencic',                  'grand_slam_titles',    '0'),
+    ('Belinda Bencic',                  'career_high_ranking',  '4'),
+    ('Belinda Bencic',                  'turned_pro_year',      '2012'),
+    ('Belinda Bencic',                  'career_titles',        '10'),
+
+    ('Amanda Anisimova',                'active_status',        'Active'),
+    ('Amanda Anisimova',                'plays',                'Right'),
+    ('Amanda Anisimova',                'backhand',             'Two-Handed'),
+    ('Amanda Anisimova',                'country',              'USA'),
+    ('Amanda Anisimova',                'grand_slam_titles',    '0'),
+    ('Amanda Anisimova',                'career_high_ranking',  '3'),
+    ('Amanda Anisimova',                'turned_pro_year',      '2016'),
+    ('Amanda Anisimova',                'career_titles',        '4'),
+
+    ('Mirra Andreeva',                  'active_status',        'Active'),
+    ('Mirra Andreeva',                  'plays',                'Right'),
+    ('Mirra Andreeva',                  'backhand',             'Two-Handed'),
+    ('Mirra Andreeva',                  'country',              'Russia'),
+    ('Mirra Andreeva',                  'grand_slam_titles',    '1'),
+    ('Mirra Andreeva',                  'career_high_ranking',  '5'),
+    ('Mirra Andreeva',                  'turned_pro_year',      '2022'),
+    ('Mirra Andreeva',                  'career_titles',        '6'),
+
+    ('Jasmine Paolini',                 'active_status',        'Active'),
+    ('Jasmine Paolini',                 'plays',                'Right'),
+    ('Jasmine Paolini',                 'backhand',             'Two-Handed'),
+    ('Jasmine Paolini',                 'country',              'Italy'),
+    ('Jasmine Paolini',                 'grand_slam_titles',    '0'),
+    ('Jasmine Paolini',                 'career_high_ranking',  '4'),
+    ('Jasmine Paolini',                 'turned_pro_year',      '2015'),
+    ('Jasmine Paolini',                 'career_titles',        '3'),
+
+    ('Mary Pierce',                     'active_status',        'Retired'),
+    ('Mary Pierce',                     'plays',                'Right'),
+    ('Mary Pierce',                     'backhand',             'Two-Handed'),
+    ('Mary Pierce',                     'country',              'France'),
+    ('Mary Pierce',                     'grand_slam_titles',    '2'),
+    ('Mary Pierce',                     'career_high_ranking',  '3'),
+    ('Mary Pierce',                     'turned_pro_year',      '1989'),
+    ('Mary Pierce',                     'career_titles',        '18'),
+
+    ('Anastasia Myskina',               'active_status',        'Retired'),
+    ('Anastasia Myskina',               'plays',                'Right'),
+    ('Anastasia Myskina',               'backhand',             'Two-Handed'),
+    ('Anastasia Myskina',               'country',              'Russia'),
+    ('Anastasia Myskina',               'grand_slam_titles',    '1'),
+    ('Anastasia Myskina',               'career_high_ranking',  '2'),
+    ('Anastasia Myskina',               'turned_pro_year',      '1998'),
+    ('Anastasia Myskina',               'career_titles',        '10'),
+
+    ('Markéta Vondroušová',             'active_status',        'Active'),
+    ('Markéta Vondroušová',             'plays',                'Left'),
+    ('Markéta Vondroušová',             'backhand',             'Two-Handed'),
+    ('Markéta Vondroušová',             'country',              'Czech Republic'),
+    ('Markéta Vondroušová',             'grand_slam_titles',    '1'),
+    ('Markéta Vondroušová',             'career_high_ranking',  '6'),
+    ('Markéta Vondroušová',             'turned_pro_year',      '2014'),
+    ('Markéta Vondroušová',             'career_titles',        '4'),
+
+    ('Anastasia Pavlyuchenkova',        'active_status',        'Active'),
+    ('Anastasia Pavlyuchenkova',        'plays',                'Right'),
+    ('Anastasia Pavlyuchenkova',        'backhand',             'Two-Handed'),
+    ('Anastasia Pavlyuchenkova',        'country',              'Russia'),
+    ('Anastasia Pavlyuchenkova',        'grand_slam_titles',    '0'),
+    ('Anastasia Pavlyuchenkova',        'career_high_ranking',  '11'),
+    ('Anastasia Pavlyuchenkova',        'turned_pro_year',      '2005'),
+    ('Anastasia Pavlyuchenkova',        'career_titles',        '12'),
+
+    ('Vera Zvonareva',                  'active_status',        'Active'),
+    ('Vera Zvonareva',                  'plays',                'Right'),
+    ('Vera Zvonareva',                  'backhand',             'Two-Handed'),
+    ('Vera Zvonareva',                  'country',              'Russia'),
+    ('Vera Zvonareva',                  'grand_slam_titles',    '0'),
+    ('Vera Zvonareva',                  'career_high_ranking',  '2'),
+    ('Vera Zvonareva',                  'turned_pro_year',      '2000'),
+    ('Vera Zvonareva',                  'career_titles',        '12'),
+
+    ('Caroline Garcia',                 'active_status',        'Retired'),
+    ('Caroline Garcia',                 'plays',                'Right'),
+    ('Caroline Garcia',                 'backhand',             'Two-Handed'),
+    ('Caroline Garcia',                 'country',              'France'),
+    ('Caroline Garcia',                 'grand_slam_titles',    '0'),
+    ('Caroline Garcia',                 'career_high_ranking',  '4'),
+    ('Caroline Garcia',                 'turned_pro_year',      '2011'),
+    ('Caroline Garcia',                 'career_titles',        '11')
+) AS v("PlayerName", "AttrKey", "Value")
+JOIN "Players" p ON p."Name" = v."PlayerName"
+JOIN "AttributeDefinitions" ad ON ad."Key" = v."AttrKey" AND ad."SportId" = p."SportId"
+ON CONFLICT ("PlayerId", "AttributeDefinitionId") DO UPDATE SET
+    "Value" = EXCLUDED."Value";
