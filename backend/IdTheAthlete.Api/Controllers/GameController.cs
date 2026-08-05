@@ -52,17 +52,37 @@ public class GameController : ControllerBase
     // Free hint that reveals only the mystery player's country — nothing
     // else about them. mode/sessionId identify the mystery player the same
     // way the guess endpoint does (sessionId is omitted for mode=daily).
+    // date (yyyy-MM-dd) is daily-mode only and optional -- omitted means
+    // today, otherwise a specific Past Challenge date.
     [HttpGet("hint/country")]
-    public async Task<IActionResult> GetCountryHint(string sportSlug, [FromQuery] string mode = "daily", [FromQuery] string? sessionId = null)
+    public async Task<IActionResult> GetCountryHint(string sportSlug, [FromQuery] string mode = "daily", [FromQuery] string? sessionId = null, [FromQuery] string? date = null)
     {
         try
         {
-            var country = await _gameService.GetCountryHintAsync(sportSlug, mode, sessionId);
+            var country = await _gameService.GetCountryHintAsync(sportSlug, mode, sessionId, date);
             return Ok(new CountryHintDto { Country = country });
         }
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    // GET /api/sports/tennis-men/daily-puzzles
+    // Every date that has an existing Daily Challenge puzzle for this
+    // sport, most recent first -- powers the Past Challenges list. No
+    // completion status here; that's tracked client-side.
+    [HttpGet("/api/sports/{sportSlug}/daily-puzzles")]
+    public async Task<IActionResult> GetDailyPuzzleDates(string sportSlug)
+    {
+        try
+        {
+            var dates = await _gameService.GetDailyPuzzleDatesAsync(sportSlug);
+            return Ok(dates);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { message = ex.Message });
         }
     }
 }

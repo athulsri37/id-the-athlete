@@ -6,7 +6,8 @@ import ClueGrid from "../components/ClueGrid";
 import ClueLegend from "../components/ClueLegend";
 import ShareResult from "../components/ShareResult";
 import { recordDailyResult, getStreak, StreakData } from "../utils/dailyStreak";
-import { getTodaysCompletion, recordDailyCompletion } from "../utils/dailyCompletion";
+import { getCompletionForDate, recordDailyCompletion } from "../utils/dailyCompletion";
+import { todayLocalDateString } from "../utils/localDate";
 
 const MAX_GUESSES = 8;
 const HINT_AFTER_GUESS = 5;
@@ -15,10 +16,14 @@ interface Props {
   mode: Difficulty;
   sportSlug: string;
   sportName: string;
+  // Specific date (yyyy-MM-dd) to play/replay, daily mode only. Omitted
+  // means today -- the normal Daily Challenge flow. Set only when arriving
+  // via Past Challenges.
+  dailyDate?: string;
   onBackToHome: () => void;
 }
 
-export default function GameBoard({ mode, sportSlug, sportName, onBackToHome }: Props) {
+export default function GameBoard({ mode, sportSlug, sportName, dailyDate, onBackToHome }: Props) {
   const [players, setPlayers] = useState<PlayerSummary[]>([]);
   const [sessionId, setSessionId] = useState<string | undefined>(undefined);
   const [guesses, setGuesses] = useState<GuessResponse[]>([]);
@@ -34,9 +39,18 @@ export default function GameBoard({ mode, sportSlug, sportName, onBackToHome }: 
   const [streak, setStreak] = useState<StreakData | null>(null);
   const streakRecordedRef = useRef(false);
 
-  // True when today's Daily Challenge was already completed in a previous
-  // visit and we're showing that result read-only instead of a live game.
+  // True when this date's Daily Challenge was already completed in a
+  // previous visit and we're showing that result read-only instead of a
+  // live game.
   const [isDailyReplay, setIsDailyReplay] = useState(false);
+
+  // The actual calendar date this "daily" session is for. Today unless a
+  // specific past date was supplied (via Past Challenges).
+  const effectiveDate = dailyDate ?? todayLocalDateString();
+  // CRITICAL: this is the single source of truth for "must never touch the
+  // streak." It's derived from the actual date being played, not from how
+  // we got here, so it can't be bypassed by a navigation shortcut.
+  const isPastDate = mode === "daily" && effectiveDate !== todayLocalDateString();
 
   useEffect(() => {
     fetchPlayerPool(sportSlug).then(setPlayers).catch(() => setError("Couldn't load player list."));
@@ -54,11 +68,15 @@ export default function GameBoard({ mode, sportSlug, sportName, onBackToHome }: 
     streakRecordedRef.current = false;
 
     if (mode === "daily") {
-      const completed = getTodaysCompletion(sportSlug);
+      const completed = getCompletionForDate(sportSlug, effectiveDate);
       if (completed) {
         setGuesses(completed.guesses);
         setRevealedCountry(completed.revealedCountry);
-        setStreak(getStreak(sportSlug));
+        // Never surface a streak for a past-date replay -- that day never
+        // contributed to it, showing a number here would be misleading.
+        if (!isPastDate) {
+          setStreak(getStreak(sportSlug));
+        }
         setHintOffered(true);
         setIsDailyReplay(true);
         streakRecordedRef.current = true;
@@ -84,13 +102,14 @@ export default function GameBoard({ mode, sportSlug, sportName, onBackToHome }: 
   useEffect(() => {
     startNewGame();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode]);
+  }, [mode, dailyDate]);
 
   const modeLabel = mode === "daily" ? "Daily" : mode[0].toUpperCase() + mode.slice(1);
 
   useEffect(() => {
-    document.title = `ID the ${sportName} Player — ${modeLabel} | ID the Athlete`;
-  }, [modeLabel, sportName]);
+    const dateSuffix = isPastDate ? ` (${effectiveDate})` : "";
+    document.title = `ID the ${sportName} Player — ${modeLabel}${dateSuffix} | ID the Athlete`;
+  }, [modeLabel, sportName, isPastDate, effectiveDate]);
 
   const gameOver = guesses.length > 0 && (guesses[guesses.length - 1].isCorrect || guesses.length >= MAX_GUESSES);
   const won = guesses.length > 0 && guesses[guesses.length - 1].isCorrect;
@@ -107,24 +126,30 @@ export default function GameBoard({ mode, sportSlug, sportName, onBackToHome }: 
     setHintOffered(true);
   }, [guesses, hintOffered, gameOver]);
 
-  // Update this sport's Daily Challenge streak and mark today's puzzle as
-  // completed exactly once per finished game. Guarded by a ref (not just
-  // state) so a re-render after gameOver is already true can't record the
-  // same result twice, and so restoring an already-completed game (see
-  // startNewGame) doesn't re-record it.
+  // Mark this date's puzzle as completed exactly once per finished game,
+  // and -- only for genuine "today" plays -- update the streak. Guarded by
+  // a ref (not just state) so a re-render after gameOver is already true
+  // can't record the same result twice, and so restoring an
+  // already-completed game (see startNewGame) doesn't re-record it.
   useEffect(() => {
     if (mode !== "daily" || !gameOver || streakRecordedRef.current) return;
     streakRecordedRef.current = true;
-    setStreak(recordDailyResult(sportSlug, won));
-    recordDailyCompletion(sportSlug, won, guesses, revealedCountry);
-  }, [mode, gameOver, won, sportSlug, guesses, revealedCountry]);
+
+    recordDailyCompletion(sportSlug, effectiveDate, won, guesses, revealedCountry);
+
+    // CRITICAL: streak logic must only ever fire for today. Catching up on
+    // a past day via Past Challenges must never affect it.
+    if (!isPastDate) {
+      setStreak(recordDailyResult(sportSlug, won));
+    }
+  }, [mode, gameOver, won, sportSlug, guesses, revealedCountry, isPastDate, effectiveDate]);
 
   const handleGuess = async (player: PlayerSummary) => {
     if (gameOver) return;
     setError("");
     setLoading(true);
     try {
-      const result = await submitGuess(sportSlug, player.id, mode, guesses.length + 1, sessionId);
+      const result = await submitGuess(sportSlug, player.id, mode, guesses.length + 1, sessionId, isPastDate ? effectiveDate : undefined);
       setGuesses((prev) => [...prev, result]);
     } catch {
       setError("Something went wrong submitting that guess.");
@@ -135,7 +160,7 @@ export default function GameBoard({ mode, sportSlug, sportName, onBackToHome }: 
 
   const handleHintYes = async () => {
     try {
-      const country = await fetchCountryHint(sportSlug, mode, sessionId);
+      const country = await fetchCountryHint(sportSlug, mode, sessionId, isPastDate ? effectiveDate : undefined);
       setRevealedCountry(country);
       setHintDeclined(false);
     } catch {
@@ -161,14 +186,25 @@ export default function GameBoard({ mode, sportSlug, sportName, onBackToHome }: 
         <span className="text-[var(--accent-alt)]">{sportName}</span>
         <span className="text-[var(--text-primary)]"> Player</span>
       </h1>
-      <p className="text-[var(--text-secondary)] text-sm mb-6">Guess the mystery tennis player in 8 tries</p>
+      <p className="text-[var(--text-secondary)] text-sm mb-1">Guess the mystery tennis player in 8 tries</p>
+      {isPastDate && (
+        <p className="text-[var(--text-muted)] text-xs mb-5">
+          Playing:{" "}
+          {new Date(`${effectiveDate}T00:00:00`).toLocaleDateString(undefined, {
+            weekday: "long",
+            month: "short",
+            day: "numeric",
+          })}
+        </p>
+      )}
+      {!isPastDate && <div className="mb-5" />}
 
-      <div className="mt-8 flex flex-col items-center w-full">
+      <div className="mt-3 flex flex-col items-center w-full">
         <PlayerSearch
           players={players}
           guessedIds={guessedIds}
           disabled={gameOver || loading}
-          placeholderOverride={isDailyReplay ? "Come back tomorrow!" : undefined}
+          placeholderOverride={isDailyReplay && !isPastDate ? "Come back tomorrow!" : undefined}
           onGuess={handleGuess}
         />
 
@@ -217,7 +253,9 @@ export default function GameBoard({ mode, sportSlug, sportName, onBackToHome }: 
           <div className="mt-6 text-center">
             {isDailyReplay && (
               <p className="text-[var(--text-muted)] text-xs italic mb-2">
-                You've already completed today's Daily Challenge — here's your result.
+                {isPastDate
+                  ? `Here's your result from ${effectiveDate} — this doesn't affect your streak.`
+                  : "You've already completed today's Daily Challenge — here's your result."}
               </p>
             )}
             <p className="text-[var(--text-primary)] text-lg font-semibold">
@@ -228,7 +266,7 @@ export default function GameBoard({ mode, sportSlug, sportName, onBackToHome }: 
                 {guesses[guesses.length - 1].triviaBlurb}
               </p>
             )}
-            {mode === "daily" && streak && (
+            {mode === "daily" && !isPastDate && streak && (
               <p className="text-[var(--text-primary)] text-sm font-semibold mt-2">
                 🔥 {streak.currentStreak} day streak
                 {streak.maxStreak > 0 && (

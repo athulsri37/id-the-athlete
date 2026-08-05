@@ -40,6 +40,23 @@ body {
   cursor: default;
 }
 
+/* Secondary/muted variant of .btn-card: dashed border, no card-shadow,
+   muted text by default. Used for actions that should read as lower-
+   priority than the primary mode buttons, e.g. "Past Challenges". */
+.btn-card-muted {
+  background: transparent;
+  border: var(--card-border-width, 1px) dashed var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-card-muted:hover,
+.btn-card-muted:focus-visible {
+  border-color: var(--text-secondary);
+  color: var(--text-secondary);
+}
+
 /* Breathing scale pulse for the persistent hint button. Pure transform, no
    color, so it reads correctly under any theme's .btn-card styling. */
 @keyframes hint-pulse {
