@@ -124,7 +124,7 @@ public class GameService
             ?? throw new InvalidOperationException($"Sport '{sportSlug}' not found");
 
         int mysteryPlayerId = request.Mode == "daily"
-            ? await GetTodaysMysteryPlayerIdAsync(sport.Id)
+            ? await ResolveDailyMysteryPlayerIdAsync(sport.Id, request.Date)
             : ResolvePracticeSessionPlayerId(request.SessionId);
 
         var guessedPlayer = await _db.Players
@@ -216,13 +216,13 @@ public class GameService
     //   nothing server-side to check for "already over" there; the
     //   frontend is responsible for only requesting the hint when it makes
     //   sense, same trust boundary as the client-enforced guess limit.
-    public async Task<string> GetCountryHintAsync(string sportSlug, string mode, string? sessionId)
+    public async Task<string> GetCountryHintAsync(string sportSlug, string mode, string? sessionId, string? date = null)
     {
         var sport = await _db.Sports.FirstOrDefaultAsync(s => s.Slug == sportSlug)
             ?? throw new InvalidOperationException($"Sport '{sportSlug}' not found");
 
         int mysteryPlayerId = mode == "daily"
-            ? await GetTodaysMysteryPlayerIdAsync(sport.Id)
+            ? await ResolveDailyMysteryPlayerIdAsync(sport.Id, date)
             : ResolvePracticeSessionPlayerId(sessionId);
 
         var mysteryPlayer = await _db.Players
@@ -260,6 +260,44 @@ public class GameService
         {
             return false;
         }
+    }
+
+    // Every date (yyyy-MM-dd) that has an existing Daily Challenge puzzle
+    // for this sport, most recent first. Deliberately just the dates --
+    // completion/streak status is tracked entirely client-side (localStorage),
+    // never here.
+    public async Task<List<string>> GetDailyPuzzleDatesAsync(string sportSlug)
+    {
+        var sport = await _db.Sports.FirstOrDefaultAsync(s => s.Slug == sportSlug)
+            ?? throw new InvalidOperationException($"Sport '{sportSlug}' not found");
+
+        var dates = await _db.DailyPuzzles
+            .Where(d => d.SportId == sport.Id)
+            .OrderByDescending(d => d.PuzzleDate)
+            .Select(d => d.PuzzleDate)
+            .ToListAsync();
+
+        return dates.Select(d => d.ToString("yyyy-MM-dd")).ToList();
+    }
+
+    // date == null means "today" (the existing behavior: creates today's
+    // puzzle on first access if it doesn't exist yet). A specific date is
+    // always a Past Challenge, which by definition already has a puzzle
+    // (the frontend only ever offers dates GetDailyPuzzleDatesAsync
+    // returned) -- so this never creates one, only looks it up.
+    private async Task<int> ResolveDailyMysteryPlayerIdAsync(int sportId, string? date)
+    {
+        if (date == null)
+            return await GetTodaysMysteryPlayerIdAsync(sportId);
+
+        if (!DateOnly.TryParse(date, out var parsedDate))
+            throw new InvalidOperationException($"Invalid date '{date}'.");
+
+        var puzzle = await _db.DailyPuzzles
+            .FirstOrDefaultAsync(d => d.SportId == sportId && d.PuzzleDate == parsedDate)
+            ?? throw new InvalidOperationException($"No daily puzzle exists for {date}.");
+
+        return puzzle.PlayerId;
     }
 
     private async Task<int> GetTodaysMysteryPlayerIdAsync(int sportId)

@@ -5,6 +5,7 @@ import ClueLegend from "../components/ClueLegend";
 interface Props {
   sport: Sport;
   onSelectMode: (mode: Difficulty) => void;
+  onPastChallenges: () => void;
   onBack: () => void;
 }
 
@@ -15,7 +16,7 @@ const MODES: { key: Difficulty; label: string }[] = [
   { key: "hard", label: "Hard" },
 ];
 
-export default function SportHome({ sport, onSelectMode, onBack }: Props) {
+export default function SportHome({ sport, onSelectMode, onPastChallenges, onBack }: Props) {
   const [showHowToPlay, setShowHowToPlay] = useState(false);
 
   useEffect(() => {
@@ -52,6 +53,13 @@ export default function SportHome({ sport, onSelectMode, onBack }: Props) {
           </button>
         ))}
       </div>
+
+      <button
+        onClick={onPastChallenges}
+        className="btn-card-muted px-5 py-2.5 rounded-md font-semibold text-sm mt-4 whitespace-nowrap"
+      >
+        Past Challenges
+      </button>
 
       <button
         onClick={() => setShowHowToPlay((v) => !v)}

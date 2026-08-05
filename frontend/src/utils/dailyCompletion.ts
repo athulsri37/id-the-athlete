@@ -1,9 +1,10 @@
-// Per-sport, per-day "already played" tracking for the Daily Challenge,
-// persisted in localStorage under `dailyCompletion:${sportSlug}` (same
-// pattern as dailyStreak). Storing the full guess list lets a completed
-// game be re-displayed read-only (Wordle-style) instead of allowing a
-// fresh attempt, and naturally stops applying once the stored date is no
-// longer today.
+// Per-sport, per-DATE "already played" tracking for the Daily Challenge,
+// persisted in localStorage under `dailyCompletion:${sportSlug}:${date}`.
+// Keyed by date (not just sport) so completion state for many different
+// days -- today's puzzle and any number of past ones via Past Challenges --
+// can coexist without overwriting each other. Storing the full guess list
+// lets a completed game be re-displayed read-only (Wordle-style) instead of
+// allowing a fresh attempt.
 import { GuessResponse } from "../types";
 import { todayLocalDateString } from "./localDate";
 
@@ -14,35 +15,34 @@ export interface DailyCompletion {
   revealedCountry: string | null;
 }
 
-function storageKey(sportSlug: string): string {
-  return `dailyCompletion:${sportSlug}`;
+function storageKey(sportSlug: string, date: string): string {
+  return `dailyCompletion:${sportSlug}:${date}`;
 }
 
-// Returns today's completed Daily Challenge for a sport, or null if today's
-// puzzle hasn't been finished yet (including if the stored record is from
-// an earlier day).
-export function getTodaysCompletion(sportSlug: string): DailyCompletion | null {
-  const raw = localStorage.getItem(storageKey(sportSlug));
+// Returns the completed Daily Challenge for a sport on a specific date, or
+// null if that date hasn't been finished yet (or was never played).
+export function getCompletionForDate(sportSlug: string, date: string): DailyCompletion | null {
+  const raw = localStorage.getItem(storageKey(sportSlug, date));
   if (!raw) return null;
   try {
-    const parsed = JSON.parse(raw) as DailyCompletion;
-    return parsed.date === todayLocalDateString() ? parsed : null;
+    return JSON.parse(raw) as DailyCompletion;
   } catch {
     return null;
   }
 }
 
+// Convenience wrapper: today is just "the date = today" special case.
+export function getTodaysCompletion(sportSlug: string): DailyCompletion | null {
+  return getCompletionForDate(sportSlug, todayLocalDateString());
+}
+
 export function recordDailyCompletion(
   sportSlug: string,
+  date: string,
   won: boolean,
   guesses: GuessResponse[],
   revealedCountry: string | null
 ): void {
-  const completion: DailyCompletion = {
-    date: todayLocalDateString(),
-    won,
-    guesses,
-    revealedCountry,
-  };
-  localStorage.setItem(storageKey(sportSlug), JSON.stringify(completion));
+  const completion: DailyCompletion = { date, won, guesses, revealedCountry };
+  localStorage.setItem(storageKey(sportSlug, date), JSON.stringify(completion));
 }

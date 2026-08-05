@@ -11,6 +11,7 @@ public class GuessRequestDto
     public int PlayerId { get; set; }
     public string Mode { get; set; } = "daily"; // "daily" | "easy" | "medium" | "hard"
     public string? SessionId { get; set; }       // client-generated id for practice-mode sessions
+    public string? Date { get; set; }             // yyyy-MM-dd; daily mode only, omitted = today
 }
 
 public class ClueResultDto

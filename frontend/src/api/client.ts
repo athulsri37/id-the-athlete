@@ -25,19 +25,32 @@ export async function submitGuess(
   playerId: number,
   mode: Difficulty,
   guessNumber: number,
-  sessionId?: string
+  sessionId?: string,
+  date?: string
 ): Promise<GuessResponse> {
   const res = await client.post(
     `/sports/${sportSlug}/game/guess`,
-    { playerId, mode, sessionId },
+    { playerId, mode, sessionId, date },
     { params: { guessNumber } }
   );
   return res.data;
 }
 
-export async function fetchCountryHint(sportSlug: string, mode: Difficulty, sessionId?: string): Promise<string> {
+export async function fetchCountryHint(
+  sportSlug: string,
+  mode: Difficulty,
+  sessionId?: string,
+  date?: string
+): Promise<string> {
   const res = await client.get(`/sports/${sportSlug}/game/hint/country`, {
-    params: { mode, sessionId },
+    params: { mode, sessionId, date },
   });
   return res.data.country as string;
+}
+
+// Every date (yyyy-MM-dd) with an existing Daily Challenge puzzle for this
+// sport, most recent first -- powers the Past Challenges list.
+export async function fetchDailyPuzzleDates(sportSlug: string): Promise<string[]> {
+  const res = await client.get(`/sports/${sportSlug}/daily-puzzles`);
+  return res.data;
 }
