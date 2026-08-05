@@ -5,12 +5,6 @@
 -- AttributeDefinitionId) constraint, both scoped to the "tennis-women"
 -- Sport. No overrides in this batch -- every row is IsOverridden = false,
 -- DifficultyOverride = NULL.
---
--- Note: Ons Jabeur's active_status is "Inactive" -- the first use of this
--- value in the dataset (distinct from "Active"/"Retired"), reflecting a
--- tour hiatus rather than retirement. No comparison logic anywhere treats
--- active_status as a fixed two-value enum, so this is a plain new
--- categorical value, not a schema change.
 
 INSERT INTO "Players" ("SportId", "Name", "IsOverridden", "DifficultyOverride")
 SELECT s."Id", v."Name", v."IsOverridden", v."DifficultyOverride"
@@ -54,7 +48,7 @@ INSERT INTO "PlayerAttributeValues" ("PlayerId", "AttributeDefinitionId", "Value
 SELECT p."Id", ad."Id", v."Value"
 FROM (VALUES
     -- Player,                          AttrKey,                Value
-    ('Ons Jabeur',                      'active_status',        'Inactive'),
+    ('Ons Jabeur',                      'active_status',        'Active'),
     ('Ons Jabeur',                      'plays',                'Right'),
     ('Ons Jabeur',                      'backhand',             'Two-Handed'),
     ('Ons Jabeur',                      'country',              'Tunisia'),
