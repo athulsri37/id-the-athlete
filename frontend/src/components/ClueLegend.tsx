@@ -30,7 +30,7 @@ export default function ClueLegend() {
       {EXAMPLES.map((ex) => (
         <li key={ex.description} className="flex items-center gap-3">
           <span
-            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold ${STATE_CLASSES[ex.state]}`}
+            className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold flex-shrink-0 whitespace-nowrap ${STATE_CLASSES[ex.state]}`}
           >
             {PREFIX_ICONS.has(ex.icon) ? `${ex.icon} ${ex.pill}` : `${ex.pill} ${ex.icon}`}
           </span>
