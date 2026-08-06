@@ -6,3 +6,7 @@
 INSERT INTO "AppSettings" ("Key", "Value")
 VALUES ('CountryClosenessEnabled', 'true')
 ON CONFLICT ("Key") DO NOTHING;
+
+INSERT INTO "AppSettings" ("Key", "Value")
+VALUES ('CricketRoleClueEnabled', 'true')
+ON CONFLICT ("Key") DO NOTHING;
