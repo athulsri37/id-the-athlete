@@ -37,39 +37,16 @@ export default function SportHome({ sport, onSelectMode, onPastChallenges, onBac
         <span className="text-[var(--accent-alt)]">{sport.name}</span>
         <span className="text-[var(--text-primary)]"> Player</span>
       </h1>
-      <p className="text-[var(--text-secondary)] text-sm mb-2">Choose a mode to get started</p>
-      <p className="text-[var(--text-muted)] text-xs mb-8">
-        Tap "How to play ?" below to learn the rules
-      </p>
-
-      <div className="flex flex-wrap justify-center gap-3 max-w-2xl">
-        {MODES.map((m) => (
-          <button
-            key={m.key}
-            onClick={() => onSelectMode(m.key)}
-            className="btn-card px-5 py-3 rounded-md font-semibold text-lg whitespace-nowrap"
-          >
-            {m.label}
-          </button>
-        ))}
-      </div>
-
-      <button
-        onClick={onPastChallenges}
-        className="btn-card-muted px-5 py-2.5 rounded-md font-semibold text-sm mt-4 whitespace-nowrap"
-      >
-        Past Challenges
-      </button>
 
       <button
         onClick={() => setShowHowToPlay((v) => !v)}
-        className="btn-card px-5 py-2 rounded-md font-semibold text-sm mt-12"
+        className="text-sm text-[var(--accent)] underline hover:text-[var(--accent-hover)] mb-8"
       >
         How to play ?
       </button>
 
       {showHowToPlay && (
-        <div className="card rounded-md p-5 mt-4 w-full max-w-md text-left">
+        <div className="card rounded-md p-5 mb-8 w-full max-w-md text-left">
           <div className="mb-4">
             <h2 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wide mb-1">
               Objective
@@ -103,6 +80,21 @@ export default function SportHome({ sport, onSelectMode, onPastChallenges, onBac
           </div>
         </div>
       )}
+
+      <div className="flex flex-col gap-4 w-full max-w-xs">
+        {MODES.map((m) => (
+          <button
+            key={m.key}
+            onClick={() => onSelectMode(m.key)}
+            className="btn-card px-5 py-3 rounded-md font-semibold text-lg"
+          >
+            {m.label}
+          </button>
+        ))}
+        <button onClick={onPastChallenges} className="btn-card px-5 py-3 rounded-md font-semibold text-lg">
+          Past Challenges
+        </button>
+      </div>
     </div>
   );
 }

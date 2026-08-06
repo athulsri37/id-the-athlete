@@ -30,9 +30,7 @@ export default function TourSelect({ onSelectTour, onBack }: Props) {
         <span className="text-[var(--accent-alt)]">Tennis</span>
         <span className="text-[var(--text-primary)]"> Player</span>
       </h1>
-      <p className="text-[var(--text-secondary)] text-sm mb-10">Choose a tour to get started</p>
-
-      <div className="flex flex-col gap-3 w-full max-w-xs">
+      <div className="flex flex-col gap-4 w-full max-w-xs mt-10">
         {TOURS.map((tour) => (
           <button
             key={tour.slug}
