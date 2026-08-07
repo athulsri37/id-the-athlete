@@ -1,5 +1,5 @@
 import axios from "axios";
-import { PlayerSummary, GuessResponse, Difficulty } from "../types";
+import { PlayerSummary, GuessResponse, Difficulty, AttributeDefinition } from "../types";
 
 const client = axios.create({ baseURL: "/api" });
 
@@ -52,5 +52,14 @@ export async function fetchCountryHint(
 // sport, most recent first -- powers the Past Challenges list.
 export async function fetchDailyPuzzleDates(sportSlug: string): Promise<string[]> {
   const res = await client.get(`/sports/${sportSlug}/daily-puzzles`);
+  return res.data;
+}
+
+// This sport's attribute set, in display order -- powers the clue-grid
+// column headers. Never hardcode a sport's attribute list on the frontend;
+// each sport (Tennis, Cricket, ...) defines its own, and this is the only
+// source of truth for what they are.
+export async function fetchAttributeDefinitions(sportSlug: string): Promise<AttributeDefinition[]> {
+  const res = await client.get(`/sports/${sportSlug}/attributes`);
   return res.data;
 }

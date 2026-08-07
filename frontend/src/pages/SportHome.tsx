@@ -52,7 +52,7 @@ export default function SportHome({ sport, onSelectMode, onPastChallenges, onBac
               Objective
             </h2>
             <p className="text-[var(--text-secondary)] text-sm">
-              Guess the mystery tennis player in 8 tries using clues.
+              Guess the mystery player in 8 tries using clues.
             </p>
           </div>
 

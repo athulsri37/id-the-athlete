@@ -68,6 +68,24 @@ public class GameController : ControllerBase
         }
     }
 
+    // GET /api/sports/tennis-men/attributes
+    // Ordered attribute set (key + label) for this sport -- powers the
+    // clue-grid column headers, which must reflect whatever attributes this
+    // sport actually has rather than assuming Tennis's fixed set.
+    [HttpGet("/api/sports/{sportSlug}/attributes")]
+    public async Task<IActionResult> GetAttributeDefinitions(string sportSlug)
+    {
+        try
+        {
+            var attributes = await _gameService.GetAttributeDefinitionsAsync(sportSlug);
+            return Ok(attributes);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
     // GET /api/sports/tennis-men/daily-puzzles
     // Every date that has an existing Daily Challenge puzzle for this
     // sport, most recent first -- powers the Past Challenges list. No

@@ -1,11 +1,14 @@
-import { GuessResponse } from "../types";
+import { AttributeDefinition, GuessResponse } from "../types";
 
 interface Props {
   guesses: GuessResponse[];
   revealedCountry?: string | null;
+  // This sport's attribute set, in display order -- drives both the column
+  // headers and the grid's column count. Never a fixed list: Tennis has 8
+  // attributes, Cricket has 9, and future sports may have a different count
+  // again, so the header row can't assume any particular sport's shape.
+  attributes: AttributeDefinition[];
 }
-
-const LABELS = ["Status", "Plays", "Backhand", "Country", "Slams", "Highest Rank", "Pro Yr", "Titles"];
 
 // Responsive cell padding: generous on wide screens, compresses on narrow ones
 // instead of forcing the table to overflow.
@@ -30,16 +33,23 @@ function ResultIcon({
   return <span className="ml-1 text-xs">✕</span>;
 }
 
-export default function ClueGrid({ guesses, revealedCountry }: Props) {
+export default function ClueGrid({ guesses, revealedCountry, attributes }: Props) {
+  // Two fixed leading columns (guess number, player name) plus one per
+  // attribute. Tailwind's grid-cols-N utilities only cover a fixed set of
+  // class names its scanner can see in source, which can't work for a
+  // column count that varies by sport -- so this goes through an inline
+  // style instead, matching what grid-cols-N generates under the hood.
+  const gridStyle = { gridTemplateColumns: `repeat(${2 + attributes.length}, minmax(0, 1fr))` };
+
   return (
     <div className="mt-6 max-w-[96vw] overflow-x-auto">
       <div className="min-w-[720px]">
-        <div className="grid grid-cols-10 gap-1.5 mb-1.5 rounded-md bg-[var(--text-primary)] p-1">
+        <div className="grid gap-1.5 mb-1.5 rounded-md bg-[var(--text-primary)] p-1" style={gridStyle}>
           <div className={`text-xs font-semibold text-[var(--bg-primary)] ${CELL_PADDING}`}></div>
           <div className={`text-xs font-semibold text-[var(--bg-primary)] ${CELL_PADDING}`}>Player</div>
-          {LABELS.map((l) => (
-            <div key={l} className={`text-xs font-semibold text-[var(--bg-primary)] text-center ${CELL_PADDING}`}>
-              {l}
+          {attributes.map((a) => (
+            <div key={a.key} className={`text-xs font-semibold text-[var(--bg-primary)] text-center ${CELL_PADDING}`}>
+              {a.label}
             </div>
           ))}
         </div>
@@ -52,7 +62,8 @@ export default function ClueGrid({ guesses, revealedCountry }: Props) {
           guesses.map((g, idx) => (
             <div
               key={idx}
-              className={`grid grid-cols-10 gap-1.5 mb-1.5 rounded-md p-1 ${idx % 2 === 1 ? "bg-[var(--row-alt-bg)]" : ""}`}
+              className={`grid gap-1.5 mb-1.5 rounded-md p-1 ${idx % 2 === 1 ? "bg-[var(--row-alt-bg)]" : ""}`}
+              style={gridStyle}
             >
               <div className="flex items-center justify-center">
                 <span className="flex items-center justify-center w-7 h-7 rounded-full bg-[var(--accent-alt)] text-[var(--on-accent-alt)] text-xs font-bold">

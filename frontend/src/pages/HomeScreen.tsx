@@ -2,9 +2,10 @@ import { useEffect } from "react";
 
 interface Props {
   onSelectTennis: () => void;
+  onSelectCricket: () => void;
 }
 
-export default function HomeScreen({ onSelectTennis }: Props) {
+export default function HomeScreen({ onSelectTennis, onSelectCricket }: Props) {
   useEffect(() => {
     document.title = "ID the Athlete";
   }, []);
@@ -26,6 +27,12 @@ export default function HomeScreen({ onSelectTennis }: Props) {
           className="btn-card px-5 py-3 rounded-md font-semibold text-lg"
         >
           Tennis
+        </button>
+        <button
+          onClick={onSelectCricket}
+          className="btn-card px-5 py-3 rounded-md font-semibold text-lg"
+        >
+          Cricket
         </button>
       </div>
 
