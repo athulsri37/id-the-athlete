@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { fetchPlayerPool, startPracticeGame, submitGuess, fetchCountryHint } from "../api/client";
-import { PlayerSummary, GuessResponse, Difficulty } from "../types";
+import { fetchPlayerPool, startPracticeGame, submitGuess, fetchCountryHint, fetchAttributeDefinitions } from "../api/client";
+import { PlayerSummary, GuessResponse, Difficulty, AttributeDefinition } from "../types";
 import PlayerSearch from "../components/PlayerSearch";
 import ClueGrid from "../components/ClueGrid";
 import ClueLegend from "../components/ClueLegend";
@@ -25,6 +25,7 @@ interface Props {
 
 export default function GameBoard({ mode, sportSlug, sportName, dailyDate, onBackToHome }: Props) {
   const [players, setPlayers] = useState<PlayerSummary[]>([]);
+  const [attributes, setAttributes] = useState<AttributeDefinition[]>([]);
   const [sessionId, setSessionId] = useState<string | undefined>(undefined);
   const [guesses, setGuesses] = useState<GuessResponse[]>([]);
   const [error, setError] = useState("");
@@ -54,6 +55,7 @@ export default function GameBoard({ mode, sportSlug, sportName, dailyDate, onBac
 
   useEffect(() => {
     fetchPlayerPool(sportSlug).then(setPlayers).catch(() => setError("Couldn't load player list."));
+    fetchAttributeDefinitions(sportSlug).then(setAttributes).catch(() => setError("Couldn't load clue columns."));
   }, [sportSlug]);
 
   const startNewGame = async () => {
@@ -186,7 +188,7 @@ export default function GameBoard({ mode, sportSlug, sportName, dailyDate, onBac
         <span className="text-[var(--accent-alt)]">{sportName}</span>
         <span className="text-[var(--text-primary)]"> Player</span>
       </h1>
-      <p className="text-[var(--text-secondary)] text-sm mb-1">Guess the mystery tennis player in 8 tries</p>
+      <p className="text-[var(--text-secondary)] text-sm mb-1">Guess the mystery player in 8 tries</p>
       {isPastDate && (
         <p className="text-[var(--text-muted)] text-xs mb-5">
           Playing:{" "}
@@ -247,7 +249,7 @@ export default function GameBoard({ mode, sportSlug, sportName, dailyDate, onBac
           </div>
         )}
 
-        <ClueGrid guesses={guesses} revealedCountry={revealedCountry} />
+        <ClueGrid guesses={guesses} revealedCountry={revealedCountry} attributes={attributes} />
 
         {gameOver && (
           <div className="mt-6 text-center">

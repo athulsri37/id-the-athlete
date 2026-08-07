@@ -8,6 +8,11 @@ export interface Sport {
   name: string;
 }
 
+export interface AttributeDefinition {
+  key: string;
+  label: string;
+}
+
 export interface ClueResult {
   attributeKey: string;
   label: string;

@@ -293,6 +293,22 @@ public class GameService
         }
     }
 
+    // Ordered attribute set for this sport, used by the frontend to render
+    // the clue-grid column headers before any guess exists (each sport's
+    // AttributeDefinitions differ -- Tennis has 8, Cricket has 9 -- so the
+    // headers can never be a hardcoded list on the client).
+    public async Task<List<AttributeDefinitionDto>> GetAttributeDefinitionsAsync(string sportSlug)
+    {
+        var sport = await _db.Sports.FirstOrDefaultAsync(s => s.Slug == sportSlug)
+            ?? throw new InvalidOperationException($"Sport '{sportSlug}' not found");
+
+        return await _db.AttributeDefinitions
+            .Where(a => a.SportId == sport.Id)
+            .OrderBy(a => a.DisplayOrder)
+            .Select(a => new AttributeDefinitionDto { Key = a.Key, Label = a.Label })
+            .ToListAsync();
+    }
+
     // Every date (yyyy-MM-dd) that has an existing Daily Challenge puzzle
     // for this sport, most recent first. Deliberately just the dates --
     // completion/streak status is tracked entirely client-side (localStorage),

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import HomeScreen from "./pages/HomeScreen";
-import TourSelect from "./pages/TourSelect";
+import TourSelect, { TENNIS_TOUR_CONFIG, CRICKET_TOUR_CONFIG } from "./pages/TourSelect";
 import SportHome from "./pages/SportHome";
 import PastChallenges from "./pages/PastChallenges";
 import GameBoard from "./pages/GameBoard";
@@ -8,9 +8,13 @@ import { Sport, Difficulty } from "./types";
 import { fetchActiveTheme } from "./api/client";
 
 type Screen = "home" | "tourSelect" | "sportHome" | "pastChallenges" | "game";
+type SportFamily = "tennis" | "cricket";
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("home");
+  // Which Home card was tapped -- picks which TourSelect config to render.
+  // Null only while on the Home screen itself.
+  const [sportFamily, setSportFamily] = useState<SportFamily | null>(null);
   const [sport, setSport] = useState<Sport | null>(null);
   const [mode, setMode] = useState<Difficulty | null>(null);
   // Set only when playing/replaying a specific past date via Past
@@ -27,15 +31,25 @@ export default function App() {
 
   const goHome = () => {
     setScreen("home");
+    setSportFamily(null);
     setSport(null);
     setMode(null);
     setDailyDate(null);
   };
 
   const selectTennis = () => {
+    setSportFamily("tennis");
     setScreen("tourSelect");
   };
 
+  const selectCricket = () => {
+    setSportFamily("cricket");
+    setScreen("tourSelect");
+  };
+
+  // Back button from SportHome: return to this same family's tour-select
+  // screen (sportFamily is already set from however we first got here, so
+  // it's deliberately left untouched).
   const goToTourSelect = () => {
     setSport(null);
     setMode(null);
@@ -84,8 +98,9 @@ export default function App() {
     return null;
   }
 
-  if (screen === "tourSelect") {
-    return <TourSelect onSelectTour={selectTour} onBack={goHome} />;
+  if (screen === "tourSelect" && sportFamily) {
+    const config = sportFamily === "cricket" ? CRICKET_TOUR_CONFIG : TENNIS_TOUR_CONFIG;
+    return <TourSelect {...config} onSelectTour={selectTour} onBack={goHome} />;
   }
 
   if (screen === "sportHome" && sport) {
@@ -115,5 +130,5 @@ export default function App() {
     );
   }
 
-  return <HomeScreen onSelectTennis={selectTennis} />;
+  return <HomeScreen onSelectTennis={selectTennis} onSelectCricket={selectCricket} />;
 }
