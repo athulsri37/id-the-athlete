@@ -38,3 +38,14 @@ ON CONFLICT ("Key") DO NOTHING;
 INSERT INTO "AppSettings" ("Key", "Value")
 VALUES ('CricketWicketsClosenessFloor', '15')
 ON CONFLICT ("Key") DO NOTHING;
+
+-- Cricket categorical closeness (Role, Bowling Style), each independently
+-- toggleable -- when false, that clue reverts to plain match/miss with no
+-- closeness check at all, same pattern as CountryClosenessEnabled.
+INSERT INTO "AppSettings" ("Key", "Value")
+VALUES ('CricketRoleClosenessEnabled', 'true')
+ON CONFLICT ("Key") DO NOTHING;
+
+INSERT INTO "AppSettings" ("Key", "Value")
+VALUES ('CricketBowlingStyleClosenessEnabled', 'true')
+ON CONFLICT ("Key") DO NOTHING;

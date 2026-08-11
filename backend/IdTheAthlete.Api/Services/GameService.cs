@@ -47,6 +47,35 @@ public class GameService
         ["combined_wickets"] = ("CricketWicketsClosenessPercent", "CricketWicketsClosenessFloor"),
     };
 
+    // Cricket-only: Role closeness via tag-based grouping -- two roles
+    // (that aren't an exact match) are close if they share at least one
+    // tag. Gated by CricketRoleClosenessEnabled, checked fresh per guess
+    // the same way as the country/numeric flags above. Entirely separate
+    // from, and never touches, Tennis's categorical comparison (Plays,
+    // Backhand, Active Status), which has no closeness tier at all.
+    private static readonly Dictionary<string, string[]> RoleTags = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Batter"] = new[] { "Batting" },
+        ["Wicketkeeper-Batter"] = new[] { "Batting" },
+        ["Batting All-rounder"] = new[] { "Batting", "All-Rounder" },
+        ["Bowler"] = new[] { "Bowling" },
+        ["Bowling All-rounder"] = new[] { "Bowling", "All-Rounder" },
+        ["All-rounder"] = new[] { "All-Rounder" },
+    };
+
+    // Cricket-only: Bowling Style closeness, grouped by pace vs. spin and
+    // ignoring which arm. "Hasn't Bowled" has no entry -- it's isolated,
+    // never close to any other value (an exact "Hasn't Bowled" vs. "Hasn't
+    // Bowled" pairing is already a match, so it never reaches this check).
+    // Gated by CricketBowlingStyleClosenessEnabled.
+    private static readonly Dictionary<string, string> BowlingStyleGroup = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Right-arm Pace"] = "Pace",
+        ["Left-arm Pace"] = "Pace",
+        ["Right-arm Spin"] = "Spin",
+        ["Left-arm Spin"] = "Spin",
+    };
+
     public GameService(GameDbContext db, AiTriviaService aiTriviaService)
     {
         _db = db;
@@ -195,6 +224,8 @@ public class GameService
             .ToListAsync();
 
         var countryClosenessEnabled = await IsCountryClosenessEnabledAsync();
+        var cricketRoleClosenessEnabled = await IsAppSettingEnabledAsync("CricketRoleClosenessEnabled");
+        var cricketBowlingStyleClosenessEnabled = await IsAppSettingEnabledAsync("CricketBowlingStyleClosenessEnabled");
         var cricketClosenessSettings = await GetAppSettingsAsync(
             CricketNumericClosenessSettingKeys.Values.SelectMany(k => new[] { k.PercentKey, k.FloorKey })
         );
@@ -238,9 +269,20 @@ public class GameService
             {
                 clue.IsMatch = string.Equals(guessedValue, mysteryValue, StringComparison.OrdinalIgnoreCase);
 
-                if (!clue.IsMatch && def.Key == "country" && countryClosenessEnabled)
+                if (!clue.IsMatch)
                 {
-                    clue.IsClose = CountryProximity.IsClose(guessedValue, mysteryValue);
+                    if (def.Key == "country" && countryClosenessEnabled)
+                    {
+                        clue.IsClose = CountryProximity.IsClose(guessedValue, mysteryValue);
+                    }
+                    else if (def.Key == "role" && cricketRoleClosenessEnabled)
+                    {
+                        clue.IsClose = AreCricketRolesClose(guessedValue, mysteryValue);
+                    }
+                    else if (def.Key == "bowling_style" && cricketBowlingStyleClosenessEnabled)
+                    {
+                        clue.IsClose = AreCricketBowlingStylesClose(guessedValue, mysteryValue);
+                    }
                 }
             }
 
@@ -320,6 +362,41 @@ public class GameService
         {
             return false;
         }
+    }
+
+    // General-purpose boolean AppSettings flag, read fresh (no caching)
+    // every time it's called. IsCountryClosenessEnabledAsync above predates
+    // this and is left as its own method rather than refactored onto this
+    // one, to keep this change's diff scoped to what it actually needs.
+    private async Task<bool> IsAppSettingEnabledAsync(string key)
+    {
+        try
+        {
+            var value = await _db.AppSettings
+                .Where(s => s.Key == key)
+                .Select(s => s.Value)
+                .FirstOrDefaultAsync();
+
+            return value == "true";
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool AreCricketRolesClose(string guessedRole, string mysteryRole)
+    {
+        return RoleTags.TryGetValue(guessedRole, out var guessedTags) &&
+               RoleTags.TryGetValue(mysteryRole, out var mysteryTags) &&
+               guessedTags.Intersect(mysteryTags, StringComparer.OrdinalIgnoreCase).Any();
+    }
+
+    private static bool AreCricketBowlingStylesClose(string guessedStyle, string mysteryStyle)
+    {
+        return BowlingStyleGroup.TryGetValue(guessedStyle, out var guessedGroup) &&
+               BowlingStyleGroup.TryGetValue(mysteryStyle, out var mysteryGroup) &&
+               string.Equals(guessedGroup, mysteryGroup, StringComparison.OrdinalIgnoreCase);
     }
 
     // Reads a batch of AppSettings values fresh from the database and
