@@ -23,12 +23,28 @@ public class GameService
     // "Close" tolerance per numeric attribute, applied only when a guess
     // isn't an exact match. Attributes with no entry here never show a
     // close state.
+    // Tennis-only: fixed absolute closeness thresholds, untouched by the
+    // Cricket closeness feature below (entirely separate code path).
     private static readonly Dictionary<string, decimal> NumericCloseThresholds = new()
     {
         ["grand_slam_titles"] = 2,
         ["career_high_ranking"] = 5,
         ["turned_pro_year"] = 3,
         ["career_titles"] = 5,
+    };
+
+    // Cricket-only: percent-of-actual-value closeness, with a floor so a
+    // player with a small actual value (e.g. a bowler on 8 wickets) doesn't
+    // get an unreasonably tiny closeness window. Unlike Tennis's fixed
+    // thresholds above, both numbers are read from AppSettings fresh on
+    // every guess (see GetAppSettingsAsync), not hardcoded, so they can be
+    // retuned live without a redeploy. debut_year deliberately has no
+    // closeness tier, same as before this feature.
+    private static readonly Dictionary<string, (string PercentKey, string FloorKey)> CricketNumericClosenessSettingKeys = new()
+    {
+        ["combined_matches"] = ("CricketMatchesClosenessPercent", "CricketMatchesClosenessFloor"),
+        ["combined_runs"] = ("CricketRunsClosenessPercent", "CricketRunsClosenessFloor"),
+        ["combined_wickets"] = ("CricketWicketsClosenessPercent", "CricketWicketsClosenessFloor"),
     };
 
     public GameService(GameDbContext db, AiTriviaService aiTriviaService)
@@ -179,6 +195,9 @@ public class GameService
             .ToListAsync();
 
         var countryClosenessEnabled = await IsCountryClosenessEnabledAsync();
+        var cricketClosenessSettings = await GetAppSettingsAsync(
+            CricketNumericClosenessSettingKeys.Values.SelectMany(k => new[] { k.PercentKey, k.FloorKey })
+        );
 
         var clues = attributeDefs.Select(def =>
         {
@@ -200,9 +219,19 @@ public class GameService
                 clue.IsMatch = guessedNum == mysteryNum;
                 clue.Direction = clue.IsMatch ? null : (mysteryNum > guessedNum ? "up" : "down");
 
-                if (!clue.IsMatch && NumericCloseThresholds.TryGetValue(def.Key, out var threshold))
+                if (!clue.IsMatch)
                 {
-                    clue.IsClose = Math.Abs(mysteryNum - guessedNum) <= threshold;
+                    if (CricketNumericClosenessSettingKeys.TryGetValue(def.Key, out var settingKeys) &&
+                        cricketClosenessSettings.TryGetValue(settingKeys.PercentKey, out var percent) &&
+                        cricketClosenessSettings.TryGetValue(settingKeys.FloorKey, out var floor))
+                    {
+                        var threshold = Math.Max(mysteryNum * (percent / 100m), floor);
+                        clue.IsClose = Math.Abs(mysteryNum - guessedNum) <= threshold;
+                    }
+                    else if (NumericCloseThresholds.TryGetValue(def.Key, out var tennisThreshold))
+                    {
+                        clue.IsClose = Math.Abs(mysteryNum - guessedNum) <= tennisThreshold;
+                    }
                 }
             }
             else
@@ -291,6 +320,29 @@ public class GameService
         {
             return false;
         }
+    }
+
+    // Reads a batch of AppSettings values fresh from the database and
+    // parses each as a decimal, skipping any that are missing or
+    // unparseable rather than throwing -- callers treat an absent key as
+    // "no closeness for this attribute" (see CricketNumericClosenessSettingKeys
+    // usage), not an error. Queried in a single round-trip per guess, and
+    // never cached, so an operator retuning a threshold via SQL takes
+    // effect on the very next guess with no redeploy.
+    private async Task<Dictionary<string, decimal>> GetAppSettingsAsync(IEnumerable<string> keys)
+    {
+        var keyList = keys.ToList();
+        var rows = await _db.AppSettings
+            .Where(s => keyList.Contains(s.Key))
+            .ToListAsync();
+
+        var result = new Dictionary<string, decimal>();
+        foreach (var row in rows)
+        {
+            if (decimal.TryParse(row.Value, out var parsed))
+                result[row.Key] = parsed;
+        }
+        return result;
     }
 
     // Ordered attribute set for this sport, used by the frontend to render
