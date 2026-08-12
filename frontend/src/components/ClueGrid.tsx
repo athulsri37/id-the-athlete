@@ -26,10 +26,11 @@ function ResultIcon({
   if (isMatch) return <span className="ml-1 text-xs">✓</span>;
   // Direction takes priority over closeness for numeric attributes -- the
   // arrow is still the more useful signal, closeness only changes the pill
-  // color. Categorical attributes (only country can be "close") have no
-  // direction, so they get a distinct "approximately" mark instead.
+  // color. Categorical attributes (country, and Cricket's Role/Bowling
+  // Style) have no direction, so they get a distinct "approximately" mark
+  // instead.
   if (direction) return <span className="ml-1 text-xs">{direction === "up" ? "▲" : "▼"}</span>;
-  if (isClose) return <span className="ml-1 text-xs">~</span>;
+  if (isClose) return <span className="ml-1 text-xs">≈</span>;
   return <span className="ml-1 text-xs">✕</span>;
 }
 
