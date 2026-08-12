@@ -13,6 +13,7 @@ builder.Services.AddDbContext<GameDbContext>(options =>
 
 builder.Services.AddScoped<GameService>();
 builder.Services.AddHttpClient<AiTriviaService>();
+builder.Services.AddHostedService<DailyPuzzleGenerationService>();
 
 builder.Services.AddCors(options =>
 {
