@@ -76,6 +76,48 @@ public class GameService
         ["Left-arm Spin"] = "Spin",
     };
 
+    private static readonly HashSet<string> CricketSportSlugs = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "cricket-men-international",
+        "cricket-women-international",
+    };
+
+    // Cricket-only: country closeness via cricket-specific regional blocs,
+    // NOT the land-border geography in CountryProximity.cs (which is
+    // wrong for cricket -- e.g. Pakistan and Bangladesh are closely linked
+    // cricket nations despite no shared land border, and Australia-New
+    // Zealand, cricket's defining rivalry, also shares no border). Always
+    // active for Cricket -- deliberately no AppSettings flag, unlike
+    // CountryClosenessEnabled/CricketRoleClosenessEnabled/etc., since this
+    // is a straightforward correctness fix to core comparison logic for
+    // Cricket, not an experimental or tunable feature. A country not
+    // listed here has no bloc and never counts as close via this
+    // mechanism (an exact match still works normally regardless). Tennis
+    // keeps using CountryProximity.IsClose below, completely unchanged --
+    // this dictionary and CountryClosenessEnabled are never consulted for
+    // Cricket's country clue.
+    private static readonly Dictionary<string, string> CricketCountryBloc = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["India"] = "Asia",
+        ["Pakistan"] = "Asia",
+        ["Bangladesh"] = "Asia",
+        ["Sri Lanka"] = "Asia",
+        ["Afghanistan"] = "Asia",
+        ["Nepal"] = "Asia",
+        ["Australia"] = "Oceania",
+        ["New Zealand"] = "Oceania",
+        ["England"] = "British Isles",
+        ["Ireland"] = "British Isles",
+        ["Scotland"] = "British Isles",
+        ["Netherlands"] = "British Isles",
+        ["South Africa"] = "Africa",
+        ["Namibia"] = "Africa",
+        ["Zimbabwe"] = "Africa",
+        ["West Indies"] = "Americas",
+        ["USA"] = "Americas",
+        ["Canada"] = "Americas",
+    };
+
     public GameService(GameDbContext db, AiTriviaService aiTriviaService)
     {
         _db = db;
@@ -271,8 +313,14 @@ public class GameService
 
                 if (!clue.IsMatch)
                 {
-                    if (def.Key == "country" && countryClosenessEnabled)
+                    if (def.Key == "country" && CricketSportSlugs.Contains(sportSlug))
                     {
+                        // Cricket: regional bloc, unconditional -- no flag.
+                        clue.IsClose = AreCricketCountriesClose(guessedValue, mysteryValue);
+                    }
+                    else if (def.Key == "country" && countryClosenessEnabled)
+                    {
+                        // Tennis (and any other non-Cricket sport): unchanged.
                         clue.IsClose = CountryProximity.IsClose(guessedValue, mysteryValue);
                     }
                     else if (def.Key == "role" && cricketRoleClosenessEnabled)
@@ -390,6 +438,13 @@ public class GameService
         return RoleTags.TryGetValue(guessedRole, out var guessedTags) &&
                RoleTags.TryGetValue(mysteryRole, out var mysteryTags) &&
                guessedTags.Intersect(mysteryTags, StringComparer.OrdinalIgnoreCase).Any();
+    }
+
+    private static bool AreCricketCountriesClose(string guessedCountry, string mysteryCountry)
+    {
+        return CricketCountryBloc.TryGetValue(guessedCountry, out var guessedBloc) &&
+               CricketCountryBloc.TryGetValue(mysteryCountry, out var mysteryBloc) &&
+               string.Equals(guessedBloc, mysteryBloc, StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool AreCricketBowlingStylesClose(string guessedStyle, string mysteryStyle)
