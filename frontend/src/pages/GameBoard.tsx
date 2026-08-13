@@ -272,7 +272,7 @@ export default function GameBoard({ mode, sportSlug, sportName, dailyDate, onBac
                   <p className="text-[var(--accent)] text-[11px] font-bold uppercase tracking-wider mb-1">
                     Did you know?
                   </p>
-                  <p className="text-[var(--text-primary)] text-sm leading-relaxed">
+                  <p className="text-[var(--text-primary)] text-sm leading-relaxed text-justify">
                     {guesses[guesses.length - 1].triviaBlurb}
                   </p>
                 </div>
