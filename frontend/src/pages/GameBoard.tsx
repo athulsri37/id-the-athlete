@@ -264,9 +264,22 @@ export default function GameBoard({ mode, sportSlug, sportName, dailyDate, onBac
               {won ? "🎾 Nailed it !" : `The player was ${guesses[guesses.length - 1].answerName}`}
             </p>
             {guesses[guesses.length - 1].triviaBlurb && (
-              <p className="text-[var(--text-muted)] text-xs italic mt-2 max-w-sm mx-auto">
-                {guesses[guesses.length - 1].triviaBlurb}
-              </p>
+              <div className="mt-3 max-w-sm mx-auto flex items-start gap-3 text-left rounded-md border-l-4 border-[var(--accent)] bg-[var(--bg-card)] px-4 py-3">
+                <span
+                  className="flex-shrink-0 flex items-center justify-center w-6 h-6 text-lg"
+                  aria-hidden="true"
+                >
+                  💡
+                </span>
+                <div>
+                  <p className="text-[var(--accent)] text-[11px] font-bold uppercase tracking-wider mb-1">
+                    Did you know?
+                  </p>
+                  <p className="text-[var(--text-primary)] text-sm leading-relaxed text-justify">
+                    {guesses[guesses.length - 1].triviaBlurb}
+                  </p>
+                </div>
+              </div>
             )}
             {mode === "daily" && !isPastDate && streak && (
               <p className="text-[var(--text-primary)] text-sm font-semibold mt-2">

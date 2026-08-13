@@ -74,11 +74,27 @@ public class AiTriviaService
             if (string.IsNullOrWhiteSpace(model))
                 model = DefaultModel;
 
+            // player.Sport may or may not be Included by the caller, but
+            // player.SportId (the scalar FK) is always populated by EF
+            // Core regardless -- looking it up directly here means this
+            // service never depends on a specific caller's query shape.
+            var sportName = await _db.Sports
+                .Where(s => s.Id == player.SportId)
+                .Select(s => s.Name)
+                .FirstOrDefaultAsync();
+
+            // e.g. "Men's Tennis player" or "Men's International Cricket
+            // player" -- never a hardcoded sport. Falls back to a still-
+            // correct generic phrasing if the sport can't be resolved
+            // (shouldn't happen given FK integrity) rather than silently
+            // re-introducing a "tennis player" assumption.
+            var playerDescription = string.IsNullOrWhiteSpace(sportName) ? "athlete" : $"{sportName} player";
+
             var stats = string.Join(", ", player.AttributeValues
                 .Where(v => v.AttributeDefinition != null)
                 .Select(v => $"{v.AttributeDefinition!.Label}: {v.Value}"));
 
-            var prompt = $"Write a short, engaging trivia blurb (exactly 2 sentences) about the tennis player {player.Name}. " +
+            var prompt = $"Write a short, engaging trivia blurb (exactly 2 sentences) about the {playerDescription} {player.Name}. " +
                          $"Use these stats as context: {stats}. Return only the blurb text, with no preamble or quotation marks.";
 
             var requestBody = new
