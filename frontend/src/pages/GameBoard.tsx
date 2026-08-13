@@ -265,7 +265,10 @@ export default function GameBoard({ mode, sportSlug, sportName, dailyDate, onBac
             </p>
             {guesses[guesses.length - 1].triviaBlurb && (
               <div className="mt-3 max-w-sm mx-auto flex items-start gap-3 text-left rounded-md border-l-4 border-[var(--accent)] bg-[var(--bg-card)] px-4 py-3">
-                <span className="text-lg leading-none mt-0.5" aria-hidden="true">
+                <span
+                  className="flex-shrink-0 flex items-center justify-center w-6 h-6 text-lg"
+                  aria-hidden="true"
+                >
                   💡
                 </span>
                 <div>
