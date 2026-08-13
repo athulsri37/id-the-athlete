@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using IdTheAthlete.Api.Data;
+using IdTheAthlete.Api.Middleware;
 using IdTheAthlete.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,6 +13,7 @@ builder.Services.AddDbContext<GameDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<GameService>();
+builder.Services.AddScoped<AdminService>();
 builder.Services.AddHttpClient<AiTriviaService>();
 builder.Services.AddHostedService<DailyPuzzleGenerationService>();
 
@@ -40,6 +42,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
+app.UseMiddleware<AdminAuthMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
 
