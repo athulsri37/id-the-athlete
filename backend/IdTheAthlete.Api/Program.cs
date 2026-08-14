@@ -17,6 +17,18 @@ builder.Services.AddScoped<AdminService>();
 builder.Services.AddHttpClient<AiTriviaService>();
 builder.Services.AddHostedService<DailyPuzzleGenerationService>();
 
+// GameService's former responsibilities, now split into focused
+// components (see each class's own file for why). DifficultyService is
+// pure/stateless -> Singleton. The rest depend on GameDbContext (Scoped)
+// or, for PracticeSessionService, need one shared instance for the app's
+// lifetime -> Singleton there too, holding the state itself rather than
+// via a static field.
+builder.Services.AddSingleton<DifficultyService>();
+builder.Services.AddScoped<NumericClosenessEvaluator>();
+builder.Services.AddScoped<CategoricalClosenessEvaluator>();
+builder.Services.AddSingleton<PracticeSessionService>();
+builder.Services.AddScoped<DailyPuzzleService>();
+
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>

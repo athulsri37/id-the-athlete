@@ -9,10 +9,12 @@ namespace IdTheAthlete.Api.Controllers;
 public class GameController : ControllerBase
 {
     private readonly GameService _gameService;
+    private readonly DailyPuzzleService _dailyPuzzleService;
 
-    public GameController(GameService gameService)
+    public GameController(GameService gameService, DailyPuzzleService dailyPuzzleService)
     {
         _gameService = gameService;
+        _dailyPuzzleService = dailyPuzzleService;
     }
 
     // POST /api/sports/tennis-men/game/start?difficulty=easy
@@ -95,7 +97,7 @@ public class GameController : ControllerBase
     {
         try
         {
-            var dates = await _gameService.GetDailyPuzzleDatesAsync(sportSlug);
+            var dates = await _dailyPuzzleService.GetDailyPuzzleDatesAsync(sportSlug);
             return Ok(dates);
         }
         catch (InvalidOperationException ex)

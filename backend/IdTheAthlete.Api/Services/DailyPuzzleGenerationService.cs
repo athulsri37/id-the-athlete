@@ -5,9 +5,9 @@ namespace IdTheAthlete.Api.Services;
 
 // Generates every Sport's Daily Challenge puzzle on a fixed 00:00 UTC
 // schedule, replacing pure lazy/on-demand generation as the primary
-// mechanism (GameService.GetTodaysMysteryPlayerIdAsync keeps a lazy
-// fallback for the rare case this service and its startup catch-up both
-// somehow miss a sport for a day -- see its warning log if that happens).
+// mechanism (DailyPuzzleService keeps a lazy fallback for the rare case
+// this service and its startup catch-up both somehow miss a sport for a
+// day -- see its warning log if that happens).
 //
 // Loops over every row in the Sports table rather than any hardcoded list,
 // so a future sport (e.g. Cricket Domestic) is covered automatically with
@@ -66,7 +66,7 @@ public class DailyPuzzleGenerationService : BackgroundService
     {
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<GameDbContext>();
-        var gameService = scope.ServiceProvider.GetRequiredService<GameService>();
+        var dailyPuzzleService = scope.ServiceProvider.GetRequiredService<DailyPuzzleService>();
 
         var sports = await db.Sports.ToListAsync(stoppingToken);
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
@@ -75,7 +75,7 @@ public class DailyPuzzleGenerationService : BackgroundService
         {
             try
             {
-                var created = await gameService.EnsureDailyPuzzleAsync(sport.Id, today);
+                var created = await dailyPuzzleService.EnsureDailyPuzzleAsync(sport.Id, today);
                 if (created)
                 {
                     _logger.LogInformation(
