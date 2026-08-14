@@ -10,10 +10,23 @@
   --accent-alt-hover: #9c5225;
   --on-accent: #2B2118;
   --on-accent-alt: #FFFCF2;
+  /* --accent reads fine as a solid pill fill (match state) or on hover
+     against --bg-card, but as resting link text on the cream/tan
+     background its contrast is nearly 1:1 -- links need their own,
+     darker accent so they stay legible while --accent itself (and
+     everything already relying on it) is untouched. */
+  --link-accent: #9c5225;
+  --link-accent-hover: #7a3f1c;
   --border: rgba(43, 33, 24, 0.25);
   --border-strong: #2B2118;
   --miss-bg: rgba(181, 96, 43, 0.35);
-  --close-bg: rgba(232, 168, 46, 0.45);
+  /* Deeper/more saturated than a plain gold -- at the old (232,168,46)
+     tone, blended over this theme's cream background, the "close" pill
+     was nearly indistinguishable from the page itself (both land in the
+     same pale yellow-tan family). Darkening and upping the opacity keeps
+     it warm/amber (still clearly not miss's rust or match's green) while
+     actually standing out against the cream. */
+  --close-bg: rgba(199, 144, 12, 0.62);
   --row-alt-bg: rgba(43, 33, 24, 0.05);
   --card-border-width: 3px;
   --card-shadow: 4px 4px 0px 0px var(--border-strong);
@@ -33,6 +46,11 @@
   --accent-alt-hover: #e6415f;
   --on-accent: #0a0e14;
   --on-accent-alt: #0a0e14;
+  /* --accent already has strong contrast against this theme's near-black
+     background, so links keep using it as-is -- no separate link color
+     needed here, unlike retro. */
+  --link-accent: #39FF88;
+  --link-accent-hover: #2de077;
   --border: #1f2833;
   --border-strong: #39FF88;
   --miss-bg: rgba(255, 84, 112, 0.28);
