@@ -40,7 +40,7 @@ export default function SportHome({ sport, onSelectMode, onPastChallenges, onBac
 
       <button
         onClick={() => setShowHowToPlay((v) => !v)}
-        className="text-sm text-[var(--accent)] underline hover:text-[var(--accent-hover)] mb-8"
+        className="text-sm text-[var(--link-accent)] underline hover:text-[var(--link-accent-hover)] mb-8"
       >
         How to play ?
       </button>
