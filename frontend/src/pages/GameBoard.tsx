@@ -7,7 +7,7 @@ import ClueLegend from "../components/ClueLegend";
 import ShareResult from "../components/ShareResult";
 import { recordDailyResult, getStreak, StreakData } from "../utils/dailyStreak";
 import { getCompletionForDate, recordDailyCompletion } from "../utils/dailyCompletion";
-import { todayLocalDateString } from "../utils/localDate";
+import { todayUtcDateString } from "../utils/localDate";
 
 const MAX_GUESSES = 8;
 const HINT_AFTER_GUESS = 5;
@@ -46,12 +46,17 @@ export default function GameBoard({ mode, sportSlug, sportName, dailyDate, onBac
   const [isDailyReplay, setIsDailyReplay] = useState(false);
 
   // The actual calendar date this "daily" session is for. Today unless a
-  // specific past date was supplied (via Past Challenges).
-  const effectiveDate = dailyDate ?? todayLocalDateString();
+  // specific past date was supplied (via Past Challenges). Uses UTC "today"
+  // (not browser-local) because the backend resolves the undated
+  // ("today") daily puzzle from DateTime.UtcNow -- effectiveDate must agree
+  // with that so completions get filed under the date whose puzzle was
+  // actually played, not whatever day it happens to be in the visitor's
+  // timezone.
+  const effectiveDate = dailyDate ?? todayUtcDateString();
   // CRITICAL: this is the single source of truth for "must never touch the
   // streak." It's derived from the actual date being played, not from how
   // we got here, so it can't be bypassed by a navigation shortcut.
-  const isPastDate = mode === "daily" && effectiveDate !== todayLocalDateString();
+  const isPastDate = mode === "daily" && effectiveDate !== todayUtcDateString();
 
   useEffect(() => {
     fetchPlayerPool(sportSlug).then(setPlayers).catch(() => setError("Couldn't load player list."));
