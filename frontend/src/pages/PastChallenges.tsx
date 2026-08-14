@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Sport } from "../types";
 import { fetchDailyPuzzleDates } from "../api/client";
 import { getCompletionForDate } from "../utils/dailyCompletion";
-import { todayLocalDateString } from "../utils/localDate";
+import { todayUtcDateString } from "../utils/localDate";
 
 interface Props {
   sport: Sport;
@@ -42,7 +42,12 @@ export default function PastChallenges({ sport, onSelectDate, onBack }: Props) {
   useEffect(() => {
     setRows(null);
     setError("");
-    const today = todayLocalDateString();
+    // UTC, not browser-local: DailyPuzzleGenerationService (and GameBoard's
+    // undated "today" puzzle resolution) both key off DateTime.UtcNow, so
+    // this exclusion has to use the same definition of "today" or it can
+    // both wrongly exclude a genuine past day and wrongly admit today's
+    // still-current puzzle as a normal past row.
+    const today = todayUtcDateString();
 
     fetchDailyPuzzleDates(sport.slug)
       .then((dates) => {
