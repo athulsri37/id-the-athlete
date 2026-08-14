@@ -217,7 +217,8 @@ export default function GameBoard({ mode, sportSlug, sportName, dailyDate, onBac
             Country: {revealedCountry}
           </div>
         ) : (
-          hintDeclined && (
+          hintDeclined &&
+          !gameOver && (
             <button
               onClick={() => setShowHintModal(true)}
               className="btn-card animate-hint-pulse mt-3 px-4 py-1.5 rounded-full text-xs font-semibold"
