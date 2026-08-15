@@ -14,11 +14,11 @@ public class DifficultyService
         if (player.IsOverridden && !string.IsNullOrWhiteSpace(player.DifficultyOverride))
             return player.DifficultyOverride!.ToLowerInvariant();
 
-        // Applied uniformly to both cricket-men-international and
-        // cricket-women-international for now -- a Women's-specific
-        // formula is a planned future refinement, not implemented yet.
-        if (sportSlug is "cricket-men-international" or "cricket-women-international")
-            return ComputeCricketDifficultyTier(player);
+        if (sportSlug == "cricket-women-international")
+            return ComputeCricketWomenDifficultyTier(player);
+
+        if (sportSlug == "cricket-men-international")
+            return ComputeCricketMenDifficultyTier(player);
 
         return ComputeTennisDifficultyTier(player);
     }
@@ -45,7 +45,7 @@ public class DifficultyService
 
     // Based on combined (all-format) career totals, checked in the same
     // easy/medium/hard-fallback order as Tennis above.
-    private static string ComputeCricketDifficultyTier(Player player)
+    private static string ComputeCricketMenDifficultyTier(Player player)
     {
         var runs = GetNumericAttribute(player, "combined_runs");
         var wickets = GetNumericAttribute(player, "combined_wickets");
@@ -55,6 +55,29 @@ public class DifficultyService
             return "easy";
 
         if (runs >= 3000 || wickets >= 100 || matches >= 150)
+            return "medium";
+
+        return "hard";
+    }
+
+    // Women's Cricket-specific thresholds, calibrated separately from the
+    // Men's formula above rather than reused -- against the current
+    // 120-player Women's roster, the Men's thresholds only ever placed 11
+    // players in Easy and pushed 46 into Hard despite a solidly-experienced
+    // median career (139 matches / 1912 runs / 75 wickets), because the
+    // rosters' career-length distributions differ enough that one shared
+    // scale doesn't serve both fairly. Same easy/medium/hard-fallback
+    // structure and attribute keys as the Men's formula, just lower bars.
+    private static string ComputeCricketWomenDifficultyTier(Player player)
+    {
+        var runs = GetNumericAttribute(player, "combined_runs");
+        var wickets = GetNumericAttribute(player, "combined_wickets");
+        var matches = GetNumericAttribute(player, "combined_matches");
+
+        if (runs >= 8000 || wickets >= 250 || matches >= 250)
+            return "easy";
+
+        if (runs >= 2500 || wickets >= 90 || matches >= 130)
             return "medium";
 
         return "hard";
