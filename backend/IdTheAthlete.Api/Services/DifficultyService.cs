@@ -25,16 +25,28 @@ public class DifficultyService
 
     // Checked in order -- easy, then medium, then hard as the fallback --
     // so the hard branch never needs its own explicit condition: by the
-    // time a player falls through both easy (high rank #1 or 20+ titles)
-    // and medium (5-19 titles), they're guaranteed to have never reached
-    // #1 and have fewer than 5 titles, which already satisfies the stated
-    // hard rule.
+    // time a player falls through both easy (high rank #1, 20+ titles, or
+    // 2+ Grand Slams) and medium (5-19 titles), they're guaranteed to have
+    // never reached #1, have fewer than 5 titles, and have at most 1 Grand
+    // Slam, which already satisfies the stated hard rule.
+    //
+    // grand_slams >= 2 was added as an Easy-tier signal because a
+    // title-count/ranking-only formula let a handful of multi-Slam
+    // champions (e.g. Wawrinka, Kuznetsova) sit in Medium purely for
+    // having a modest regular-tour title count -- shared identically
+    // across Men's and Women's since both rosters showed the same pattern
+    // and comparable distributions (unlike Cricket, which needed separate
+    // per-sport calibration). A single Slam is deliberately NOT enough on
+    // its own (e.g. Raducanu, Andreescu, Vondroušová, Thiem stay put) --
+    // one major alone is too easy to win from a thin career to be treated
+    // as equivalent to being #1 or a 20-title veteran.
     private static string ComputeTennisDifficultyTier(Player player)
     {
         var highRank = GetNumericAttribute(player, "career_high_ranking");
         var titles = GetNumericAttribute(player, "career_titles");
+        var grandSlams = GetNumericAttribute(player, "grand_slam_titles");
 
-        if (highRank == 1 || titles >= 20)
+        if (highRank == 1 || titles >= 20 || grandSlams >= 2)
             return "easy";
 
         if (titles >= 5 && titles < 20)
