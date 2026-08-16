@@ -78,15 +78,20 @@ public class AdminService
                     Type = v.AttributeDefinition.Type.ToString().ToLowerInvariant(),
                     Value = v.Value
                 })
-                .ToList()
+                .ToList(),
+            IsOverridden = player.IsOverridden,
+            DifficultyOverride = player.DifficultyOverride
         };
     }
 
+    private static readonly HashSet<string> ValidDifficultyOverrides = new() { "Easy", "Medium", "Hard" };
+
     // Server-side validation is deliberate defense in depth: the frontend
-    // already restricts numeric fields to type="number" inputs, but this
-    // must not be the only thing standing between a malformed value and
-    // the database, since the frontend check is trivially bypassable.
-    public async Task UpdatePlayerAsync(int playerId, Dictionary<string, string> updates)
+    // already restricts numeric fields to type="number" inputs and the
+    // difficulty dropdown to these exact 3 options, but this must not be
+    // the only thing standing between a malformed value and the database,
+    // since the frontend check is trivially bypassable.
+    public async Task UpdatePlayerAsync(int playerId, AdminPlayerUpdateDto request)
     {
         var player = await _db.Players
             .Include(p => p.AttributeValues)
@@ -94,7 +99,7 @@ public class AdminService
             .FirstOrDefaultAsync(p => p.Id == playerId)
             ?? throw new InvalidOperationException("Player not found");
 
-        foreach (var (key, value) in updates)
+        foreach (var (key, value) in request.Attributes)
         {
             var attributeValue = player.AttributeValues.FirstOrDefault(v => v.AttributeDefinition?.Key == key)
                 ?? throw new InvalidOperationException($"Attribute '{key}' not found for this player.");
@@ -108,6 +113,27 @@ public class AdminService
             // re-seeds this player -- see PlayerAttributeValue.IsManuallyEdited.
             attributeValue.IsManuallyEdited = true;
         }
+
+        player.IsOverridden = request.IsOverridden;
+
+        if (!player.IsOverridden)
+        {
+            // A stale override value must never linger once the toggle is
+            // off, regardless of what the request body happened to send.
+            player.DifficultyOverride = null;
+        }
+        else
+        {
+            if (string.IsNullOrEmpty(request.DifficultyOverride) || !ValidDifficultyOverrides.Contains(request.DifficultyOverride))
+                throw new InvalidOperationException("DifficultyOverride must be one of \"Easy\", \"Medium\", or \"Hard\" when IsOverridden is true.");
+
+            player.DifficultyOverride = request.DifficultyOverride;
+        }
+        // player.IsOverridden = true is itself the "this was manually set"
+        // signal every seed file's Players upsert now checks (see
+        // SeedRunner.cs) -- no separate flag needed, since no seed file
+        // ever bakes in IsOverridden = true except as a deliberate,
+        // permanent curatorial baseline (e.g. Grigor Dimitrov).
 
         await _db.SaveChangesAsync();
     }

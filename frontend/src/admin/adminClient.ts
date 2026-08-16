@@ -60,10 +60,14 @@ export interface AdminAttributeValue {
   value: string;
 }
 
+export type DifficultyOverride = "Easy" | "Medium" | "Hard";
+
 export interface AdminPlayerDetail {
   id: number;
   name: string;
   attributes: AdminAttributeValue[];
+  isOverridden: boolean;
+  difficultyOverride: DifficultyOverride | null;
 }
 
 export interface AdminSetting {
@@ -91,8 +95,13 @@ export async function fetchAdminPlayer(playerId: number): Promise<AdminPlayerDet
   return res.data;
 }
 
-export async function updateAdminPlayer(playerId: number, attributes: Record<string, string>): Promise<void> {
-  await adminClient.put(`/players/${playerId}`, { attributes });
+export async function updateAdminPlayer(
+  playerId: number,
+  attributes: Record<string, string>,
+  isOverridden: boolean,
+  difficultyOverride: DifficultyOverride | null
+): Promise<void> {
+  await adminClient.put(`/players/${playerId}`, { attributes, isOverridden, difficultyOverride });
 }
 
 export async function fetchAdminSettings(): Promise<AdminSetting[]> {

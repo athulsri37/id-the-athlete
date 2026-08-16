@@ -19,6 +19,18 @@ namespace SeedTool;
 // seeded that player. Each seed file's ON CONFLICT DO UPDATE therefore
 // guards on PlayerAttributeValues.IsManuallyEdited = false, so a manual
 // correction (see AdminService.UpdatePlayerAsync) sticks permanently.
+//
+// The same hazard applied to Players.IsOverridden/DifficultyOverride
+// (curator-set difficulty overrides), which every seed file's Players
+// upsert used to stomp back to false/NULL on every re-run too. No seed
+// file ever sets IsOverridden = true except as a deliberate, permanent
+// curatorial baseline (see the one existing example, Grigor Dimitrov in
+// Tennis/Men/players-batch-02.sql) -- so unlike PlayerAttributeValues,
+// Players.IsOverridden doubles as its own "has this been manually set"
+// flag with no extra column needed: each seed file's Players upsert now
+// keeps the existing row's IsOverridden/DifficultyOverride whenever it's
+// already true (via a CASE expression, not a WHERE-guarded DO UPDATE, so
+// SportId still always stays in sync regardless).
 public static class SeedRunner
 {
     public static async Task<IReadOnlyList<string>> RunAsync(GameDbContext db, string seedDataRoot)
