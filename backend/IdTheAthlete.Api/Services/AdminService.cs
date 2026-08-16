@@ -103,6 +103,10 @@ public class AdminService
                 throw new InvalidOperationException($"Attribute '{key}' is numeric; '{value}' is not a valid number.");
 
             attributeValue.Value = value;
+            // Marks this specific value as curator-owned so it survives
+            // every future SeedTool run regardless of which batch file
+            // re-seeds this player -- see PlayerAttributeValue.IsManuallyEdited.
+            attributeValue.IsManuallyEdited = true;
         }
 
         await _db.SaveChangesAsync();

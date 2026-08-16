@@ -9,6 +9,16 @@ namespace SeedTool;
 // can be called directly by something other than the CLI later (e.g. an
 // automated sync job) without going through argument parsing or a process
 // boundary.
+//
+// EVERY file runs on EVERY invocation, not just newly-added ones -- there's
+// no "already seeded" tracking. That's fine for Players/AttributeDefinitions
+// (their upserts are idempotent no-ops once the data matches), but it means
+// a PlayerAttributeValues row a curator has since hand-edited via
+// /control-room would get silently overwritten back to its original seeded
+// value on the next run of ANY batch file, not just the one that first
+// seeded that player. Each seed file's ON CONFLICT DO UPDATE therefore
+// guards on PlayerAttributeValues.IsManuallyEdited = false, so a manual
+// correction (see AdminService.UpdatePlayerAsync) sticks permanently.
 public static class SeedRunner
 {
     public static async Task<IReadOnlyList<string>> RunAsync(GameDbContext db, string seedDataRoot)
