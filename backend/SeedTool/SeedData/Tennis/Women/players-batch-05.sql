@@ -177,4 +177,5 @@ FROM (VALUES
 JOIN "Players" p ON p."Name" = v."PlayerName"
 JOIN "AttributeDefinitions" ad ON ad."Key" = v."AttrKey" AND ad."SportId" = p."SportId"
 ON CONFLICT ("PlayerId", "AttributeDefinitionId") DO UPDATE SET
-    "Value" = EXCLUDED."Value";
+    "Value" = EXCLUDED."Value"
+WHERE "PlayerAttributeValues"."IsManuallyEdited" = false;
