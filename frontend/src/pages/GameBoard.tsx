@@ -115,7 +115,7 @@ export default function GameBoard({ mode, sportSlug, sportName, dailyDate, onBac
 
   useEffect(() => {
     const dateSuffix = isPastDate ? ` (${effectiveDate})` : "";
-    document.title = `ID the ${sportName} Player — ${modeLabel}${dateSuffix} | ID the Athlete`;
+    document.title = `ID the ${sportName} Player: ${modeLabel}${dateSuffix} | ID the Athlete`;
   }, [modeLabel, sportName, isPastDate, effectiveDate]);
 
   const gameOver = guesses.length > 0 && (guesses[guesses.length - 1].isCorrect || guesses.length >= MAX_GUESSES);
@@ -262,12 +262,12 @@ export default function GameBoard({ mode, sportSlug, sportName, dailyDate, onBac
             {isDailyReplay && (
               <p className="text-[var(--text-muted)] text-xs italic mb-2">
                 {isPastDate
-                  ? `Here's your result from ${effectiveDate} — this doesn't affect your streak.`
-                  : "You've already completed today's Daily Challenge — here's your result."}
+                  ? `Here's your result from ${effectiveDate}. This doesn't affect your streak.`
+                  : "You've already completed today's Daily Challenge. Here's your result."}
               </p>
             )}
             <p className="text-[var(--text-primary)] text-lg font-semibold">
-              {won ? "🎾 Nailed it !" : `The player was ${guesses[guesses.length - 1].answerName}`}
+              {won ? "🎾 Nailed it!" : `The player was ${guesses[guesses.length - 1].answerName}`}
             </p>
             {guesses[guesses.length - 1].triviaBlurb && (
               <div className="mt-3 max-w-sm mx-auto flex items-start gap-3 text-left rounded-md border-l-4 border-[var(--accent)] bg-[var(--bg-card)] px-4 py-3">

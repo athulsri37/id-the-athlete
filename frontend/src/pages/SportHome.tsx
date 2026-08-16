@@ -42,7 +42,7 @@ export default function SportHome({ sport, onSelectMode, onPastChallenges, onBac
         onClick={() => setShowHowToPlay((v) => !v)}
         className="text-sm text-[var(--link-accent)] underline hover:text-[var(--link-accent-hover)] mb-8"
       >
-        How to play ?
+        How to play?
       </button>
 
       {showHowToPlay && (
@@ -69,11 +69,11 @@ export default function SportHome({ sport, onSelectMode, onPastChallenges, onBac
             </h2>
             <ul className="text-[var(--text-secondary)] text-sm flex flex-col gap-1">
               <li>
-                <strong className="text-[var(--text-primary)]">Daily Challenge</strong> — one shared
+                <strong className="text-[var(--text-primary)]">Daily Challenge</strong>: one shared
                 puzzle per day, resets at midnight
               </li>
               <li>
-                <strong className="text-[var(--text-primary)]">Easy / Medium / Hard</strong> — unlimited
+                <strong className="text-[var(--text-primary)]">Easy / Medium / Hard</strong>: unlimited
                 practice, different player eras
               </li>
             </ul>

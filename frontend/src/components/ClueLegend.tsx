@@ -17,10 +17,10 @@ const PREFIX_ICONS = new Set(["✓", "✕", "≈"]);
 
 const EXAMPLES: ClueExample[] = [
   { pill: "Right", icon: "✓", state: "match", description: "Match" },
-  { pill: "18", icon: "▲", state: "close", description: "Close — near the actual number (e.g. 18 when the answer is 20)" },
-  { pill: "France", icon: "≈", state: "close", description: "Close — a nearby country, not exact" },
-  { pill: "8", icon: "▲", state: "miss", description: "No match — actual value is higher" },
-  { pill: "20", icon: "▼", state: "miss", description: "No match — actual value is lower" },
+  { pill: "18", icon: "▲", state: "close", description: "Close: near the actual number (e.g. 18 when the answer is 20)" },
+  { pill: "France", icon: "≈", state: "close", description: "Close: a nearby country, not exact" },
+  { pill: "8", icon: "▲", state: "miss", description: "No match: actual value is higher" },
+  { pill: "20", icon: "▼", state: "miss", description: "No match: actual value is lower" },
   { pill: "USA", icon: "✕", state: "miss", description: "No match" },
 ];
 

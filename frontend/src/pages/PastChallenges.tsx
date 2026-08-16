@@ -36,7 +36,7 @@ export default function PastChallenges({ sport, onSelectDate, onBack }: Props) {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    document.title = `Past Challenges — ID the ${sport.name} Player | ID the Athlete`;
+    document.title = `Past Challenges: ID the ${sport.name} Player | ID the Athlete`;
   }, [sport]);
 
   useEffect(() => {
@@ -70,7 +70,7 @@ export default function PastChallenges({ sport, onSelectDate, onBack }: Props) {
             return { date, badge, dayName, status: `Won in ${n} guess${n === 1 ? "" : "es"}`, done: true };
           }
 
-          return { date, badge, dayName, status: "Lost — 8/8 used", done: true };
+          return { date, badge, dayName, status: "Lost (8/8 used)", done: true };
         });
 
         setRows(built);
@@ -100,7 +100,7 @@ export default function PastChallenges({ sport, onSelectDate, onBack }: Props) {
       {rows === null && !error && <p className="text-[var(--text-muted)] text-sm">Loading…</p>}
 
       {rows !== null && rows.length === 0 && (
-        <p className="text-[var(--text-muted)] text-sm italic">No past challenges yet — check back tomorrow.</p>
+        <p className="text-[var(--text-muted)] text-sm italic">No past challenges yet. Check back tomorrow.</p>
       )}
 
       {rows !== null && rows.length > 0 && (
