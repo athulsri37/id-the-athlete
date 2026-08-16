@@ -251,7 +251,7 @@ export default function GameBoard({ mode, sportSlug, sportName, dailyDate, onBac
             <h2 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wide mb-2">
               What do the clues mean?
             </h2>
-            <ClueLegend />
+            <ClueLegend sportSlug={sportSlug} />
           </div>
         )}
 
