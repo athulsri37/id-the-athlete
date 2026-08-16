@@ -25,12 +25,18 @@ public class AdminPlayerDetailDto
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public List<AdminAttributeValueDto> Attributes { get; set; } = new();
+    public bool IsOverridden { get; set; }
+    public string? DifficultyOverride { get; set; }
 }
 
 public class AdminPlayerUpdateDto
 {
     // AttributeDefinition.Key -> new value
     public Dictionary<string, string> Attributes { get; set; } = new();
+    public bool IsOverridden { get; set; }
+    // Ignored server-side (forced to null) when IsOverridden is false --
+    // see AdminService.UpdatePlayerAsync.
+    public string? DifficultyOverride { get; set; }
 }
 
 public class AdminSettingDto

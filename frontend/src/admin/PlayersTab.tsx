@@ -3,6 +3,7 @@ import {
   AdminPlayerDetail,
   AdminPlayerSummary,
   AdminSport,
+  DifficultyOverride,
   fetchAdminDistinctValues,
   fetchAdminPlayer,
   fetchAdminPlayers,
@@ -11,6 +12,8 @@ import {
 } from "./adminClient";
 
 type SaveStatus = "idle" | "saving" | "success" | "error";
+
+const DIFFICULTY_OVERRIDE_OPTIONS: DifficultyOverride[] = ["Easy", "Medium", "Hard"];
 
 export default function PlayersTab() {
   const [sports, setSports] = useState<AdminSport[]>([]);
@@ -23,6 +26,9 @@ export default function PlayersTab() {
   const [formValues, setFormValues] = useState<Record<string, string>>({});
   const [distinctValuesByKey, setDistinctValuesByKey] = useState<Record<string, string[]>>({});
   const [loadingPlayer, setLoadingPlayer] = useState(false);
+
+  const [overrideEnabled, setOverrideEnabled] = useState(false);
+  const [overrideValue, setOverrideValue] = useState<DifficultyOverride>("Easy");
 
   const [numericErrors, setNumericErrors] = useState<Record<string, string>>({});
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
@@ -55,6 +61,8 @@ export default function PlayersTab() {
       if (cancelled) return;
       setPlayerDetail(detail);
       setFormValues(Object.fromEntries(detail.attributes.map((a) => [a.key, a.value])));
+      setOverrideEnabled(detail.isOverridden);
+      setOverrideValue(detail.difficultyOverride ?? "Easy");
 
       const categorical = detail.attributes.filter((a) => a.type === "categorical");
       const entries = await Promise.all(
@@ -96,7 +104,7 @@ export default function PlayersTab() {
     setSaveStatus("saving");
     setSaveError("");
     try {
-      await updateAdminPlayer(playerDetail.id, formValues);
+      await updateAdminPlayer(playerDetail.id, formValues, overrideEnabled, overrideEnabled ? overrideValue : null);
       setSaveStatus("success");
     } catch (err) {
       setSaveStatus("error");
@@ -191,6 +199,35 @@ export default function PlayersTab() {
                   )}
                 </div>
               ))}
+            </div>
+
+            <div className="mt-5 pt-4 border-t border-slate-700">
+              <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer w-fit">
+                <input
+                  type="checkbox"
+                  checked={overrideEnabled}
+                  onChange={(e) => setOverrideEnabled(e.target.checked)}
+                  className="h-4 w-4"
+                />
+                Override Difficulty
+              </label>
+              <p className="text-xs text-slate-500 mt-1">
+                Ignores the computed difficulty formula and always places this player in the chosen tier.
+              </p>
+
+              {overrideEnabled && (
+                <select
+                  value={overrideValue}
+                  onChange={(e) => setOverrideValue(e.target.value as DifficultyOverride)}
+                  className="mt-2 w-full max-w-[12rem] rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm"
+                >
+                  {DIFFICULTY_OVERRIDE_OPTIONS.map((tier) => (
+                    <option key={tier} value={tier}>
+                      {tier}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             <div className="flex items-center gap-3 mt-5">

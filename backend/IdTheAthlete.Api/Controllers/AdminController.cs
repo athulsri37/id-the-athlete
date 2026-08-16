@@ -69,7 +69,7 @@ public class AdminController : ControllerBase
     {
         try
         {
-            await _adminService.UpdatePlayerAsync(playerId, request.Attributes);
+            await _adminService.UpdatePlayerAsync(playerId, request);
             return Ok(new { message = "Player updated." });
         }
         catch (InvalidOperationException ex)

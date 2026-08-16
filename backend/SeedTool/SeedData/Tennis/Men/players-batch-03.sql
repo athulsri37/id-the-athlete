@@ -39,8 +39,8 @@ CROSS JOIN (VALUES
 WHERE s."Slug" = 'tennis-men'
 ON CONFLICT ("Name") DO UPDATE SET
     "SportId" = EXCLUDED."SportId",
-    "IsOverridden" = EXCLUDED."IsOverridden",
-    "DifficultyOverride" = EXCLUDED."DifficultyOverride";
+    "IsOverridden" = CASE WHEN "Players"."IsOverridden" THEN "Players"."IsOverridden" ELSE EXCLUDED."IsOverridden" END,
+    "DifficultyOverride" = CASE WHEN "Players"."IsOverridden" THEN "Players"."DifficultyOverride" ELSE EXCLUDED."DifficultyOverride" END;
 
 -- One row per (player, attribute) pair. PlayerId/AttributeDefinitionId are
 -- resolved by name/key lookup rather than hardcoded ids, so this file has
