@@ -114,6 +114,13 @@ public class AdminService
             attributeValue.IsManuallyEdited = true;
         }
 
+        // Player-level "last touched" timestamp, separate from the
+        // per-attribute IsManuallyEdited flag above -- lets consumers like
+        // AiTriviaService detect that cached derived content (e.g. a trivia
+        // blurb) predates this edit and should be regenerated.
+        if (request.Attributes.Count > 0)
+            player.LastModifiedAt = DateTime.UtcNow;
+
         player.IsOverridden = request.IsOverridden;
 
         if (!player.IsOverridden)
