@@ -72,7 +72,7 @@ export default function ClueGrid({ guesses, revealedCountry, attributes }: Props
                 </span>
               </div>
               <div
-                className={`flex items-center rounded-full border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-primary)] text-sm font-medium truncate ${CELL_PADDING}`}
+                className={`flex items-center rounded-full border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-primary)] text-sm font-medium break-words leading-snug ${CELL_PADDING}`}
               >
                 {g.guessedPlayerName}
               </div>
