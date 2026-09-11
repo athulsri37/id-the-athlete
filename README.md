@@ -264,6 +264,47 @@ npm run dev
 ```
 App will be available at `http://localhost:5174`.
 
+## Testing
+
+The project has three independent test layers. Right now each one carries a
+single smoke test proving its harness is wired up correctly — real
+business-logic coverage is deferred follow-up work, not yet written.
+
+### Backend unit tests
+
+xUnit project (`backend/IdTheAthlete.Api.Tests`), referencing
+`IdTheAthlete.Api` directly so tests can exercise services like
+`DifficultyService` and the closeness evaluators without going through
+HTTP. Also wired up with `Microsoft.EntityFrameworkCore.InMemory` (for
+future tests needing a `DbContext` without a real Postgres database) and
+`Moq` (for future tests needing to mock dependencies like `HttpClient`).
+```bash
+cd backend/IdTheAthlete.Api.Tests
+dotnet test
+```
+
+### Frontend unit tests
+
+Vitest + React Testing Library, covering pure utility functions and,
+eventually, components.
+```bash
+cd frontend
+npm test
+```
+
+### End-to-end tests (Playwright)
+
+Playwright drives the app through a real browser against the actual
+running dev servers — it does not start them itself. **Both the backend
+and frontend dev servers must already be running** (see
+[Getting Started](#getting-started) steps 5 and 6) before running this
+suite:
+```bash
+cd frontend
+npx playwright install chromium   # one-time browser install
+npm run test:e2e
+```
+
 ## Player Data & Seeding
 
 Player data lives in versioned `.sql` files under
