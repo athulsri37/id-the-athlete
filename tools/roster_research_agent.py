@@ -265,6 +265,19 @@ thing in your response, with nothing after it.
 """
 
 
+class UsageExhaustedError(Exception):
+    """Raised when a failure looks like subscription usage/credits running
+    out, rather than a generic transient error. Signals the caller to stop
+    attempting further chunks entirely, rather than retrying something that
+    will just fail again."""
+    pass
+
+
+USAGE_EXHAUSTED_KEYWORDS = ["credit", "quota", "billing", "usage limit", "insufficient"]
+RETRY_BACKOFF_SCHEDULE = [1.0, 3.0]  # seconds - wait before attempt 2, then attempt 3
+MAX_ATTEMPTS = 3
+
+
 async def call_agent(prompt):
     """Runs one query through the Agent SDK, authenticated via subscription
     OAuth (CLAUDE_CODE_OAUTH_TOKEN), and returns the concatenated text of
@@ -273,12 +286,19 @@ async def call_agent(prompt):
     NOTE on permissions: this SDK wraps Claude Code, which normally expects
     a human present to approve each tool use interactively. In a headless
     script with nobody there to click "allow," permission_mode="bypassPermissions"
-    plus the required allow_dangerously_skip_permissions=True flag are both
-    needed together to let tool calls (like web_search) proceed automatically.
+    is needed to let tool calls (like web_search) proceed automatically.
     Be aware this grants broader tool access than just web_search alone, there
     is no simpler "approve only this one tool" option in the basic config.
     For a local, read-only research script this is a reasonable tradeoff, but
     worth knowing explicitly rather than assuming it's narrowly scoped.
+
+    NOTE on error handling: this SDK has had documented issues (see public
+    GitHub reports against claude-agent-sdk-python) where rate-limit-related
+    events can crash the query() stream in ways that are hard to distinguish
+    cleanly from other failures, and in rare cases may not be fully catchable
+    from calling code at all. The retry/detection logic below handles what
+    genuinely is catchable - it cannot guarantee protection against every
+    possible failure mode this SDK might have.
     """
     options = ClaudeAgentOptions(
         model="claude-sonnet-5",
@@ -287,14 +307,33 @@ async def call_agent(prompt):
         permission_mode="bypassPermissions",
     )
 
-    text_parts = []
-    async for message in query(prompt=prompt, options=options):
-        if isinstance(message, AssistantMessage):
-            for block in message.content:
-                if isinstance(block, TextBlock):
-                    text_parts.append(block.text)
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        try:
+            text_parts = []
+            async for message in query(prompt=prompt, options=options):
+                if isinstance(message, AssistantMessage):
+                    for block in message.content:
+                        if isinstance(block, TextBlock):
+                            text_parts.append(block.text)
+            return "".join(text_parts)
 
-    return "".join(text_parts)
+        except Exception as e:
+            error_text = str(e).lower()
+
+            if any(keyword in error_text for keyword in USAGE_EXHAUSTED_KEYWORDS):
+                # Don't retry this - it will just fail again. Signal the
+                # caller to stop the whole run, not just this chunk.
+                raise UsageExhaustedError(
+                    f"This looks like a usage/credit limit, not a transient error: {e}"
+                )
+
+            print(f"  Attempt {attempt}/{MAX_ATTEMPTS} failed: {e}")
+            if attempt < MAX_ATTEMPTS:
+                wait_time = RETRY_BACKOFF_SCHEDULE[attempt - 1]
+                print(f"  Retrying in {wait_time}s...")
+                await asyncio.sleep(wait_time)
+            else:
+                raise  # exhausted retries, let the caller decide what to do
 
 
 def parse_players(raw_text):
@@ -412,12 +451,26 @@ async def main():
 
         exclusion_list = existing_names + [p.get("name", "") for p in all_players]
         prompt = build_prompt(profile, this_chunk_size, tier_guidance, exclusion_list)
-        raw_response = await call_agent(prompt)
+
+        try:
+            raw_response = await call_agent(prompt)
+        except UsageExhaustedError as e:
+            print(f"\nUSAGE LIMIT HIT: {e}")
+            print(f"Stopping here - {len(all_players)} players from earlier")
+            print("successful chunks will still be saved. This is not a bug,")
+            print("your subscription usage or credits appear to be exhausted")
+            print("for now. Try again later, or check your account.")
+            break
+        except Exception as e:
+            print(f"\nChunk {chunk_num} failed after all retries: {e}")
+            print(f"Stopping here - {len(all_players)} players from earlier")
+            print("successful chunks will still be saved.")
+            break
 
         try:
             chunk_players = parse_players(raw_response)
         except (ValueError, json.JSONDecodeError):
-            print(f"Chunk {chunk_num} failed. Stopping here - {len(all_players)}")
+            print(f"Chunk {chunk_num} failed to parse. Stopping here - {len(all_players)}")
             print("players from earlier successful chunks will still be saved.")
             break
 
