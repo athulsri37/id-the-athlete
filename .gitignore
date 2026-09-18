@@ -16,4 +16,8 @@ frontend/blob-report/
 .env
 *.env.local
 
+# Roster research agent output
+tools/proposed_batch_*.csv
+tools/raw_output.txt
+
 .DS_Store
