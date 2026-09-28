@@ -50,6 +50,21 @@ USAGE
 
     Run with --help to see the valid options. TIER_GUIDANCE in the CONFIG
     section below can still be edited to override a sport's default guidance.
+
+REVIEW MENU
+-----------
+After research, the proposed players are shown in a numbered table with a
+menu:
+    a  accept and write all of them to the database
+    r  remove players by number (e.g. 2,3); that many replacements are
+       researched automatically
+    s  search for more to reach the requested count (only shown when short)
+    q  quit without writing anything
+Before each replacement search you can type an optional note that is added
+to that search's prompt only. Removed players are excluded for the rest of
+the run but nothing is remembered between runs. The CSV log is rewritten
+after every round so it always matches the current list, and nothing is
+written to the database until you choose a.
 """
 
 import argparse
@@ -236,12 +251,41 @@ def load_existing_names(sport_slug):
         raise
 
 
-def build_prompt(profile, batch_size, tier_guidance, existing_names):
+REVIEWER_NOTE_MARKER = "REVIEWER NOTE:"
+REVIEWER_NOTE_INSTRUCTIONS = (
+    "Because the reviewer gave guidance for this search, include exactly one line in your\n"
+    "response, before the JSON array, starting with \"REVIEWER NOTE:\". If you fully followed\n"
+    "the guidance, write \"REVIEWER NOTE: followed.\" If you could not fully follow it, write\n"
+    "\"REVIEWER NOTE: could not fully follow, \" and then one plain sentence naming the player\n"
+    "or requirement and the reason, for example because a requested player is already in the\n"
+    "roster, was already proposed or removed this run, or has fewer than the minimum\n"
+    "appearances. Do not put square brackets in this line."
+)
+
+
+def extract_reviewer_notes(raw_text):
+    """Returns the text after "REVIEWER NOTE:" on each line that starts with
+    it, matched case-insensitively after stripping whitespace."""
+    notes = []
+    for line in raw_text.splitlines():
+        stripped = line.strip()
+        if stripped.lower().startswith(REVIEWER_NOTE_MARKER.lower()):
+            notes.append(stripped[len(REVIEWER_NOTE_MARKER):].strip())
+    return notes
+
+
+def build_prompt(profile, batch_size, tier_guidance, existing_names, note=None):
     existing_list = "\n".join(f"- {name}" for name in existing_names)
     sport = profile["display_name"]
     source_name = profile["source_name"]
     source_domain = profile["source_domain"]
     fields = profile["fields"] + DISPLAY_ONLY_FIELDS
+    note_line = (
+        f"\nAdditional guidance from the reviewer for this search: {note}\n"
+        f"\n{REVIEWER_NOTE_INSTRUCTIONS}\n"
+        if note
+        else ""
+    )
 
     return f"""You are researching real athletes for a stats-guessing game covering {sport}.
 
@@ -251,7 +295,7 @@ actual career statistics using web search - do not estimate or guess.
 
 TIER GUIDANCE:
 {tier_guidance}
-
+{note_line}
 SOURCE REQUIREMENT: This SDK version does not support a hard technical
 restriction to a single domain, so this is an explicit instruction instead -
 treat {source_name} ({source_domain}) as the required source for every
@@ -426,13 +470,15 @@ def save_players(players, output_path, fields):
 def print_table(players, fields):
     """Prints a clean, readable table to the terminal for the one-keypress
     review step, no external table-formatting library needed."""
-    widths = {f: max(len(f), max((len(str(p.get(f, ""))) for p in players), default=0)) for f in fields}
+    headers = ["#"] + list(fields)
+    rows = [[str(i)] + [str(p.get(f, "")) for f in fields] for i, p in enumerate(players, start=1)]
+    widths = [max([len(h)] + [len(row[c]) for row in rows]) for c, h in enumerate(headers)]
 
-    header = " | ".join(f.ljust(widths[f]) for f in fields)
+    header = " | ".join(h.ljust(widths[c]) for c, h in enumerate(headers))
     print("\n" + header)
     print("-" * len(header))
-    for p in players:
-        print(" | ".join(str(p.get(f, "")).ljust(widths[f]) for f in fields))
+    for row in rows:
+        print(" | ".join(cell.ljust(widths[c]) for c, cell in enumerate(row)))
     print()
 
 
@@ -513,33 +559,29 @@ def build_arg_parser():
     return parser
 
 
-async def main(args):
-    check_environment()
-
-    sport_slug = args.sport
-    batch_size = args.count
-    profile = SPORT_PROFILES[sport_slug]
-    tier_guidance = TIER_GUIDANCE or profile["default_tier_guidance"]
-
-    print(f"Connecting to local database to load existing {profile['display_name']} roster...")
-    existing_names = load_existing_names(sport_slug)
-    print(f"Loaded {len(existing_names)} existing names to avoid duplicating.")
-
-    seen_keys = {normalize_name(name) for name in existing_names}
+async def research_players(profile, count, tier_guidance, exclusion_names, seen_keys, note=None):
+    """Runs the chunked research loop for `count` players. The initial search
+    and every replacement search both go through here so they behave the
+    same. Mutates seen_keys via filter_duplicates. Returns
+    (players, duplicates_dropped, agent_shortfall, status, reviewer_notes)
+    where status is "ok", "usage_exhausted" or "chunk_failed", and
+    reviewer_notes has one (chunk_num, [comment lines]) entry per chunk that
+    got a response, collected only when a note was given."""
     duplicates_dropped = 0
     agent_shortfall = 0
-    chunk_failed = False
+    status = "ok"
+    reviewer_notes = []
 
     all_players = []
-    remaining = batch_size
+    remaining = count
     chunk_num = 1
 
     while remaining > 0:
         this_chunk_size = min(CHUNK_SIZE, remaining)
         print(f"\n--- Chunk {chunk_num}: requesting {this_chunk_size} players ---")
 
-        exclusion_list = existing_names + [p.get("name", "") for p in all_players]
-        prompt = build_prompt(profile, this_chunk_size, tier_guidance, exclusion_list)
+        exclusion_list = exclusion_names + [p.get("name", "") for p in all_players]
+        prompt = build_prompt(profile, this_chunk_size, tier_guidance, exclusion_list, note)
 
         try:
             raw_response = await call_agent(prompt)
@@ -549,21 +591,24 @@ async def main(args):
             print("successful chunks will still be saved. This is not a bug,")
             print("your subscription usage or credits appear to be exhausted")
             print("for now. Try again later, or check your account.")
-            chunk_failed = True
+            status = "usage_exhausted"
             break
         except Exception as e:
             print(f"\nChunk {chunk_num} failed after all retries: {e}")
             print(f"Stopping here - {len(all_players)} players from earlier")
             print("successful chunks will still be saved.")
-            chunk_failed = True
+            status = "chunk_failed"
             break
+
+        if note:
+            reviewer_notes.append((chunk_num, extract_reviewer_notes(raw_response)))
 
         try:
             chunk_players = parse_players(raw_response)
         except (ValueError, json.JSONDecodeError):
             print(f"Chunk {chunk_num} failed to parse. Stopping here - {len(all_players)}")
             print("players from earlier successful chunks will still be saved.")
-            chunk_failed = True
+            status = "chunk_failed"
             break
 
         chunk_shortfall = max(0, this_chunk_size - len(chunk_players))
@@ -581,48 +626,139 @@ async def main(args):
         remaining -= this_chunk_size
         chunk_num += 1
 
-    if not all_players:
-        if not chunk_failed and duplicates_dropped > 0:
-            print(
-                f"\nAll {duplicates_dropped} proposed players were already in the roster "
-                f"or already proposed this run. Nothing written. Re-run to research more."
-            )
-        else:
-            print("\nNo players were successfully generated. Nothing written.")
+    return all_players, duplicates_dropped, agent_shortfall, status, reviewer_notes
+
+
+def report_reviewer_notes(reviewer_notes):
+    """Prints what the agent said about the reviewer's note for one search."""
+    print("\nAgent comment on your note:")
+    lines = [(chunk, text) for chunk, texts in reviewer_notes for text in texts]
+    if not lines:
+        print("The agent gave no comment on your note. Check the results below against what you asked for.")
         return
+    label_chunks = len(reviewer_notes) > 1
+    for chunk, text in lines:
+        print(f"  Chunk {chunk}: {text}" if label_chunks else f"  {text}")
 
-    # Always write the CSV log first, regardless of what happens next -
-    # this is the permanent record, kept even in the direct-write flow.
-    save_players(all_players, OUTPUT_FILE, profile["fields"] + DISPLAY_ONLY_FIELDS)
-    print(f"\n{len(all_players)} players researched (logged to {OUTPUT_FILE}).")
-    if len(all_players) < batch_size:
-        if chunk_failed:
-            print(f"(Requested {batch_size}, but a chunk failed partway through - see above.)")
+
+def report_search(requested, found, duplicates_dropped, agent_shortfall, status):
+    """Prints one search's result, reusing the earlier shortfall wording."""
+    print(f"\nSearch found {len(found)} of {requested} requested.")
+    if len(found) >= requested:
+        return
+    if status != "ok":
+        print(f"(Requested {requested}, but a chunk failed partway through - see above.)")
+        return
+    reasons = []
+    if duplicates_dropped > 0:
+        reasons.append(f"{duplicates_dropped} duplicate(s) dropped")
+    if agent_shortfall > 0:
+        reasons.append(f"the agent returned {agent_shortfall} fewer than requested")
+    joined = " and ".join(reasons)
+    explanation = f" {joined[0].upper()}{joined[1:]}." if reasons else ""
+    print(f"(Requested {requested}, got {len(found)}.{explanation} Choose s to search for more.)")
+
+
+def parse_removal(raw, count):
+    """Returns (valid 1-based positions, rejected entries)."""
+    valid, rejected = [], []
+    for token in re.split(r"[,\s]+", raw.strip()):
+        if not token:
+            continue
+        if token.isdigit() and 1 <= int(token) <= count:
+            if int(token) not in valid:
+                valid.append(int(token))
         else:
-            reasons = []
-            if duplicates_dropped > 0:
-                reasons.append(f"{duplicates_dropped} duplicate(s) dropped")
-            if agent_shortfall > 0:
-                reasons.append(f"the agent returned {agent_shortfall} fewer than requested")
-            joined = " and ".join(reasons)
-            explanation = f" {joined[0].upper()}{joined[1:]}." if reasons else ""
-            print(
-                f"(Requested {batch_size}, got {len(all_players)}.{explanation} "
-                f"Re-run to research more.)"
-            )
+            rejected.append(token)
+    return valid, rejected
 
-    print_table(all_players, profile["fields"] + DISPLAY_ONLY_FIELDS)
 
-    answer = input(f"Write these {len(all_players)} players to the database? [y/N]: ").strip().lower()
-    if answer == "y":
-        try:
-            write_players_to_db(all_players, sport_slug, profile["fields"])
-            print(f"\nSuccess: {len(all_players)} players written to the database.")
-        except Exception as e:
-            print(f"\nERROR: Database write failed, nothing was committed: {e}")
-            print(f"The CSV log at {OUTPUT_FILE} still has everything - safe to retry.")
-    else:
-        print(f"\nSkipped. Nothing written to the database. CSV log saved at {OUTPUT_FILE}.")
+async def main(args):
+    check_environment()
+
+    sport_slug = args.sport
+    target = args.count
+    profile = SPORT_PROFILES[sport_slug]
+    tier_guidance = TIER_GUIDANCE or profile["default_tier_guidance"]
+    fields = profile["fields"] + DISPLAY_ONLY_FIELDS
+
+    print(f"Connecting to local database to load existing {profile['display_name']} roster...")
+    existing_names = load_existing_names(sport_slug)
+    print(f"Loaded {len(existing_names)} existing names to avoid duplicating.")
+
+    # Keys are never removed from seen_keys, so a player the reviewer removes
+    # stays excluded for the rest of this run. Nothing persists between runs.
+    seen_keys = {normalize_name(name) for name in existing_names}
+    proposed_names = []
+    players = []
+
+    async def search(count, note=None):
+        found, dropped, shortfall, status, reviewer_notes = await research_players(
+            profile, count, tier_guidance, existing_names + proposed_names, seen_keys, note
+        )
+        proposed_names.extend(p.get("name", "") for p in found)
+        players.extend(found)
+        report_search(count, found, dropped, shortfall, status)
+        if note:
+            report_reviewer_notes(reviewer_notes)
+
+    def ask_note():
+        return input("Optional note for this search, or press Enter to skip: ").strip() or None
+
+    await search(target)
+
+    while True:
+        # Rewrite the CSV log every round so it always matches the current list.
+        save_players(players, OUTPUT_FILE, fields)
+        print(f"\n{len(players)} of {target} players in the current list (logged to {OUTPUT_FILE}).")
+        print_table(players, fields)
+
+        print(f"  a  accept and write all {len(players)}")
+        print("  r  remove players by number, for example 2,3")
+        if len(players) < target:
+            print(f"  s  search for {target - len(players)} more to reach {target}")
+        print("  q  quit without writing")
+
+        while True:
+            choice = input("Choose: ").strip().lower()
+            if choice in ("a", "r", "q") or (choice == "s" and len(players) < target):
+                break
+            print("Please choose one of the options shown.")
+
+        if choice == "q":
+            print(f"\nNothing written to the database. CSV log saved at {OUTPUT_FILE}.")
+            return
+
+        if choice == "a":
+            if not players:
+                print("There are no players to write. Choose r, s or q.")
+                continue
+            if len(players) < target:
+                print(f"\nWriting {len(players)} of the {target} requested.")
+            try:
+                write_players_to_db(players, sport_slug, profile["fields"])
+                print(f"\nSuccess: {len(players)} players written to the database.")
+            except Exception as e:
+                print(f"\nERROR: Database write failed, nothing was committed: {e}")
+                print(f"The CSV log at {OUTPUT_FILE} still has everything - safe to retry.")
+            return
+
+        if choice == "r":
+            raw = input("Numbers to remove, separated by commas or spaces: ")
+            valid, rejected = parse_removal(raw, len(players))
+            if rejected:
+                print(f"Ignored invalid or out-of-range entries: {', '.join(rejected)}")
+            if not valid:
+                print("No valid player numbers given. Nothing removed.")
+                continue
+            for i in valid:
+                print(f"Removed: {players[i - 1].get('name', '')}")
+            players[:] = [p for i, p in enumerate(players, start=1) if i not in valid]
+            await search(target - len(players), ask_note())
+            continue
+
+        if choice == "s":
+            await search(target - len(players), ask_note())
 
 
 if __name__ == "__main__":
