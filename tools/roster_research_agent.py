@@ -39,11 +39,20 @@ SETUP
 
 USAGE
 -----
-    python roster_research_agent.py
+    python roster_research_agent.py <sport> [count]
 
-Then edit the CONFIG section below before each run to describe what you want.
+    sport  one of: cricket-men-international, cricket-women-international,
+           tennis-men, tennis-women
+    count  number of players to research, 1-30 (optional, defaults to 20)
+
+    Example:
+    python roster_research_agent.py tennis-men 10
+
+    Run with --help to see the valid options. TIER_GUIDANCE in the CONFIG
+    section below can still be edited to override a sport's default guidance.
 """
 
+import argparse
 import os
 import sys
 import json
@@ -54,24 +63,27 @@ import psycopg2
 from claude_agent_sdk import query, ClaudeAgentOptions, AssistantMessage, TextBlock
 
 # ============================================================
-# SAFETY CHECK - catch the silent-override problem before it happens
+# SAFETY CHECK - catch the silent-override problem before it happens.
+# Called from main() after argument parsing, so --help works without
+# either environment variable set.
 # ============================================================
 
-if os.environ.get("ANTHROPIC_API_KEY"):
-    sys.exit(
-        "ERROR: ANTHROPIC_API_KEY is currently set in this terminal session.\n"
-        "It will silently override your subscription OAuth token and bill your\n"
-        "separate API balance instead of your subscription, with no warning.\n\n"
-        "Run this first, then try again:\n"
-        "    unset ANTHROPIC_API_KEY"
-    )
+def check_environment():
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        sys.exit(
+            "ERROR: ANTHROPIC_API_KEY is currently set in this terminal session.\n"
+            "It will silently override your subscription OAuth token and bill your\n"
+            "separate API balance instead of your subscription, with no warning.\n\n"
+            "Run this first, then try again:\n"
+            "    unset ANTHROPIC_API_KEY"
+        )
 
-if not os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
-    sys.exit(
-        "ERROR: CLAUDE_CODE_OAUTH_TOKEN is not set.\n"
-        "Run 'claude setup-token' to generate one, then:\n"
-        '    export CLAUDE_CODE_OAUTH_TOKEN="sk-ant-oat-..."'
-    )
+    if not os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
+        sys.exit(
+            "ERROR: CLAUDE_CODE_OAUTH_TOKEN is not set.\n"
+            "Run 'claude setup-token' to generate one, then:\n"
+            '    export CLAUDE_CODE_OAUTH_TOKEN="sk-ant-oat-..."'
+        )
 
 # ============================================================
 # SPORT PROFILES - one entry per sport, each defining the exact fields
@@ -182,13 +194,12 @@ SPORT_PROFILES = {
 # CONFIG - edit this before each run
 # ============================================================
 
-ACTIVE_SPORT_SLUG = "cricket-men-international"  # pick a key from SPORT_PROFILES above
-
 # This field is for YOUR review only - it is never written to the database,
 # since it isn't a real game attribute, just a way to verify sourcing.
 DISPLAY_ONLY_FIELDS = ["source_url"]
-BATCH_SIZE = 30
 CHUNK_SIZE = 10  # players requested per individual call
+MAX_BATCH_SIZE = 30  # upper bound for the count argument
+DEFAULT_BATCH_SIZE = 20  # used when count is omitted
 TIER_GUIDANCE = None  # leave as None to use that sport's default, or override with your own text
 
 OUTPUT_FILE = f"proposed_batch_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
@@ -438,21 +449,51 @@ def write_players_to_db(players, sport_slug, fields):
         conn.commit()
 
 
-async def main():
-    if ACTIVE_SPORT_SLUG not in SPORT_PROFILES:
-        raise ValueError(
-            f"'{ACTIVE_SPORT_SLUG}' is not a known sport profile. "
-            f"Choose one of: {list(SPORT_PROFILES.keys())}"
+def batch_count(value):
+    try:
+        count = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"count must be an integer, got '{value}'")
+    if not 1 <= count <= MAX_BATCH_SIZE:
+        raise argparse.ArgumentTypeError(
+            f"count must be between 1 and {MAX_BATCH_SIZE} inclusive, got {count}"
         )
-    profile = SPORT_PROFILES[ACTIVE_SPORT_SLUG]
+    return count
+
+
+def build_arg_parser():
+    parser = argparse.ArgumentParser(
+        description="Research new athlete candidates for a sport and review them before writing to the database."
+    )
+    parser.add_argument(
+        "sport",
+        choices=list(SPORT_PROFILES.keys()),
+        help="which sport/tour to research players for",
+    )
+    parser.add_argument(
+        "count",
+        nargs="?",
+        type=batch_count,
+        default=DEFAULT_BATCH_SIZE,
+        help=f"number of players to research (1-{MAX_BATCH_SIZE}, default {DEFAULT_BATCH_SIZE})",
+    )
+    return parser
+
+
+async def main(args):
+    check_environment()
+
+    sport_slug = args.sport
+    batch_size = args.count
+    profile = SPORT_PROFILES[sport_slug]
     tier_guidance = TIER_GUIDANCE or profile["default_tier_guidance"]
 
     print(f"Connecting to local database to load existing {profile['display_name']} roster...")
-    existing_names = load_existing_names(ACTIVE_SPORT_SLUG)
+    existing_names = load_existing_names(sport_slug)
     print(f"Loaded {len(existing_names)} existing names to avoid duplicating.")
 
     all_players = []
-    remaining = BATCH_SIZE
+    remaining = batch_size
     chunk_num = 1
 
     while remaining > 0:
@@ -497,15 +538,15 @@ async def main():
     # this is the permanent record, kept even in the direct-write flow.
     save_players(all_players, OUTPUT_FILE, profile["fields"] + DISPLAY_ONLY_FIELDS)
     print(f"\n{len(all_players)} players researched (logged to {OUTPUT_FILE}).")
-    if len(all_players) < BATCH_SIZE:
-        print(f"(Requested {BATCH_SIZE}, but a chunk failed partway through - see above.)")
+    if len(all_players) < batch_size:
+        print(f"(Requested {batch_size}, but a chunk failed partway through - see above.)")
 
     print_table(all_players, profile["fields"] + DISPLAY_ONLY_FIELDS)
 
     answer = input(f"Write these {len(all_players)} players to the database? [y/N]: ").strip().lower()
     if answer == "y":
         try:
-            write_players_to_db(all_players, ACTIVE_SPORT_SLUG, profile["fields"])
+            write_players_to_db(all_players, sport_slug, profile["fields"])
             print(f"\nSuccess: {len(all_players)} players written to the database.")
         except Exception as e:
             print(f"\nERROR: Database write failed, nothing was committed: {e}")
@@ -515,4 +556,5 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    args = build_arg_parser().parse_args()
+    asyncio.run(main(args))
