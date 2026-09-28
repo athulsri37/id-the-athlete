@@ -39,11 +39,11 @@ SETUP
 
 USAGE
 -----
-    python roster_research_agent.py <sport> <count>
+    python roster_research_agent.py <sport> [count]
 
     sport  one of: cricket-men-international, cricket-women-international,
            tennis-men, tennis-women
-    count  number of players to research, 1-30
+    count  number of players to research, 1-30 (optional, defaults to 20)
 
     Example:
     python roster_research_agent.py tennis-men 10
@@ -199,6 +199,7 @@ SPORT_PROFILES = {
 DISPLAY_ONLY_FIELDS = ["source_url"]
 CHUNK_SIZE = 10  # players requested per individual call
 MAX_BATCH_SIZE = 30  # upper bound for the count argument
+DEFAULT_BATCH_SIZE = 20  # used when count is omitted
 TIER_GUIDANCE = None  # leave as None to use that sport's default, or override with your own text
 
 OUTPUT_FILE = f"proposed_batch_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
@@ -471,8 +472,10 @@ def build_arg_parser():
     )
     parser.add_argument(
         "count",
+        nargs="?",
         type=batch_count,
-        help=f"number of players to research (1-{MAX_BATCH_SIZE})",
+        default=DEFAULT_BATCH_SIZE,
+        help=f"number of players to research (1-{MAX_BATCH_SIZE}, default {DEFAULT_BATCH_SIZE})",
     )
     return parser
 
