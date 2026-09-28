@@ -527,6 +527,7 @@ async def main(args):
 
     seen_keys = {normalize_name(name) for name in existing_names}
     duplicates_dropped = 0
+    agent_shortfall = 0
     chunk_failed = False
 
     all_players = []
@@ -565,6 +566,11 @@ async def main(args):
             chunk_failed = True
             break
 
+        chunk_shortfall = max(0, this_chunk_size - len(chunk_players))
+        if chunk_shortfall:
+            print(f"Chunk {chunk_num}: agent returned {len(chunk_players)} of {this_chunk_size} requested.")
+        agent_shortfall += chunk_shortfall
+
         kept_players, dropped_names = filter_duplicates(chunk_players, seen_keys)
         for name in dropped_names:
             print(f"Dropped duplicate, already in roster or already proposed this run: {name}")
@@ -576,7 +582,13 @@ async def main(args):
         chunk_num += 1
 
     if not all_players:
-        print("\nNo players were successfully generated. Nothing written.")
+        if not chunk_failed and duplicates_dropped > 0:
+            print(
+                f"\nAll {duplicates_dropped} proposed players were already in the roster "
+                f"or already proposed this run. Nothing written. Re-run to research more."
+            )
+        else:
+            print("\nNo players were successfully generated. Nothing written.")
         return
 
     # Always write the CSV log first, regardless of what happens next -
@@ -587,9 +599,16 @@ async def main(args):
         if chunk_failed:
             print(f"(Requested {batch_size}, but a chunk failed partway through - see above.)")
         else:
+            reasons = []
+            if duplicates_dropped > 0:
+                reasons.append(f"{duplicates_dropped} duplicate(s) dropped")
+            if agent_shortfall > 0:
+                reasons.append(f"the agent returned {agent_shortfall} fewer than requested")
+            joined = " and ".join(reasons)
+            explanation = f" {joined[0].upper()}{joined[1:]}." if reasons else ""
             print(
-                f"(Requested {batch_size}, got {len(all_players)}. {duplicates_dropped} "
-                f"duplicate(s) were dropped. Re-run to research more.)"
+                f"(Requested {batch_size}, got {len(all_players)}.{explanation} "
+                f"Re-run to research more.)"
             )
 
     print_table(all_players, profile["fields"] + DISPLAY_ONLY_FIELDS)
