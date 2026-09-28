@@ -83,6 +83,8 @@ if not os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"):
 SPORT_PROFILES = {
     "cricket-men-international": {
         "display_name": "Men's International Cricket",
+        "source_name": "Cricinfo",
+        "source_domain": "cricinfo.com",
         "fields": [
             "name", "country", "batting_hand", "bowling_style", "role",
             "combined_matches", "combined_runs", "combined_wickets",
@@ -104,6 +106,8 @@ SPORT_PROFILES = {
     },
     "cricket-women-international": {
         "display_name": "Women's International Cricket",
+        "source_name": "Cricinfo",
+        "source_domain": "cricinfo.com",
         "fields": [
             "name", "country", "batting_hand", "bowling_style", "role",
             "combined_matches", "combined_runs", "combined_wickets",
@@ -124,6 +128,8 @@ SPORT_PROFILES = {
     },
     "tennis-men": {
         "display_name": "Men's Tennis (ATP)",
+        "source_name": "the official ATP Tour site",
+        "source_domain": "atptour.com",
         "fields": [
             "name", "country", "plays", "backhand", "grand_slam_titles",
             "career_high_ranking", "turned_pro_year", "career_titles",
@@ -147,6 +153,8 @@ SPORT_PROFILES = {
     },
     "tennis-women": {
         "display_name": "Women's Tennis (WTA)",
+        "source_name": "the official WTA site",
+        "source_domain": "wtatennis.com",
         "fields": [
             "name", "country", "plays", "backhand", "grand_slam_titles",
             "career_high_ranking", "turned_pro_year", "career_titles",
@@ -218,6 +226,8 @@ def load_existing_names(sport_slug):
 def build_prompt(profile, batch_size, tier_guidance, existing_names):
     existing_list = "\n".join(f"- {name}" for name in existing_names)
     sport = profile["display_name"]
+    source_name = profile["source_name"]
+    source_domain = profile["source_domain"]
     fields = profile["fields"] + DISPLAY_ONLY_FIELDS
 
     return f"""You are researching real athletes for a stats-guessing game covering {sport}.
@@ -231,11 +241,11 @@ TIER GUIDANCE:
 
 SOURCE REQUIREMENT: This SDK version does not support a hard technical
 restriction to a single domain, so this is an explicit instruction instead -
-treat ESPNcricinfo (espncricinfo.com) as the required source for every
-statistic. Search specifically on espncricinfo.com for each player's profile
-page, and cite the specific ESPNcricinfo URL you used for each player's stats.
-Only fall back to another source if a player genuinely has no ESPNcricinfo
-profile, and clearly flag any player where you had to do this.
+treat {source_name} ({source_domain}) as the required source for every
+statistic. Search specifically on {source_domain} for each player's profile
+page, and cite the specific {source_domain} URL you used for each player's stats.
+Only fall back to another source if a player genuinely has no profile on
+{source_domain}, and clearly flag any player where you had to do this.
 
 EXISTING ROSTER - DO NOT DUPLICATE ANY OF THESE NAMES:
 {existing_list}
@@ -250,11 +260,11 @@ IMPORTANT ACCURACY NOTES:
 - {profile["min_appearances_note"]}
 - The active_status field must be EXACTLY "Active" or "Retired" - no extra
   detail, dates, or parenthetical notes added to that value.
-- Include a source_url field for every player: the specific ESPNcricinfo
+- Include a source_url field for every player: the specific {source_domain}
   profile page URL you used to verify their stats. If you had to use a
-  different source because no ESPNcricinfo profile exists, put that source's
-  URL here instead and make sure active_status or another field doesn't need
-  a note - flag this exception clearly in your reasoning text before the JSON.
+  different source because no {source_domain} profile exists, put that
+  source's URL here instead and flag this exception clearly in your
+  reasoning text before the JSON.
 - Double check your final count is exactly {batch_size} names before finishing.
 
 Return your answer as a JSON array, one object per player, with exactly these
