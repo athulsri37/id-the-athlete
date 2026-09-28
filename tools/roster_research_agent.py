@@ -58,6 +58,8 @@ import sys
 import json
 import csv
 import asyncio
+import re
+import unicodedata
 from datetime import datetime
 import psycopg2
 from claude_agent_sdk import query, ClaudeAgentOptions, AssistantMessage, TextBlock
@@ -358,26 +360,57 @@ async def call_agent(prompt):
 
 
 def parse_players(raw_text):
-    start = raw_text.find("[")
-    end = raw_text.rfind("]")
+    # The response often contains other bracketed text (source lists,
+    # markdown links, asides) before or after the player array, so try
+    # decoding at every "[" and keep the last list that looks like players.
+    decoder = json.JSONDecoder()
+    found = None
+    pos = raw_text.find("[")
+    while pos != -1:
+        try:
+            value, _ = decoder.raw_decode(raw_text, pos)
+        except json.JSONDecodeError:
+            value = None
+        if (
+            isinstance(value, list)
+            and value
+            and all(isinstance(item, dict) and "name" in item for item in value)
+        ):
+            found = value
+        pos = raw_text.find("[", pos + 1)
 
-    if start == -1 or end == -1 or end < start:
-        print("ERROR: Could not find a JSON array anywhere in the model's response.")
+    if found is None:
+        print("ERROR: Could not find a JSON array of players anywhere in the model's response.")
         print("Raw response has been saved to raw_output.txt for inspection.")
         with open("raw_output.txt", "w", encoding="utf-8") as f:
             f.write(raw_text)
-        raise ValueError("No JSON array found in response")
+        raise ValueError("No JSON array of players found in response")
 
-    cleaned = raw_text[start:end + 1]
+    return found
 
-    try:
-        return json.loads(cleaned)
-    except json.JSONDecodeError as e:
-        print("ERROR: Found what looked like a JSON array, but it didn't parse correctly.")
-        print("Raw response has been saved to raw_output.txt for inspection.")
-        with open("raw_output.txt", "w", encoding="utf-8") as f:
-            f.write(raw_text)
-        raise e
+
+def normalize_name(name):
+    s = unicodedata.normalize("NFKD", name)
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    s = s.casefold()
+    s = re.sub(r"[^a-z0-9]+", " ", s)
+    return " ".join(s.split())
+
+
+def filter_duplicates(chunk_players, seen_keys):
+    """Drops players whose normalized name is already in seen_keys, and adds
+    each kept player's key to seen_keys so repeats later in the same chunk
+    (or in later chunks) are caught too. Mutates seen_keys."""
+    kept_players = []
+    dropped_names = []
+    for player in chunk_players:
+        key = normalize_name(str(player["name"]))
+        if key in seen_keys:
+            dropped_names.append(player["name"])
+        else:
+            seen_keys.add(key)
+            kept_players.append(player)
+    return kept_players, dropped_names
 
 
 def save_players(players, output_path, fields):
@@ -492,6 +525,10 @@ async def main(args):
     existing_names = load_existing_names(sport_slug)
     print(f"Loaded {len(existing_names)} existing names to avoid duplicating.")
 
+    seen_keys = {normalize_name(name) for name in existing_names}
+    duplicates_dropped = 0
+    chunk_failed = False
+
     all_players = []
     remaining = batch_size
     chunk_num = 1
@@ -511,11 +548,13 @@ async def main(args):
             print("successful chunks will still be saved. This is not a bug,")
             print("your subscription usage or credits appear to be exhausted")
             print("for now. Try again later, or check your account.")
+            chunk_failed = True
             break
         except Exception as e:
             print(f"\nChunk {chunk_num} failed after all retries: {e}")
             print(f"Stopping here - {len(all_players)} players from earlier")
             print("successful chunks will still be saved.")
+            chunk_failed = True
             break
 
         try:
@@ -523,10 +562,16 @@ async def main(args):
         except (ValueError, json.JSONDecodeError):
             print(f"Chunk {chunk_num} failed to parse. Stopping here - {len(all_players)}")
             print("players from earlier successful chunks will still be saved.")
+            chunk_failed = True
             break
 
-        print(f"Chunk {chunk_num} succeeded: {len(chunk_players)} players.")
-        all_players.extend(chunk_players)
+        kept_players, dropped_names = filter_duplicates(chunk_players, seen_keys)
+        for name in dropped_names:
+            print(f"Dropped duplicate, already in roster or already proposed this run: {name}")
+        duplicates_dropped += len(dropped_names)
+
+        print(f"Chunk {chunk_num} succeeded: {len(kept_players)} players.")
+        all_players.extend(kept_players)
         remaining -= this_chunk_size
         chunk_num += 1
 
@@ -539,7 +584,13 @@ async def main(args):
     save_players(all_players, OUTPUT_FILE, profile["fields"] + DISPLAY_ONLY_FIELDS)
     print(f"\n{len(all_players)} players researched (logged to {OUTPUT_FILE}).")
     if len(all_players) < batch_size:
-        print(f"(Requested {batch_size}, but a chunk failed partway through - see above.)")
+        if chunk_failed:
+            print(f"(Requested {batch_size}, but a chunk failed partway through - see above.)")
+        else:
+            print(
+                f"(Requested {batch_size}, got {len(all_players)}. {duplicates_dropped} "
+                f"duplicate(s) were dropped. Re-run to research more.)"
+            )
 
     print_table(all_players, profile["fields"] + DISPLAY_ONLY_FIELDS)
 
