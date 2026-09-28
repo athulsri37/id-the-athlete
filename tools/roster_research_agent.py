@@ -251,13 +251,41 @@ def load_existing_names(sport_slug):
         raise
 
 
+REVIEWER_NOTE_MARKER = "REVIEWER NOTE:"
+REVIEWER_NOTE_INSTRUCTIONS = (
+    "Because the reviewer gave guidance for this search, include exactly one line in your\n"
+    "response, before the JSON array, starting with \"REVIEWER NOTE:\". If you fully followed\n"
+    "the guidance, write \"REVIEWER NOTE: followed.\" If you could not fully follow it, write\n"
+    "\"REVIEWER NOTE: could not fully follow, \" and then one plain sentence naming the player\n"
+    "or requirement and the reason, for example because a requested player is already in the\n"
+    "roster, was already proposed or removed this run, or has fewer than the minimum\n"
+    "appearances. Do not put square brackets in this line."
+)
+
+
+def extract_reviewer_notes(raw_text):
+    """Returns the text after "REVIEWER NOTE:" on each line that starts with
+    it, matched case-insensitively after stripping whitespace."""
+    notes = []
+    for line in raw_text.splitlines():
+        stripped = line.strip()
+        if stripped.lower().startswith(REVIEWER_NOTE_MARKER.lower()):
+            notes.append(stripped[len(REVIEWER_NOTE_MARKER):].strip())
+    return notes
+
+
 def build_prompt(profile, batch_size, tier_guidance, existing_names, note=None):
     existing_list = "\n".join(f"- {name}" for name in existing_names)
     sport = profile["display_name"]
     source_name = profile["source_name"]
     source_domain = profile["source_domain"]
     fields = profile["fields"] + DISPLAY_ONLY_FIELDS
-    note_line = f"\nAdditional guidance from the reviewer for this search: {note}\n" if note else ""
+    note_line = (
+        f"\nAdditional guidance from the reviewer for this search: {note}\n"
+        f"\n{REVIEWER_NOTE_INSTRUCTIONS}\n"
+        if note
+        else ""
+    )
 
     return f"""You are researching real athletes for a stats-guessing game covering {sport}.
 
@@ -535,11 +563,14 @@ async def research_players(profile, count, tier_guidance, exclusion_names, seen_
     """Runs the chunked research loop for `count` players. The initial search
     and every replacement search both go through here so they behave the
     same. Mutates seen_keys via filter_duplicates. Returns
-    (players, duplicates_dropped, agent_shortfall, status) where status is
-    "ok", "usage_exhausted" or "chunk_failed"."""
+    (players, duplicates_dropped, agent_shortfall, status, reviewer_notes)
+    where status is "ok", "usage_exhausted" or "chunk_failed", and
+    reviewer_notes has one (chunk_num, [comment lines]) entry per chunk that
+    got a response, collected only when a note was given."""
     duplicates_dropped = 0
     agent_shortfall = 0
     status = "ok"
+    reviewer_notes = []
 
     all_players = []
     remaining = count
@@ -569,6 +600,9 @@ async def research_players(profile, count, tier_guidance, exclusion_names, seen_
             status = "chunk_failed"
             break
 
+        if note:
+            reviewer_notes.append((chunk_num, extract_reviewer_notes(raw_response)))
+
         try:
             chunk_players = parse_players(raw_response)
         except (ValueError, json.JSONDecodeError):
@@ -592,7 +626,19 @@ async def research_players(profile, count, tier_guidance, exclusion_names, seen_
         remaining -= this_chunk_size
         chunk_num += 1
 
-    return all_players, duplicates_dropped, agent_shortfall, status
+    return all_players, duplicates_dropped, agent_shortfall, status, reviewer_notes
+
+
+def report_reviewer_notes(reviewer_notes):
+    """Prints what the agent said about the reviewer's note for one search."""
+    print("\nAgent comment on your note:")
+    lines = [(chunk, text) for chunk, texts in reviewer_notes for text in texts]
+    if not lines:
+        print("The agent gave no comment on your note. Check the results below against what you asked for.")
+        return
+    label_chunks = len(reviewer_notes) > 1
+    for chunk, text in lines:
+        print(f"  Chunk {chunk}: {text}" if label_chunks else f"  {text}")
 
 
 def report_search(requested, found, duplicates_dropped, agent_shortfall, status):
@@ -647,12 +693,14 @@ async def main(args):
     players = []
 
     async def search(count, note=None):
-        found, dropped, shortfall, status = await research_players(
+        found, dropped, shortfall, status, reviewer_notes = await research_players(
             profile, count, tier_guidance, existing_names + proposed_names, seen_keys, note
         )
         proposed_names.extend(p.get("name", "") for p in found)
         players.extend(found)
         report_search(count, found, dropped, shortfall, status)
+        if note:
+            report_reviewer_notes(reviewer_notes)
 
     def ask_note():
         return input("Optional note for this search, or press Enter to skip: ").strip() or None
