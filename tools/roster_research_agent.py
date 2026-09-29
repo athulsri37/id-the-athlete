@@ -263,14 +263,20 @@ REVIEWER_NOTE_INSTRUCTIONS = (
 )
 
 
+MARKDOWN_PREFIX = re.compile(r"^[\s*_\->#`]+")
+COMMENT_EDGE_CHARS = " \t\r\n*_`"
+
+
 def extract_reviewer_notes(raw_text):
     """Returns the text after "REVIEWER NOTE:" on each line that starts with
-    it, matched case-insensitively after stripping whitespace."""
+    it, matched case-insensitively. Markdown the model may wrap around the
+    line (bold, bullets, quotes, headings, code ticks) is ignored; a marker
+    in the middle of a line is not matched."""
     notes = []
     for line in raw_text.splitlines():
-        stripped = line.strip()
+        stripped = MARKDOWN_PREFIX.sub("", line)
         if stripped.lower().startswith(REVIEWER_NOTE_MARKER.lower()):
-            notes.append(stripped[len(REVIEWER_NOTE_MARKER):].strip())
+            notes.append(stripped[len(REVIEWER_NOTE_MARKER):].strip(COMMENT_EDGE_CHARS))
     return notes
 
 
@@ -630,7 +636,11 @@ async def research_players(profile, count, tier_guidance, exclusion_names, seen_
 
 
 def report_reviewer_notes(reviewer_notes):
-    """Prints what the agent said about the reviewer's note for one search."""
+    """Prints what the agent said about the reviewer's note for one search.
+    reviewer_notes has one entry per chunk that returned a response, so an
+    empty list means nothing came back and there is nothing to judge."""
+    if not reviewer_notes:
+        return
     print("\nAgent comment on your note:")
     lines = [(chunk, text) for chunk, texts in reviewer_notes for text in texts]
     if not lines:
