@@ -7,9 +7,9 @@ namespace IdTheAthlete.Api.Controllers;
 [Route("api/sports/{sportSlug}/players")]
 public class PlayersController : ControllerBase
 {
-    private readonly GameService _gameService;
+    private readonly IGameService _gameService;
 
-    public PlayersController(GameService gameService)
+    public PlayersController(IGameService gameService)
     {
         _gameService = gameService;
     }

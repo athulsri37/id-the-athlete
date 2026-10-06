@@ -8,10 +8,10 @@ namespace IdTheAthlete.Api.Controllers;
 [Route("api/sports/{sportSlug}/game")]
 public class GameController : ControllerBase
 {
-    private readonly GameService _gameService;
+    private readonly IGameService _gameService;
     private readonly IDailyPuzzleService _dailyPuzzleService;
 
-    public GameController(GameService gameService, IDailyPuzzleService dailyPuzzleService)
+    public GameController(IGameService gameService, IDailyPuzzleService dailyPuzzleService)
     {
         _gameService = gameService;
         _dailyPuzzleService = dailyPuzzleService;
