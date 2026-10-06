@@ -22,7 +22,6 @@ public class GameService
     private readonly IDailyPuzzleService _dailyPuzzleService;
 
     private const int MaxGuesses = 8;
-    private static readonly Random Rng = new();
 
     public GameService(
         GameDbContext db,
@@ -80,7 +79,7 @@ public class GameService
         if (pool.Count == 0)
             throw new InvalidOperationException("No players available for this difficulty yet.");
 
-        var mysteryPlayer = pool[Rng.Next(pool.Count)];
+        var mysteryPlayer = pool[Random.Shared.Next(pool.Count)];
         var sessionId = _practiceSessions.CreateSession(mysteryPlayer.Id);
 
         return new StartGameResponseDto
