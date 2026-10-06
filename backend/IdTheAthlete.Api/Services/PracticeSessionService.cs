@@ -8,7 +8,7 @@ namespace IdTheAthlete.Api.Services;
 // as a Singleton so the dictionary is shared for the app's lifetime (this
 // class holds the state itself now, rather than smuggling it via a static
 // field the way it lived inside GameService before this refactor).
-public class PracticeSessionService
+public class PracticeSessionService : IPracticeSessionService
 {
     private readonly ConcurrentDictionary<string, int> _sessions = new();
 

@@ -11,7 +11,7 @@ namespace IdTheAthlete.Api.Services;
 // single home regardless of which caller triggers it (the scheduled job,
 // its startup catch-up, or the lazy fallback below). Registered Scoped
 // (depends on GameDbContext).
-public class DailyPuzzleService
+public class DailyPuzzleService : IDailyPuzzleService
 {
     private readonly GameDbContext _db;
     private readonly ILogger<DailyPuzzleService> _logger;

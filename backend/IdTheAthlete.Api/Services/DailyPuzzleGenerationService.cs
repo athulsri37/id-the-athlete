@@ -66,7 +66,7 @@ public class DailyPuzzleGenerationService : BackgroundService
     {
         using var scope = _scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<GameDbContext>();
-        var dailyPuzzleService = scope.ServiceProvider.GetRequiredService<DailyPuzzleService>();
+        var dailyPuzzleService = scope.ServiceProvider.GetRequiredService<IDailyPuzzleService>();
 
         var sports = await db.Sports.ToListAsync(stoppingToken);
         var today = DateOnly.FromDateTime(DateTime.UtcNow);

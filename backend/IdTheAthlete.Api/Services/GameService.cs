@@ -18,8 +18,8 @@ public class GameService
     private readonly IDifficultyService _difficultyService;
     private readonly INumericClosenessEvaluator _numericCloseness;
     private readonly ICategoricalClosenessEvaluator _categoricalCloseness;
-    private readonly PracticeSessionService _practiceSessions;
-    private readonly DailyPuzzleService _dailyPuzzleService;
+    private readonly IPracticeSessionService _practiceSessions;
+    private readonly IDailyPuzzleService _dailyPuzzleService;
 
     private const int MaxGuesses = 8;
     private static readonly Random Rng = new();
@@ -30,8 +30,8 @@ public class GameService
         IDifficultyService difficultyService,
         INumericClosenessEvaluator numericCloseness,
         ICategoricalClosenessEvaluator categoricalCloseness,
-        PracticeSessionService practiceSessions,
-        DailyPuzzleService dailyPuzzleService)
+        IPracticeSessionService practiceSessions,
+        IDailyPuzzleService dailyPuzzleService)
     {
         _db = db;
         _aiTriviaService = aiTriviaService;

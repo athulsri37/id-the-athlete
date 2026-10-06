@@ -23,7 +23,7 @@ builder.Services.AddDbContext<GameDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<GameService>();
-builder.Services.AddScoped<AdminService>();
+builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddHttpClient<IAiTriviaService, AiTriviaService>();
 builder.Services.AddHostedService<DailyPuzzleGenerationService>();
 
@@ -36,8 +36,8 @@ builder.Services.AddHostedService<DailyPuzzleGenerationService>();
 builder.Services.AddSingleton<IDifficultyService, DifficultyService>();
 builder.Services.AddScoped<INumericClosenessEvaluator, NumericClosenessEvaluator>();
 builder.Services.AddScoped<ICategoricalClosenessEvaluator, CategoricalClosenessEvaluator>();
-builder.Services.AddSingleton<PracticeSessionService>();
-builder.Services.AddScoped<DailyPuzzleService>();
+builder.Services.AddSingleton<IPracticeSessionService, PracticeSessionService>();
+builder.Services.AddScoped<IDailyPuzzleService, DailyPuzzleService>();
 
 // Comma-separated list of frontend origins allowed to call the API from a
 // browser, e.g. "https://<frontend>.onrender.com". Set via the AllowedOrigins
