@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using IdTheAthlete.Api.Data;
 using IdTheAthlete.Api.Models;
 using IdTheAthlete.Api.Services;
@@ -23,7 +24,7 @@ public class SettingsServiceTests
                 db.AppSettings.Add(new AppSetting { Key = key, Value = value });
             db.SaveChanges();
         }
-        return new SettingsService(NewContext(), NullLogger<SettingsService>.Instance);
+        return new SettingsService(NewContext(), NullLogger<SettingsService>.Instance, new SettingsFailureLogThrottle(TimeProvider.System));
     }
 
     [Fact]
@@ -79,7 +80,7 @@ public class SettingsServiceTests
             .UseNpgsql("Host=127.0.0.1;Port=1;Database=unreachable;Username=x;Password=x;Timeout=3")
             .Options;
         var logger = new CapturingLogger<SettingsService>();
-        var settings = new SettingsService(new GameDbContext(unreachable), logger);
+        var settings = new SettingsService(new GameDbContext(unreachable), logger, new SettingsFailureLogThrottle(TimeProvider.System));
 
         var result = await settings.GetDecimalsAsync(new[]
         {
@@ -109,7 +110,7 @@ public class SettingsServiceTests
             .UseNpgsql("Host=127.0.0.1;Port=1;Database=unreachable;Username=x;Password=x;Timeout=3")
             .Options;
         var logger = new CapturingLogger<SettingsService>();
-        var settings = new SettingsService(new GameDbContext(unreachable), logger);
+        var settings = new SettingsService(new GameDbContext(unreachable), logger, new SettingsFailureLogThrottle(TimeProvider.System));
 
         var expected = new Dictionary<string, bool>
         {
@@ -131,10 +132,43 @@ public class SettingsServiceTests
     }
 
     [Fact]
+    public async Task Repeated_failures_log_once_per_key_per_window_without_changing_the_values_returned()
+    {
+        var broken = NewContext();
+        broken.Dispose(); // every query on it now throws, like a failed read
+        var time = new FakeTimeProvider(new DateTimeOffset(2030, 1, 15, 12, 0, 0, TimeSpan.Zero));
+        var logger = new CapturingLogger<SettingsService>();
+        var settings = new SettingsService(broken, logger, new SettingsFailureLogThrottle(time));
+        string[] numericKeys = { "CricketRunsClosenessPercent", "CricketRunsClosenessFloor" };
+        var expectedNumeric = new Dictionary<string, decimal> { ["CricketRunsClosenessPercent"] = 15m, ["CricketRunsClosenessFloor"] = 500m };
+
+        // Two failures inside the window: both return the fallback, one log line each.
+        Assert.True(await settings.IsEnabledAsync("CountryClosenessEnabled"));
+        Assert.True(await settings.IsEnabledAsync("CountryClosenessEnabled"));
+        Assert.Equal(expectedNumeric, await settings.GetDecimalsAsync(numericKeys));
+        Assert.Equal(expectedNumeric, await settings.GetDecimalsAsync(numericKeys));
+        Assert.Equal(2, logger.Entries.Count);
+        Assert.Single(logger.Entries, e => e.Message.Contains("setting CountryClosenessEnabled failed"));
+        Assert.Single(logger.Entries, e => e.Message.Contains("numeric settings failed"));
+
+        // Still inside the window: nothing new logged, values unchanged.
+        time.Advance(SettingsFailureLogThrottle.Window - TimeSpan.FromSeconds(1));
+        Assert.True(await settings.IsEnabledAsync("CountryClosenessEnabled"));
+        Assert.Equal(2, logger.Entries.Count);
+
+        // Window elapsed: the next failure of each logs again.
+        time.Advance(TimeSpan.FromSeconds(1));
+        Assert.True(await settings.IsEnabledAsync("CountryClosenessEnabled"));
+        Assert.Equal(expectedNumeric, await settings.GetDecimalsAsync(numericKeys));
+        Assert.Equal(4, logger.Entries.Count);
+        Assert.Equal(2, logger.Entries.Count(e => e.Message.Contains("setting CountryClosenessEnabled failed")));
+    }
+
+    [Fact]
     public async Task Theme_defaults_to_retro_only_when_the_row_is_missing()
     {
         Assert.Equal("retro", await Seed().GetThemeAsync());
-        Assert.Equal("stadium", await new SettingsService(SeedFresh(("ActiveTheme", "stadium")), NullLogger<SettingsService>.Instance).GetThemeAsync());
+        Assert.Equal("stadium", await new SettingsService(SeedFresh(("ActiveTheme", "stadium")), NullLogger<SettingsService>.Instance, new SettingsFailureLogThrottle(TimeProvider.System)).GetThemeAsync());
     }
 
     [Fact]
@@ -165,7 +199,7 @@ public class SettingsServiceTests
         // An admin request on a different context changes both values.
         using (var adminDb = NewContext())
         {
-            var admin = new SettingsService(adminDb, NullLogger<SettingsService>.Instance);
+            var admin = new SettingsService(adminDb, NullLogger<SettingsService>.Instance, new SettingsFailureLogThrottle(TimeProvider.System));
             await admin.UpdateAsync("CountryClosenessEnabled", "false");
             await admin.UpdateAsync("CricketRunsClosenessPercent", "25");
         }
