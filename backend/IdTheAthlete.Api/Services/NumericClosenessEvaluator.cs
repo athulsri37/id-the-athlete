@@ -10,7 +10,7 @@ namespace IdTheAthlete.Api.Services;
 //   AppSettings on every guess (LoadCricketSettingsAsync), not hardcoded,
 //   so it can be retuned live without a redeploy.
 // Registered Scoped (depends on GameDbContext for the Cricket settings read).
-public class NumericClosenessEvaluator
+public class NumericClosenessEvaluator : INumericClosenessEvaluator
 {
     private readonly GameDbContext _db;
 

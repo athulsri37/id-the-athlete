@@ -16,8 +16,8 @@ public class GameService
     private readonly GameDbContext _db;
     private readonly IAiTriviaService _aiTriviaService;
     private readonly IDifficultyService _difficultyService;
-    private readonly NumericClosenessEvaluator _numericCloseness;
-    private readonly CategoricalClosenessEvaluator _categoricalCloseness;
+    private readonly INumericClosenessEvaluator _numericCloseness;
+    private readonly ICategoricalClosenessEvaluator _categoricalCloseness;
     private readonly PracticeSessionService _practiceSessions;
     private readonly DailyPuzzleService _dailyPuzzleService;
 
@@ -28,8 +28,8 @@ public class GameService
         GameDbContext db,
         IAiTriviaService aiTriviaService,
         IDifficultyService difficultyService,
-        NumericClosenessEvaluator numericCloseness,
-        CategoricalClosenessEvaluator categoricalCloseness,
+        INumericClosenessEvaluator numericCloseness,
+        ICategoricalClosenessEvaluator categoricalCloseness,
         PracticeSessionService practiceSessions,
         DailyPuzzleService dailyPuzzleService)
     {

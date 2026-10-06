@@ -8,7 +8,7 @@ namespace IdTheAthlete.Api.Services;
 // entirely different rules -- see IsClose below) plus Cricket's Role and
 // Bowling Style. Registered Scoped (depends on GameDbContext for the
 // AppSettings flag reads).
-public class CategoricalClosenessEvaluator
+public class CategoricalClosenessEvaluator : ICategoricalClosenessEvaluator
 {
     private readonly GameDbContext _db;
 
