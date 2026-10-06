@@ -11,7 +11,7 @@ namespace IdTheAthlete.Api.Services;
 // sessions, daily-puzzle selection), and assembles the response DTOs.
 // Split out of a single 644-line GameService -- see each component's own
 // file for the logic that used to live here.
-public class GameService
+public class GameService : IGameService
 {
     private readonly GameDbContext _db;
     private readonly IAiTriviaService _aiTriviaService;
