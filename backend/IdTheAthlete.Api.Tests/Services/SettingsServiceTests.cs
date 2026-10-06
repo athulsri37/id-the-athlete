@@ -162,6 +162,40 @@ public class SettingsServiceTests
         Assert.Equal(expectedNumeric, await settings.GetDecimalsAsync(numericKeys));
         Assert.Equal(4, logger.Entries.Count);
         Assert.Equal(2, logger.Entries.Count(e => e.Message.Contains("setting CountryClosenessEnabled failed")));
+
+        // Each line reports how many failures of that key went unlogged since its last line.
+        var flagLines = logger.Entries.Select(e => e.Message).Where(m => m.Contains("CountryClosenessEnabled")).ToList();
+        Assert.Equal("Reading setting CountryClosenessEnabled failed; using its built-in fallback value True.", flagLines[0]);
+        Assert.Equal("Reading setting CountryClosenessEnabled failed; using its built-in fallback value True" +
+                     " (2 failures suppressed since last log).", flagLines[1]);
+        var numericLines = logger.Entries.Select(e => e.Message).Where(m => m.Contains("numeric settings failed")).ToList();
+        Assert.DoesNotContain("suppressed", numericLines[0]);
+        Assert.Equal("Reading numeric settings failed; using built-in fallback values for" +
+                     " CricketRunsClosenessPercent, CricketRunsClosenessFloor (1 failure suppressed since last log).", numericLines[1]);
+    }
+
+    [Fact]
+    public async Task Numeric_failure_message_only_includes_clauses_that_name_keys()
+    {
+        async Task<string> MessageFor(params string[] keys)
+        {
+            var broken = NewContext();
+            broken.Dispose();
+            var logger = new CapturingLogger<SettingsService>();
+            await new SettingsService(broken, logger, new SettingsFailureLogThrottle(TimeProvider.System)).GetDecimalsAsync(keys);
+            return Assert.Single(logger.Entries).Message;
+        }
+
+        var knownOnly = await MessageFor("CricketRunsClosenessPercent", "CricketRunsClosenessFloor");
+        var both = await MessageFor("CricketRunsClosenessPercent", "SomeFutureSetting");
+        var unknownOnly = await MessageFor("SomeFutureSetting");
+
+        Assert.Equal("Reading numeric settings failed; using built-in fallback values for" +
+                     " CricketRunsClosenessPercent, CricketRunsClosenessFloor.", knownOnly);
+        Assert.Equal("Reading numeric settings failed; using built-in fallback values for CricketRunsClosenessPercent" +
+                     " and treating SomeFutureSetting as not configured.", both);
+        Assert.Equal("Reading numeric settings failed; treating SomeFutureSetting as not configured.", unknownOnly);
+        Assert.All(new[] { knownOnly, both, unknownOnly }, m => Assert.DoesNotContain("  ", m));
     }
 
     [Fact]

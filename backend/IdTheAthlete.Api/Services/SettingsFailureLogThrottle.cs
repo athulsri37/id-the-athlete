@@ -15,8 +15,14 @@ public sealed class SettingsFailureLogThrottle
     // outage is ongoing.
     public static readonly TimeSpan Window = TimeSpan.FromSeconds(60);
 
+    private sealed class KeyState
+    {
+        public DateTimeOffset LastLogged;
+        public int Suppressed;
+    }
+
     private readonly TimeProvider _timeProvider;
-    private readonly Dictionary<string, DateTimeOffset> _lastLogged = new();
+    private readonly Dictionary<string, KeyState> _keys = new();
     private readonly object _gate = new();
 
     public SettingsFailureLogThrottle(TimeProvider timeProvider)
@@ -24,19 +30,35 @@ public sealed class SettingsFailureLogThrottle
         _timeProvider = timeProvider;
     }
 
-    // True if a failure for this key should be logged now, in which case the
-    // current time is recorded as its last log; false while still inside the
-    // window since the key was last logged.
-    public bool ShouldLog(string key)
+    // Call once per failure. True if this failure should be logged now, in
+    // which case suppressedSinceLastLog is how many failures of this key went
+    // unlogged since its previous log line (0 the first time) and the count
+    // starts again from zero. False while still inside the window, in which
+    // case this failure is added to that count.
+    public bool ShouldLog(string key, out int suppressedSinceLastLog)
     {
         var now = _timeProvider.GetUtcNow();
         lock (_gate)
         {
-            if (_lastLogged.TryGetValue(key, out var last) && now - last < Window)
+            if (_keys.TryGetValue(key, out var state) && now - state.LastLogged < Window)
+            {
+                state.Suppressed++;
+                suppressedSinceLastLog = 0;
                 return false;
+            }
 
-            _lastLogged[key] = now;
+            suppressedSinceLastLog = state?.Suppressed ?? 0;
+            _keys[key] = new KeyState { LastLogged = now };
             return true;
         }
     }
+
+    // Appended to a log message: nothing when no failures were suppressed,
+    // otherwise e.g. " (3 failures suppressed since last log)".
+    public static string SuppressedNote(int suppressed) => suppressed switch
+    {
+        0 => "",
+        1 => " (1 failure suppressed since last log)",
+        _ => $" ({suppressed} failures suppressed since last log)",
+    };
 }
