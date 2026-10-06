@@ -30,6 +30,19 @@ public class SettingsService : ISettingsService
         ["CricketWicketsClosenessFloor"] = 15m,
     };
 
+    // Used only when the query for an on/off flag itself fails, so an outage
+    // keeps each flag at its real state instead of switching everything off.
+    // These match the database and SeedData/00-app-settings.sql when this was
+    // written (AiTriviaEnabled has no row anywhere, which means off); retune
+    // them together, or features will flip during an outage.
+    private static readonly Dictionary<string, bool> FlagFallbacks = new()
+    {
+        ["CountryClosenessEnabled"] = true,
+        ["CricketRoleClosenessEnabled"] = true,
+        ["CricketBowlingStyleClosenessEnabled"] = true,
+        ["AiTriviaEnabled"] = false,
+    };
+
     private readonly GameDbContext _db;
     private readonly ILogger<SettingsService> _logger;
 
@@ -39,23 +52,33 @@ public class SettingsService : ISettingsService
         _logger = logger;
     }
 
-    // On only when the stored value is exactly "true". A missing row, any
-    // other value, or a failed read all count as off.
+    // On only when the stored value is exactly "true"; a missing row or any
+    // other value counts as off. If the read itself fails, returns the key's
+    // FlagFallbacks value and logs the failure. A key with no fallback is
+    // treated as off, the same as a missing row.
     public async Task<bool> IsEnabledAsync(string key)
     {
+        string? value;
         try
         {
-            var value = await _db.AppSettings
+            value = await _db.AppSettings
                 .Where(s => s.Key == key)
                 .Select(s => s.Value)
                 .FirstOrDefaultAsync();
-
-            return value == "true";
         }
-        catch
+        catch (Exception ex)
         {
+            if (FlagFallbacks.TryGetValue(key, out var fallback))
+            {
+                _logger.LogError(ex, "Reading setting {Key} failed; using its built-in fallback value {Fallback}.", key, fallback);
+                return fallback;
+            }
+
+            _logger.LogError(ex, "Reading setting {Key} failed and it has no built-in fallback; treating it as off.", key);
             return false;
         }
+
+        return value == "true";
     }
 
     // One round trip for the whole batch. Missing or unparseable values are

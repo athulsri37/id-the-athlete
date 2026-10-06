@@ -103,6 +103,34 @@ public class SettingsServiceTests
     }
 
     [Fact]
+    public async Task Flags_fall_back_to_their_real_values_and_log_when_the_database_is_unreachable()
+    {
+        var unreachable = new DbContextOptionsBuilder<GameDbContext>()
+            .UseNpgsql("Host=127.0.0.1;Port=1;Database=unreachable;Username=x;Password=x;Timeout=3")
+            .Options;
+        var logger = new CapturingLogger<SettingsService>();
+        var settings = new SettingsService(new GameDbContext(unreachable), logger);
+
+        var expected = new Dictionary<string, bool>
+        {
+            ["CountryClosenessEnabled"] = true,
+            ["CricketRoleClosenessEnabled"] = true,
+            ["CricketBowlingStyleClosenessEnabled"] = true,
+            ["AiTriviaEnabled"] = false,
+            ["SomeFutureFlag"] = false,
+        };
+        foreach (var (key, value) in expected)
+            Assert.Equal(value, await settings.IsEnabledAsync(key));
+
+        Assert.Equal(expected.Count, logger.Entries.Count);
+        Assert.All(logger.Entries, e => Assert.Equal(LogLevel.Error, e.Level));
+        Assert.All(logger.Entries, e => Assert.NotNull(e.Exception));
+        foreach (var key in expected.Keys)
+            Assert.Single(logger.Entries, e => e.Message.Contains($"setting {key} failed"));
+        Assert.Contains("no built-in fallback", logger.Entries.Single(e => e.Message.Contains("SomeFutureFlag")).Message);
+    }
+
+    [Fact]
     public async Task Theme_defaults_to_retro_only_when_the_row_is_missing()
     {
         Assert.Equal("retro", await Seed().GetThemeAsync());
