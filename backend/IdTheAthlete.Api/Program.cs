@@ -29,11 +29,19 @@ builder.Services.AddScoped<CategoricalClosenessEvaluator>();
 builder.Services.AddSingleton<PracticeSessionService>();
 builder.Services.AddScoped<DailyPuzzleService>();
 
+// Comma-separated list of frontend origins allowed to call the API from a
+// browser, e.g. "https://<frontend>.onrender.com". Set via the AllowedOrigins
+// config key or environment variable; appsettings.Development.json supplies
+// the local dev origins. When empty, no cross-origin browser requests are
+// allowed (same-origin and server-to-server calls are unaffected).
+var allowedOrigins = (builder.Configuration["AllowedOrigins"] ?? "")
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+        policy.WithOrigins(allowedOrigins).AllowAnyMethod().AllowAnyHeader();
     });
 });
 

@@ -8,6 +8,6 @@ export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
   use: {
-    baseURL: "http://localhost:5174",
+    baseURL: process.env.E2E_BASE_URL ?? "http://localhost:5174",
   },
 });
