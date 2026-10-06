@@ -1,4 +1,5 @@
 import axios from "axios";
+import { API_ROOT } from "../api/client";
 
 // sessionStorage (not localStorage) so the key survives a reload within
 // the tab -- reasonable for "session duration" -- but doesn't linger
@@ -22,7 +23,7 @@ export function clearStoredAdminKey() {
   sessionStorage.removeItem(ADMIN_KEY_STORAGE_KEY);
 }
 
-const adminClient = axios.create({ baseURL: "/api/admin" });
+const adminClient = axios.create({ baseURL: `${API_ROOT}/admin` });
 
 adminClient.interceptors.request.use((config) => {
   const key = getStoredAdminKey();

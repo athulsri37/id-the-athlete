@@ -6,6 +6,16 @@ using IdTheAthlete.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Hosts like Render assign the listening port through a PORT environment
+// variable and won't expand it inside ASPNETCORE_URLS, so bind to it here.
+// An explicit ASPNETCORE_URLS (or --urls) still takes precedence, and
+// `dotnet run` is unaffected because its launch profile sets the URL.
+var hostPort = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(hostPort) && string.IsNullOrWhiteSpace(builder.Configuration["urls"]))
+{
+    builder.WebHost.UseUrls($"http://0.0.0.0:{hostPort.Trim()}");
+}
+
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
@@ -29,11 +39,19 @@ builder.Services.AddScoped<CategoricalClosenessEvaluator>();
 builder.Services.AddSingleton<PracticeSessionService>();
 builder.Services.AddScoped<DailyPuzzleService>();
 
+// Comma-separated list of frontend origins allowed to call the API from a
+// browser, e.g. "https://<frontend>.onrender.com". Set via the AllowedOrigins
+// config key or environment variable; appsettings.Development.json supplies
+// the local dev origins. When empty, no cross-origin browser requests are
+// allowed (same-origin and server-to-server calls are unaffected).
+var allowedOrigins = (builder.Configuration["AllowedOrigins"] ?? "")
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+        policy.WithOrigins(allowedOrigins).AllowAnyMethod().AllowAnyHeader();
     });
 });
 

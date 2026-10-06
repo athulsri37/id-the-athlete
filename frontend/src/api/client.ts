@@ -1,7 +1,13 @@
 import axios from "axios";
 import { PlayerSummary, GuessResponse, Difficulty, AttributeDefinition } from "../types";
 
-const client = axios.create({ baseURL: "/api" });
+// VITE_API_BASE_URL is the backend's origin in a deployed build (e.g.
+// https://<api>.onrender.com). Left unset in local dev, requests stay
+// relative and Vite's dev proxy forwards /api to the backend. Vite inlines
+// this at build time, so changing it requires a rebuild, not a restart.
+export const API_ROOT = `${(import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "")}/api`;
+
+const client = axios.create({ baseURL: API_ROOT });
 
 export async function fetchPlayerPool(sportSlug: string): Promise<PlayerSummary[]> {
   const res = await client.get(`/sports/${sportSlug}/players`);
