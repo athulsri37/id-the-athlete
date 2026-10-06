@@ -1,6 +1,3 @@
-using Microsoft.EntityFrameworkCore;
-using IdTheAthlete.Api.Data;
-
 namespace IdTheAthlete.Api.Services;
 
 // Numeric "close" (amber) evaluation for both Tennis and Cricket, kept as
@@ -9,10 +6,10 @@ namespace IdTheAthlete.Api.Services;
 // - Cricket: percent-of-actual-value with a floor, read fresh from
 //   AppSettings on every guess (LoadCricketSettingsAsync), not hardcoded,
 //   so it can be retuned live without a redeploy.
-// Registered Scoped (depends on GameDbContext for the Cricket settings read).
+// Registered Scoped (depends on ISettingsService for the Cricket settings read).
 public class NumericClosenessEvaluator : INumericClosenessEvaluator
 {
-    private readonly GameDbContext _db;
+    private readonly ISettingsService _settings;
 
     // Tennis-only: fixed absolute closeness thresholds, untouched by the
     // Cricket closeness logic below (entirely separate code path).
@@ -35,39 +32,20 @@ public class NumericClosenessEvaluator : INumericClosenessEvaluator
         ["combined_wickets"] = ("CricketWicketsClosenessPercent", "CricketWicketsClosenessFloor"),
     };
 
-    public NumericClosenessEvaluator(GameDbContext db)
+    public NumericClosenessEvaluator(ISettingsService settings)
     {
-        _db = db;
+        _settings = settings;
     }
 
     // Fetches every Cricket percent/floor AppSettings value in a single
     // round-trip. Call once per guess and pass the result into IsClose for
     // each numeric attribute -- not once per attribute, to avoid turning
-    // one guess into several extra DB round-trips.
+    // one guess into several extra DB round-trips. A missing or unparseable
+    // value is simply absent, meaning "no closeness for this attribute".
     public async Task<Dictionary<string, decimal>> LoadCricketSettingsAsync()
     {
         var keys = CricketNumericClosenessSettingKeys.Values.SelectMany(k => new[] { k.PercentKey, k.FloorKey });
-        return await GetAppSettingsAsync(keys);
-    }
-
-    // Reads a batch of AppSettings values fresh from the database and
-    // parses each as a decimal, skipping any that are missing or
-    // unparseable rather than throwing -- callers treat an absent key as
-    // "no closeness for this attribute", not an error.
-    private async Task<Dictionary<string, decimal>> GetAppSettingsAsync(IEnumerable<string> keys)
-    {
-        var keyList = keys.ToList();
-        var rows = await _db.AppSettings
-            .Where(s => keyList.Contains(s.Key))
-            .ToListAsync();
-
-        var result = new Dictionary<string, decimal>();
-        foreach (var row in rows)
-        {
-            if (decimal.TryParse(row.Value, out var parsed))
-                result[row.Key] = parsed;
-        }
-        return result;
+        return await _settings.GetDecimalsAsync(keys);
     }
 
     // Only ever called when guessedNum != mysteryNum (an exact match is

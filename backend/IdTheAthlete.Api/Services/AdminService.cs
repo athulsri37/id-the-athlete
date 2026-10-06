@@ -15,11 +15,13 @@ public class AdminService : IAdminService
 {
     private readonly GameDbContext _db;
     private readonly TimeProvider _timeProvider;
+    private readonly ISettingsService _settings;
 
-    public AdminService(GameDbContext db, TimeProvider timeProvider)
+    public AdminService(GameDbContext db, TimeProvider timeProvider, ISettingsService settings)
     {
         _db = db;
         _timeProvider = timeProvider;
+        _settings = settings;
     }
 
     public async Task<List<AdminSportDto>> GetSportsAsync()
@@ -149,26 +151,15 @@ public class AdminService : IAdminService
 
     public async Task<List<AdminSettingDto>> GetSettingsAsync()
     {
-        return await _db.AppSettings
-            .OrderBy(s => s.Key)
-            .Select(s => new AdminSettingDto { Key = s.Key, Value = s.Value })
-            .ToListAsync();
+        var settings = await _settings.GetAllAsync();
+        return settings.Select(s => new AdminSettingDto { Key = s.Key, Value = s.Value }).ToList();
     }
 
-    // Same defense-in-depth rationale as UpdatePlayerAsync: the frontend
-    // renders a True/False dropdown for a setting whose current value is
-    // exactly "true"/"false", but that inference has to be re-validated
-    // here too, since nothing prevents a raw PUT request bypassing it.
-    public async Task UpdateSettingAsync(string key, string newValue)
+    // Validation (including the boolean-setting rule) lives in
+    // SettingsService.UpdateAsync, which throws InvalidOperationException
+    // with the message AdminController returns as a 400.
+    public Task UpdateSettingAsync(string key, string newValue)
     {
-        var setting = await _db.AppSettings.FirstOrDefaultAsync(s => s.Key == key)
-            ?? throw new InvalidOperationException($"Setting '{key}' not found.");
-
-        var wasBoolean = setting.Value == "true" || setting.Value == "false";
-        if (wasBoolean && newValue != "true" && newValue != "false")
-            throw new InvalidOperationException($"Setting '{key}' is boolean; value must be 'true' or 'false'.");
-
-        setting.Value = newValue;
-        await _db.SaveChangesAsync();
+        return _settings.UpdateAsync(key, newValue);
     }
 }

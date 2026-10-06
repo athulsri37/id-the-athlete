@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using IdTheAthlete.Api.Data;
+using IdTheAthlete.Api.Services;
 
 namespace IdTheAthlete.Api.Controllers;
 
@@ -8,21 +7,18 @@ namespace IdTheAthlete.Api.Controllers;
 [Route("api/settings")]
 public class SettingsController : ControllerBase
 {
-    private readonly GameDbContext _db;
+    private readonly ISettingsService _settings;
 
-    public SettingsController(GameDbContext db)
+    public SettingsController(ISettingsService settings)
     {
-        _db = db;
+        _settings = settings;
     }
 
     // GET /api/settings/theme
     [HttpGet("theme")]
     public async Task<IActionResult> GetTheme()
     {
-        var theme = await _db.AppSettings
-            .Where(s => s.Key == "ActiveTheme")
-            .Select(s => s.Value)
-            .FirstOrDefaultAsync() ?? "retro";
+        var theme = await _settings.GetThemeAsync();
 
         return Ok(new { theme });
     }
