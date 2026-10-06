@@ -1,4 +1,6 @@
 using System.Globalization;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using IdTheAthlete.Api.Data;
 using IdTheAthlete.Api.Models;
 using IdTheAthlete.Api.Services;
@@ -21,7 +23,7 @@ public class SettingsServiceTests
                 db.AppSettings.Add(new AppSetting { Key = key, Value = value });
             db.SaveChanges();
         }
-        return new SettingsService(NewContext());
+        return new SettingsService(NewContext(), NullLogger<SettingsService>.Instance);
     }
 
     [Fact]
@@ -71,10 +73,40 @@ public class SettingsServiceTests
     }
 
     [Fact]
+    public async Task Decimals_fall_back_to_built_in_values_and_log_when_the_database_is_unreachable()
+    {
+        var unreachable = new DbContextOptionsBuilder<GameDbContext>()
+            .UseNpgsql("Host=127.0.0.1;Port=1;Database=unreachable;Username=x;Password=x;Timeout=3")
+            .Options;
+        var logger = new CapturingLogger<SettingsService>();
+        var settings = new SettingsService(new GameDbContext(unreachable), logger);
+
+        var result = await settings.GetDecimalsAsync(new[]
+        {
+            "CricketMatchesClosenessPercent", "CricketMatchesClosenessFloor",
+            "CricketRunsClosenessPercent", "CricketRunsClosenessFloor",
+            "CricketWicketsClosenessPercent", "CricketWicketsClosenessFloor",
+            "SomeFutureSetting",
+        });
+
+        Assert.Equal(new Dictionary<string, decimal>
+        {
+            ["CricketMatchesClosenessPercent"] = 15m, ["CricketMatchesClosenessFloor"] = 20m,
+            ["CricketRunsClosenessPercent"] = 15m, ["CricketRunsClosenessFloor"] = 500m,
+            ["CricketWicketsClosenessPercent"] = 15m, ["CricketWicketsClosenessFloor"] = 15m,
+        }, result);
+
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Error, entry.Level);
+        Assert.NotNull(entry.Exception);
+        Assert.Contains("SomeFutureSetting", entry.Message);
+    }
+
+    [Fact]
     public async Task Theme_defaults_to_retro_only_when_the_row_is_missing()
     {
         Assert.Equal("retro", await Seed().GetThemeAsync());
-        Assert.Equal("stadium", await new SettingsService(SeedFresh(("ActiveTheme", "stadium"))).GetThemeAsync());
+        Assert.Equal("stadium", await new SettingsService(SeedFresh(("ActiveTheme", "stadium")), NullLogger<SettingsService>.Instance).GetThemeAsync());
     }
 
     [Fact]
@@ -105,7 +137,7 @@ public class SettingsServiceTests
         // An admin request on a different context changes both values.
         using (var adminDb = NewContext())
         {
-            var admin = new SettingsService(adminDb);
+            var admin = new SettingsService(adminDb, NullLogger<SettingsService>.Instance);
             await admin.UpdateAsync("CountryClosenessEnabled", "false");
             await admin.UpdateAsync("CricketRunsClosenessPercent", "25");
         }
@@ -113,6 +145,15 @@ public class SettingsServiceTests
         // The same reader instance sees the new values immediately.
         Assert.False(await reader.IsEnabledAsync("CountryClosenessEnabled"));
         Assert.Equal(25m, (await reader.GetDecimalsAsync(new[] { "CricketRunsClosenessPercent" }))["CricketRunsClosenessPercent"]);
+    }
+
+    private sealed class CapturingLogger<T> : ILogger<T>
+    {
+        public List<(LogLevel Level, string Message, Exception? Exception)> Entries { get; } = new();
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+            Func<TState, Exception?, string> formatter) => Entries.Add((logLevel, formatter(state, exception), exception));
     }
 
     private GameDbContext SeedFresh(params (string Key, string Value)[] rows)

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
+using Microsoft.Extensions.Logging.Abstractions;
 using IdTheAthlete.Api.Data;
 using IdTheAthlete.Api.Models;
 using IdTheAthlete.Api.Services;
@@ -53,7 +54,7 @@ public class AiTriviaServiceTests
             .Build();
         var time = new FakeTimeProvider(Start);
 
-        return (new AiTriviaService(new HttpClient(handler), config, db, new AiTriviaState(), time, new SettingsService(db)), time);
+        return (new AiTriviaService(new HttpClient(handler), config, db, new AiTriviaState(), time, new SettingsService(db, NullLogger<SettingsService>.Instance)), time);
     }
 
     private static Player PlayerWithId(int id) => new() { Id = id, SportId = 1, Name = $"Player {id}" };
