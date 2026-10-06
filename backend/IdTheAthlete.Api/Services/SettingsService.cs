@@ -71,16 +71,19 @@ public class SettingsService : ISettingsService
         }
         catch (Exception ex)
         {
-            var shouldLog = _logThrottle.ShouldLog(key);
+            var shouldLog = _logThrottle.ShouldLog(key, out var suppressed);
+            var note = SettingsFailureLogThrottle.SuppressedNote(suppressed);
             if (FlagFallbacks.TryGetValue(key, out var fallback))
             {
                 if (shouldLog)
-                    _logger.LogError(ex, "Reading setting {Key} failed; using its built-in fallback value {Fallback}.", key, fallback);
+                    _logger.LogError(ex, "Reading setting {Key} failed; using its built-in fallback value {Fallback}{SuppressedNote}.",
+                        key, fallback, note);
                 return fallback;
             }
 
             if (shouldLog)
-                _logger.LogError(ex, "Reading setting {Key} failed and it has no built-in fallback; treating it as off.", key);
+                _logger.LogError(ex, "Reading setting {Key} failed and it has no built-in fallback; treating it as off{SuppressedNote}.",
+                    key, note);
             return false;
         }
 
@@ -114,14 +117,27 @@ public class SettingsService : ISettingsService
             var fallback = requested
                 .Where(NumericFallbacks.ContainsKey)
                 .ToDictionary(k => k, k => NumericFallbacks[k]);
-            var dueForLog = requested.Where(_logThrottle.ShouldLog).ToList();
-            if (dueForLog.Count > 0)
+            var due = new List<(string Key, int Suppressed)>();
+            foreach (var key in requested)
             {
+                if (_logThrottle.ShouldLog(key, out var suppressed))
+                    due.Add((key, suppressed));
+            }
+
+            if (due.Count > 0)
+            {
+                // Keys requested together share a count; list per key only if they differ.
+                var counts = due.Select(d => d.Suppressed).Distinct().ToList();
+                var note = counts.Count == 1
+                    ? SettingsFailureLogThrottle.SuppressedNote(counts[0])
+                    : " (failures suppressed since last log: " + string.Join(", ", due.Select(d => $"{d.Key} {d.Suppressed}")) + ")";
+
                 _logger.LogError(ex,
                     "Reading numeric settings failed; using built-in fallback values for {FallbackKeys}" +
-                    " and treating {KeysWithoutFallback} as not configured.",
-                    dueForLog.Where(NumericFallbacks.ContainsKey).ToList(),
-                    dueForLog.Where(k => !NumericFallbacks.ContainsKey(k)).ToList());
+                    " and treating {KeysWithoutFallback} as not configured{SuppressedNote}.",
+                    due.Select(d => d.Key).Where(NumericFallbacks.ContainsKey).ToList(),
+                    due.Select(d => d.Key).Where(k => !NumericFallbacks.ContainsKey(k)).ToList(),
+                    note);
             }
             return fallback;
         }

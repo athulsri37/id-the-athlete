@@ -162,6 +162,15 @@ public class SettingsServiceTests
         Assert.Equal(expectedNumeric, await settings.GetDecimalsAsync(numericKeys));
         Assert.Equal(4, logger.Entries.Count);
         Assert.Equal(2, logger.Entries.Count(e => e.Message.Contains("setting CountryClosenessEnabled failed")));
+
+        // Each line reports how many failures of that key went unlogged since its last line.
+        var flagLines = logger.Entries.Select(e => e.Message).Where(m => m.Contains("CountryClosenessEnabled")).ToList();
+        Assert.Equal("Reading setting CountryClosenessEnabled failed; using its built-in fallback value True.", flagLines[0]);
+        Assert.Equal("Reading setting CountryClosenessEnabled failed; using its built-in fallback value True" +
+                     " (2 failures suppressed since last log).", flagLines[1]);
+        var numericLines = logger.Entries.Select(e => e.Message).Where(m => m.Contains("numeric settings failed")).ToList();
+        Assert.DoesNotContain("suppressed", numericLines[0]);
+        Assert.EndsWith("as not configured (1 failure suppressed since last log).", numericLines[1]);
     }
 
     [Fact]
