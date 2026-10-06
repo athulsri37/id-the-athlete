@@ -6,6 +6,16 @@ using IdTheAthlete.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Hosts like Render assign the listening port through a PORT environment
+// variable and won't expand it inside ASPNETCORE_URLS, so bind to it here.
+// An explicit ASPNETCORE_URLS (or --urls) still takes precedence, and
+// `dotnet run` is unaffected because its launch profile sets the URL.
+var hostPort = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(hostPort) && string.IsNullOrWhiteSpace(builder.Configuration["urls"]))
+{
+    builder.WebHost.UseUrls($"http://0.0.0.0:{hostPort.Trim()}");
+}
+
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
