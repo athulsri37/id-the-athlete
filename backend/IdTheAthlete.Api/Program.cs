@@ -24,7 +24,7 @@ builder.Services.AddDbContext<GameDbContext>(options =>
 
 builder.Services.AddScoped<GameService>();
 builder.Services.AddScoped<AdminService>();
-builder.Services.AddHttpClient<AiTriviaService>();
+builder.Services.AddHttpClient<IAiTriviaService, AiTriviaService>();
 builder.Services.AddHostedService<DailyPuzzleGenerationService>();
 
 // GameService's former responsibilities, now split into focused
@@ -33,7 +33,7 @@ builder.Services.AddHostedService<DailyPuzzleGenerationService>();
 // or, for PracticeSessionService, need one shared instance for the app's
 // lifetime -> Singleton there too, holding the state itself rather than
 // via a static field.
-builder.Services.AddSingleton<DifficultyService>();
+builder.Services.AddSingleton<IDifficultyService, DifficultyService>();
 builder.Services.AddScoped<NumericClosenessEvaluator>();
 builder.Services.AddScoped<CategoricalClosenessEvaluator>();
 builder.Services.AddSingleton<PracticeSessionService>();

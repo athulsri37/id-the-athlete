@@ -7,7 +7,7 @@ namespace IdTheAthlete.Api.Services;
 // whose title count alone would compute too hard). The formula is
 // sport-specific since each sport's AttributeDefinitions differ; sportSlug
 // picks which one applies. Pure/stateless -- registered as a Singleton.
-public class DifficultyService
+public class DifficultyService : IDifficultyService
 {
     public string ComputeDifficultyTier(Player player, string sportSlug)
     {

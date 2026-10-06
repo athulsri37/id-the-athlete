@@ -14,8 +14,8 @@ namespace IdTheAthlete.Api.Services;
 public class GameService
 {
     private readonly GameDbContext _db;
-    private readonly AiTriviaService _aiTriviaService;
-    private readonly DifficultyService _difficultyService;
+    private readonly IAiTriviaService _aiTriviaService;
+    private readonly IDifficultyService _difficultyService;
     private readonly NumericClosenessEvaluator _numericCloseness;
     private readonly CategoricalClosenessEvaluator _categoricalCloseness;
     private readonly PracticeSessionService _practiceSessions;
@@ -26,8 +26,8 @@ public class GameService
 
     public GameService(
         GameDbContext db,
-        AiTriviaService aiTriviaService,
-        DifficultyService difficultyService,
+        IAiTriviaService aiTriviaService,
+        IDifficultyService difficultyService,
         NumericClosenessEvaluator numericCloseness,
         CategoricalClosenessEvaluator categoricalCloseness,
         PracticeSessionService practiceSessions,
