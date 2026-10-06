@@ -170,7 +170,32 @@ public class SettingsServiceTests
                      " (2 failures suppressed since last log).", flagLines[1]);
         var numericLines = logger.Entries.Select(e => e.Message).Where(m => m.Contains("numeric settings failed")).ToList();
         Assert.DoesNotContain("suppressed", numericLines[0]);
-        Assert.EndsWith("as not configured (1 failure suppressed since last log).", numericLines[1]);
+        Assert.Equal("Reading numeric settings failed; using built-in fallback values for" +
+                     " CricketRunsClosenessPercent, CricketRunsClosenessFloor (1 failure suppressed since last log).", numericLines[1]);
+    }
+
+    [Fact]
+    public async Task Numeric_failure_message_only_includes_clauses_that_name_keys()
+    {
+        async Task<string> MessageFor(params string[] keys)
+        {
+            var broken = NewContext();
+            broken.Dispose();
+            var logger = new CapturingLogger<SettingsService>();
+            await new SettingsService(broken, logger, new SettingsFailureLogThrottle(TimeProvider.System)).GetDecimalsAsync(keys);
+            return Assert.Single(logger.Entries).Message;
+        }
+
+        var knownOnly = await MessageFor("CricketRunsClosenessPercent", "CricketRunsClosenessFloor");
+        var both = await MessageFor("CricketRunsClosenessPercent", "SomeFutureSetting");
+        var unknownOnly = await MessageFor("SomeFutureSetting");
+
+        Assert.Equal("Reading numeric settings failed; using built-in fallback values for" +
+                     " CricketRunsClosenessPercent, CricketRunsClosenessFloor.", knownOnly);
+        Assert.Equal("Reading numeric settings failed; using built-in fallback values for CricketRunsClosenessPercent" +
+                     " and treating SomeFutureSetting as not configured.", both);
+        Assert.Equal("Reading numeric settings failed; treating SomeFutureSetting as not configured.", unknownOnly);
+        Assert.All(new[] { knownOnly, both, unknownOnly }, m => Assert.DoesNotContain("  ", m));
     }
 
     [Fact]

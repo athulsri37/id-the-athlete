@@ -132,12 +132,29 @@ public class SettingsService : ISettingsService
                     ? SettingsFailureLogThrottle.SuppressedNote(counts[0])
                     : " (failures suppressed since last log: " + string.Join(", ", due.Select(d => $"{d.Key} {d.Suppressed}")) + ")";
 
-                _logger.LogError(ex,
-                    "Reading numeric settings failed; using built-in fallback values for {FallbackKeys}" +
-                    " and treating {KeysWithoutFallback} as not configured{SuppressedNote}.",
-                    due.Select(d => d.Key).Where(NumericFallbacks.ContainsKey).ToList(),
-                    due.Select(d => d.Key).Where(k => !NumericFallbacks.ContainsKey(k)).ToList(),
-                    note);
+                var withFallback = due.Select(d => d.Key).Where(NumericFallbacks.ContainsKey).ToList();
+                var withoutFallback = due.Select(d => d.Key).Where(k => !NumericFallbacks.ContainsKey(k)).ToList();
+
+                // Each clause appears only when it has keys to name.
+                if (withoutFallback.Count == 0)
+                {
+                    _logger.LogError(ex,
+                        "Reading numeric settings failed; using built-in fallback values for {FallbackKeys}{SuppressedNote}.",
+                        withFallback, note);
+                }
+                else if (withFallback.Count == 0)
+                {
+                    _logger.LogError(ex,
+                        "Reading numeric settings failed; treating {KeysWithoutFallback} as not configured{SuppressedNote}.",
+                        withoutFallback, note);
+                }
+                else
+                {
+                    _logger.LogError(ex,
+                        "Reading numeric settings failed; using built-in fallback values for {FallbackKeys}" +
+                        " and treating {KeysWithoutFallback} as not configured{SuppressedNote}.",
+                        withFallback, withoutFallback, note);
+                }
             }
             return fallback;
         }
