@@ -1,3 +1,4 @@
+using System.Globalization;
 using IdTheAthlete.Api.Data;
 using IdTheAthlete.Api.Models;
 using IdTheAthlete.Api.Services;
@@ -44,6 +45,29 @@ public class SettingsServiceTests
         var result = await settings.GetDecimalsAsync(new[] { "Percent", "Floor", "Junk", "Empty", "Missing" });
 
         Assert.Equal(new Dictionary<string, decimal> { ["Percent"] = 15m, ["Floor"] = 500m }, result);
+    }
+
+    [Fact]
+    public async Task Decimals_parse_the_same_under_a_culture_that_uses_a_decimal_comma()
+    {
+        var settings = Seed(("Fraction", "2.5"), ("Percent", "15"), ("Floor", "500"));
+        var original = CultureInfo.CurrentCulture;
+        try
+        {
+            // In de-DE "." is the thousands separator, so culture-sensitive
+            // parsing silently turns "2.5" into 25.
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("de-DE");
+            Assert.True(decimal.TryParse("2.5", out var cultureSensitive));
+            Assert.Equal(25m, cultureSensitive);
+
+            var result = await settings.GetDecimalsAsync(new[] { "Fraction", "Percent", "Floor" });
+
+            Assert.Equal(new Dictionary<string, decimal> { ["Fraction"] = 2.5m, ["Percent"] = 15m, ["Floor"] = 500m }, result);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
     }
 
     [Fact]

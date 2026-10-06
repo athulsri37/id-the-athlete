@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using IdTheAthlete.Api.Data;
 
@@ -42,7 +43,8 @@ public class SettingsService : ISettingsService
 
     // One round trip for the whole batch. Missing or unparseable values are
     // left out of the result rather than throwing -- callers treat an absent
-    // key as "not configured", not an error.
+    // key as "not configured", not an error. Parsed with the invariant
+    // culture so "2.5" means 2.5 whatever locale the server runs in.
     public async Task<Dictionary<string, decimal>> GetDecimalsAsync(IEnumerable<string> keys)
     {
         var keyList = keys.ToList();
@@ -54,7 +56,7 @@ public class SettingsService : ISettingsService
         var result = new Dictionary<string, decimal>();
         foreach (var row in rows)
         {
-            if (decimal.TryParse(row.Value, out var parsed))
+            if (decimal.TryParse(row.Value, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed))
                 result[row.Key] = parsed;
         }
         return result;
