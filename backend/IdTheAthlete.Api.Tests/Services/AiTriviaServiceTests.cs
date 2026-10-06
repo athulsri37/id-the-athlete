@@ -54,7 +54,7 @@ public class AiTriviaServiceTests
             .Build();
         var time = new FakeTimeProvider(Start);
 
-        return (new AiTriviaService(new HttpClient(handler), config, db, new AiTriviaState(), time, new SettingsService(db, NullLogger<SettingsService>.Instance)), time);
+        return (new AiTriviaService(new HttpClient(handler), config, db, new AiTriviaState(), time, new SettingsService(db, NullLogger<SettingsService>.Instance, new SettingsFailureLogThrottle(TimeProvider.System))), time);
     }
 
     private static Player PlayerWithId(int id) => new() { Id = id, SportId = 1, Name = $"Player {id}" };

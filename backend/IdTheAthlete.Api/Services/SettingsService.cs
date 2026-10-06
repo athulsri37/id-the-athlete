@@ -45,17 +45,20 @@ public class SettingsService : ISettingsService
 
     private readonly GameDbContext _db;
     private readonly ILogger<SettingsService> _logger;
+    private readonly SettingsFailureLogThrottle _logThrottle;
 
-    public SettingsService(GameDbContext db, ILogger<SettingsService> logger)
+    public SettingsService(GameDbContext db, ILogger<SettingsService> logger, SettingsFailureLogThrottle logThrottle)
     {
         _db = db;
         _logger = logger;
+        _logThrottle = logThrottle;
     }
 
     // On only when the stored value is exactly "true"; a missing row or any
     // other value counts as off. If the read itself fails, returns the key's
-    // FlagFallbacks value and logs the failure. A key with no fallback is
-    // treated as off, the same as a missing row.
+    // FlagFallbacks value and logs the failure (at most once per key per
+    // SettingsFailureLogThrottle.Window). A key with no fallback is treated as
+    // off, the same as a missing row.
     public async Task<bool> IsEnabledAsync(string key)
     {
         string? value;
@@ -68,13 +71,16 @@ public class SettingsService : ISettingsService
         }
         catch (Exception ex)
         {
+            var shouldLog = _logThrottle.ShouldLog(key);
             if (FlagFallbacks.TryGetValue(key, out var fallback))
             {
-                _logger.LogError(ex, "Reading setting {Key} failed; using its built-in fallback value {Fallback}.", key, fallback);
+                if (shouldLog)
+                    _logger.LogError(ex, "Reading setting {Key} failed; using its built-in fallback value {Fallback}.", key, fallback);
                 return fallback;
             }
 
-            _logger.LogError(ex, "Reading setting {Key} failed and it has no built-in fallback; treating it as off.", key);
+            if (shouldLog)
+                _logger.LogError(ex, "Reading setting {Key} failed and it has no built-in fallback; treating it as off.", key);
             return false;
         }
 
@@ -87,7 +93,8 @@ public class SettingsService : ISettingsService
     // culture so "2.5" means 2.5 whatever locale the server runs in.
     //
     // If the query fails, returns NumericFallbacks for the requested keys
-    // instead of throwing, and logs the failure. A requested key with no
+    // instead of throwing, and logs the failure, naming only keys not logged
+    // within SettingsFailureLogThrottle.Window. A requested key with no
     // fallback is left out, the same as a missing setting: no closeness tier
     // for that attribute is safer than a guessed threshold that looks right.
     public async Task<Dictionary<string, decimal>> GetDecimalsAsync(IEnumerable<string> keys)
@@ -107,12 +114,15 @@ public class SettingsService : ISettingsService
             var fallback = requested
                 .Where(NumericFallbacks.ContainsKey)
                 .ToDictionary(k => k, k => NumericFallbacks[k]);
-            var withoutFallback = requested.Where(k => !NumericFallbacks.ContainsKey(k)).ToList();
-
-            _logger.LogError(ex,
-                "Reading numeric settings failed; using built-in fallback values for {FallbackKeys}" +
-                " and treating {KeysWithoutFallback} as not configured.",
-                fallback.Keys, withoutFallback);
+            var dueForLog = requested.Where(_logThrottle.ShouldLog).ToList();
+            if (dueForLog.Count > 0)
+            {
+                _logger.LogError(ex,
+                    "Reading numeric settings failed; using built-in fallback values for {FallbackKeys}" +
+                    " and treating {KeysWithoutFallback} as not configured.",
+                    dueForLog.Where(NumericFallbacks.ContainsKey).ToList(),
+                    dueForLog.Where(k => !NumericFallbacks.ContainsKey(k)).ToList());
+            }
             return fallback;
         }
 
