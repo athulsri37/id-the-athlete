@@ -15,7 +15,6 @@ public class DailyPuzzleService : IDailyPuzzleService
 {
     private readonly GameDbContext _db;
     private readonly ILogger<DailyPuzzleService> _logger;
-    private static readonly Random Rng = new();
 
     public DailyPuzzleService(GameDbContext db, ILogger<DailyPuzzleService> logger)
     {
@@ -120,7 +119,7 @@ public class DailyPuzzleService : IDailyPuzzleService
             eligiblePlayers = await _db.Players.Where(p => p.SportId == sportId).ToListAsync();
         }
 
-        return eligiblePlayers[Rng.Next(eligiblePlayers.Count)];
+        return eligiblePlayers[Random.Shared.Next(eligiblePlayers.Count)];
     }
 
     // Called by DailyPuzzleGenerationService (both its startup catch-up and
