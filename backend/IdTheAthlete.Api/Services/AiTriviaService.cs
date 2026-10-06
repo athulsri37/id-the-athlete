@@ -11,7 +11,7 @@ namespace IdTheAthlete.Api.Services;
 // Generates a short AI trivia blurb about the mystery player once a game ends.
 // Purely cosmetic — any failure (missing key, network error, bad response)
 // must fall back to null rather than break the core game.
-public class AiTriviaService
+public class AiTriviaService : IAiTriviaService
 {
     private const string AnthropicApiUrl = "https://api.anthropic.com/v1/messages";
     private const string AnthropicVersion = "2023-06-01";
