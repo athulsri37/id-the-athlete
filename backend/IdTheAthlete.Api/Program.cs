@@ -34,8 +34,8 @@ builder.Services.AddHostedService<DailyPuzzleGenerationService>();
 // lifetime -> Singleton there too, holding the state itself rather than
 // via a static field.
 builder.Services.AddSingleton<IDifficultyService, DifficultyService>();
-builder.Services.AddScoped<NumericClosenessEvaluator>();
-builder.Services.AddScoped<CategoricalClosenessEvaluator>();
+builder.Services.AddScoped<INumericClosenessEvaluator, NumericClosenessEvaluator>();
+builder.Services.AddScoped<ICategoricalClosenessEvaluator, CategoricalClosenessEvaluator>();
 builder.Services.AddSingleton<PracticeSessionService>();
 builder.Services.AddScoped<DailyPuzzleService>();
 
