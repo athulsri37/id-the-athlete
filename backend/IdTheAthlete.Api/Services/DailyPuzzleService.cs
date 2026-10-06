@@ -15,11 +15,13 @@ public class DailyPuzzleService : IDailyPuzzleService
 {
     private readonly GameDbContext _db;
     private readonly ILogger<DailyPuzzleService> _logger;
+    private readonly TimeProvider _timeProvider;
 
-    public DailyPuzzleService(GameDbContext db, ILogger<DailyPuzzleService> logger)
+    public DailyPuzzleService(GameDbContext db, ILogger<DailyPuzzleService> logger, TimeProvider timeProvider)
     {
         _db = db;
         _logger = logger;
+        _timeProvider = timeProvider;
     }
 
     // Every date (yyyy-MM-dd) that has an existing Daily Challenge puzzle
@@ -70,7 +72,7 @@ public class DailyPuzzleService : IDailyPuzzleService
     // needs investigating.
     private async Task<int> GetTodaysMysteryPlayerIdAsync(int sportId)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(_timeProvider.GetUtcNow().UtcDateTime);
 
         var existing = await _db.DailyPuzzles
             .FirstOrDefaultAsync(d => d.SportId == sportId && d.PuzzleDate == today);
