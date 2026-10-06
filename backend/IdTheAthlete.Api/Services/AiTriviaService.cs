@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
@@ -22,31 +21,21 @@ public class AiTriviaService : IAiTriviaService
     private const int MaxRateLimitCooldownSeconds = 30;
     private static readonly TimeSpan MaxBackoffDelay = TimeSpan.FromSeconds(5);
 
-    // Cached alongside the moment it was generated so a lookup can tell a
-    // still-fresh blurb apart from one whose player was edited afterward
-    // (see IsStale). Only ever written on a successful generation -- see
-    // GenerateBlurbAsync -- so a failed attempt never poisons this cache
-    // with a permanent null.
-    private sealed record CachedBlurb(string Blurb, DateTime CachedAt);
-    private static readonly ConcurrentDictionary<int, CachedBlurb> Cache = new();
-
-    // Shared across every AiTriviaService instance (the DI container hands
-    // out a new transient instance per request via AddHttpClient<T>, so
-    // this must be static to actually function as a circuit breaker rather
-    // than resetting on every call). Guarded by RateLimitGate since
-    // concurrent requests can race to read/write it.
-    private static DateTime _rateLimitedUntilUtc = DateTime.MinValue;
-    private static readonly object RateLimitGate = new();
-
     private readonly HttpClient _httpClient;
     private readonly IConfiguration _configuration;
     private readonly GameDbContext _db;
+    // Cache and circuit breaker shared across instances -- see AiTriviaState.
+    private readonly AiTriviaState _state;
+    private readonly TimeProvider _timeProvider;
 
-    public AiTriviaService(HttpClient httpClient, IConfiguration configuration, GameDbContext db)
+    public AiTriviaService(HttpClient httpClient, IConfiguration configuration, GameDbContext db,
+        AiTriviaState state, TimeProvider timeProvider)
     {
         _httpClient = httpClient;
         _configuration = configuration;
         _db = db;
+        _state = state;
+        _timeProvider = timeProvider;
     }
 
     public async Task<string?> GetTriviaBlurbAsync(Player player)
@@ -57,7 +46,7 @@ public class AiTriviaService : IAiTriviaService
         if (!await IsEnabledAsync())
             return null;
 
-        if (Cache.TryGetValue(player.Id, out var cached) && !IsStale(player, cached))
+        if (_state.Cache.TryGetValue(player.Id, out var cached) && !IsStale(player, cached))
             return cached.Blurb;
 
         return await GenerateBlurbAsync(player);
@@ -66,7 +55,7 @@ public class AiTriviaService : IAiTriviaService
     // A cached blurb is stale once the player has been edited (via the
     // admin tool) after it was generated. A never-edited player
     // (LastModifiedAt == null) can never be stale.
-    private static bool IsStale(Player player, CachedBlurb cached)
+    private static bool IsStale(Player player, CachedTriviaBlurb cached)
         => player.LastModifiedAt is { } lastModified && lastModified > cached.CachedAt;
 
     private async Task<bool> IsEnabledAsync()
@@ -94,7 +83,7 @@ public class AiTriviaService : IAiTriviaService
             // rate-limited recently, skip the network call entirely rather
             // than immediately failing another request against the same
             // limit.
-            if (IsCircuitOpen())
+            if (_state.IsCircuitOpen(_timeProvider.GetUtcNow()))
                 return null;
 
             var apiKey = _configuration["Anthropic:ApiKey"];
@@ -158,7 +147,7 @@ public class AiTriviaService : IAiTriviaService
                     // retriable 5xx below. On the final attempt this falls
                     // through to the outer catch instead, which returns
                     // null without caching anything.
-                    await Task.Delay(BackoffDelay(attempt));
+                    await Task.Delay(BackoffDelay(attempt), _timeProvider);
                     continue;
                 }
 
@@ -172,8 +161,8 @@ public class AiTriviaService : IAiTriviaService
                         if (string.IsNullOrWhiteSpace(text))
                             return null;
 
-                        ClearCircuit();
-                        Cache[player.Id] = new CachedBlurb(text, DateTime.UtcNow);
+                        _state.ClearCircuit();
+                        _state.Cache[player.Id] = new CachedTriviaBlurb(text, _timeProvider.GetUtcNow().UtcDateTime);
                         return text;
                     }
 
@@ -190,7 +179,7 @@ public class AiTriviaService : IAiTriviaService
                     if (!isRetriableServerError || attempt == MaxAttempts)
                         return null;
 
-                    await Task.Delay(BackoffDelay(attempt));
+                    await Task.Delay(BackoffDelay(attempt), _timeProvider);
                 }
             }
 
@@ -202,38 +191,20 @@ public class AiTriviaService : IAiTriviaService
         }
     }
 
-    private static bool IsCircuitOpen()
+    private void OpenCircuitFromRetryAfter(HttpResponseMessage response)
     {
-        lock (RateLimitGate)
-        {
-            return DateTime.UtcNow < _rateLimitedUntilUtc;
-        }
-    }
-
-    private static void ClearCircuit()
-    {
-        lock (RateLimitGate)
-        {
-            _rateLimitedUntilUtc = DateTime.MinValue;
-        }
-    }
-
-    private static void OpenCircuitFromRetryAfter(HttpResponseMessage response)
-    {
+        var now = _timeProvider.GetUtcNow();
         var retryAfterSeconds = DefaultRetryAfterSeconds;
 
         var retryAfter = response.Headers.RetryAfter;
         if (retryAfter?.Delta is { } delta)
             retryAfterSeconds = (int)Math.Max(0, delta.TotalSeconds);
         else if (retryAfter?.Date is { } date)
-            retryAfterSeconds = (int)Math.Max(0, (date - DateTimeOffset.UtcNow).TotalSeconds);
+            retryAfterSeconds = (int)Math.Max(0, (date - now).TotalSeconds);
 
         var cooldownSeconds = Math.Min(retryAfterSeconds, MaxRateLimitCooldownSeconds);
 
-        lock (RateLimitGate)
-        {
-            _rateLimitedUntilUtc = DateTime.UtcNow.AddSeconds(cooldownSeconds);
-        }
+        _state.OpenCircuitUntil(now.AddSeconds(cooldownSeconds));
     }
 
     // attempt 1 failed -> ~0.5s before attempt 2; attempt 2 failed -> ~1.5s

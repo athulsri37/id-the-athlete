@@ -22,9 +22,12 @@ builder.Services.AddOpenApi();
 builder.Services.AddDbContext<GameDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+builder.Services.AddSingleton(TimeProvider.System);
+
 builder.Services.AddScoped<GameService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddHttpClient<IAiTriviaService, AiTriviaService>();
+builder.Services.AddSingleton<AiTriviaState>();
 builder.Services.AddHostedService<DailyPuzzleGenerationService>();
 
 // GameService's former responsibilities, now split into focused

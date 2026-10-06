@@ -14,10 +14,12 @@ namespace IdTheAthlete.Api.Services;
 public class AdminService : IAdminService
 {
     private readonly GameDbContext _db;
+    private readonly TimeProvider _timeProvider;
 
-    public AdminService(GameDbContext db)
+    public AdminService(GameDbContext db, TimeProvider timeProvider)
     {
         _db = db;
+        _timeProvider = timeProvider;
     }
 
     public async Task<List<AdminSportDto>> GetSportsAsync()
@@ -119,7 +121,7 @@ public class AdminService : IAdminService
         // AiTriviaService detect that cached derived content (e.g. a trivia
         // blurb) predates this edit and should be regenerated.
         if (request.Attributes.Count > 0)
-            player.LastModifiedAt = DateTime.UtcNow;
+            player.LastModifiedAt = _timeProvider.GetUtcNow().UtcDateTime;
 
         player.IsOverridden = request.IsOverridden;
 

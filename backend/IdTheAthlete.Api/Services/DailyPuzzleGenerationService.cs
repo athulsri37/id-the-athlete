@@ -16,11 +16,14 @@ public class DailyPuzzleGenerationService : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<DailyPuzzleGenerationService> _logger;
+    private readonly TimeProvider _timeProvider;
 
-    public DailyPuzzleGenerationService(IServiceScopeFactory scopeFactory, ILogger<DailyPuzzleGenerationService> logger)
+    public DailyPuzzleGenerationService(IServiceScopeFactory scopeFactory, ILogger<DailyPuzzleGenerationService> logger,
+        TimeProvider timeProvider)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _timeProvider = timeProvider;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -34,14 +37,15 @@ public class DailyPuzzleGenerationService : BackgroundService
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            var delay = TimeUntilNextMidnightUtc();
+            var now = _timeProvider.GetUtcNow().UtcDateTime;
+            var delay = TimeUntilNextMidnightUtc(now);
             _logger.LogInformation(
                 "Next scheduled daily puzzle generation in {Delay} (at {NextRunUtc:u}).",
-                delay, DateTime.UtcNow.Add(delay));
+                delay, now.Add(delay));
 
             try
             {
-                await Task.Delay(delay, stoppingToken);
+                await Task.Delay(delay, _timeProvider, stoppingToken);
             }
             catch (OperationCanceledException)
             {
@@ -52,14 +56,10 @@ public class DailyPuzzleGenerationService : BackgroundService
         }
     }
 
-    // Exposed as internal + static, with an injectable "now", so it can be
-    // verified directly (e.g. from a test or a scratch console) without
-    // waiting for real-world midnight.
-    internal static TimeSpan TimeUntilNextMidnightUtc(DateTime? utcNow = null)
+    internal static TimeSpan TimeUntilNextMidnightUtc(DateTime utcNow)
     {
-        var now = utcNow ?? DateTime.UtcNow;
-        var nextMidnight = now.Date.AddDays(1);
-        return nextMidnight - now;
+        var nextMidnight = utcNow.Date.AddDays(1);
+        return nextMidnight - utcNow;
     }
 
     private async Task GenerateForAllSportsAsync(CancellationToken stoppingToken)
@@ -69,7 +69,7 @@ public class DailyPuzzleGenerationService : BackgroundService
         var dailyPuzzleService = scope.ServiceProvider.GetRequiredService<IDailyPuzzleService>();
 
         var sports = await db.Sports.ToListAsync(stoppingToken);
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(_timeProvider.GetUtcNow().UtcDateTime);
 
         foreach (var sport in sports)
         {
