@@ -41,6 +41,7 @@ builder.Services.AddScoped<INumericClosenessEvaluator, NumericClosenessEvaluator
 builder.Services.AddScoped<ICategoricalClosenessEvaluator, CategoricalClosenessEvaluator>();
 builder.Services.AddSingleton<IPracticeSessionService, PracticeSessionService>();
 builder.Services.AddScoped<IDailyPuzzleService, DailyPuzzleService>();
+builder.Services.AddScoped<ISettingsService, SettingsService>();
 
 // Comma-separated list of frontend origins allowed to call the API from a
 // browser, e.g. "https://<frontend>.onrender.com". Set via the AllowedOrigins

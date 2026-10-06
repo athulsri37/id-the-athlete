@@ -1,16 +1,14 @@
-using Microsoft.EntityFrameworkCore;
-using IdTheAthlete.Api.Data;
 using IdTheAthlete.Api.Geo;
 
 namespace IdTheAthlete.Api.Services;
 
 // Categorical "close" (amber) evaluation: Country (both sports, via two
 // entirely different rules -- see IsClose below) plus Cricket's Role and
-// Bowling Style. Registered Scoped (depends on GameDbContext for the
+// Bowling Style. Registered Scoped (depends on ISettingsService for the
 // AppSettings flag reads).
 public class CategoricalClosenessEvaluator : ICategoricalClosenessEvaluator
 {
-    private readonly GameDbContext _db;
+    private readonly ISettingsService _settings;
 
     private static readonly HashSet<string> CricketSportSlugs = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -83,41 +81,22 @@ public class CategoricalClosenessEvaluator : ICategoricalClosenessEvaluator
         ["Left-arm Spin"] = "Spin",
     };
 
-    public CategoricalClosenessEvaluator(GameDbContext db)
+    public CategoricalClosenessEvaluator(ISettingsService settings)
     {
-        _db = db;
+        _settings = settings;
     }
 
-    // Fetches every categorical-closeness AppSettings flag once, so the
-    // caller can pass the same snapshot into IsClose for each attribute
-    // in a guess without a DB round-trip per attribute.
+    // Fetches every categorical-closeness AppSettings flag once per guess
+    // (fresh, never cached), so the caller can pass the same snapshot into
+    // IsClose for each attribute without a DB round-trip per attribute.
     public async Task<CategoricalClosenessFlags> LoadFlagsAsync()
     {
         return new CategoricalClosenessFlags
         {
-            CountryClosenessEnabled = await IsAppSettingEnabledAsync("CountryClosenessEnabled"),
-            CricketRoleClosenessEnabled = await IsAppSettingEnabledAsync("CricketRoleClosenessEnabled"),
-            CricketBowlingStyleClosenessEnabled = await IsAppSettingEnabledAsync("CricketBowlingStyleClosenessEnabled"),
+            CountryClosenessEnabled = await _settings.IsEnabledAsync("CountryClosenessEnabled"),
+            CricketRoleClosenessEnabled = await _settings.IsEnabledAsync("CricketRoleClosenessEnabled"),
+            CricketBowlingStyleClosenessEnabled = await _settings.IsEnabledAsync("CricketBowlingStyleClosenessEnabled"),
         };
-    }
-
-    // General-purpose boolean AppSettings flag, read fresh (no caching)
-    // every time it's called.
-    private async Task<bool> IsAppSettingEnabledAsync(string key)
-    {
-        try
-        {
-            var value = await _db.AppSettings
-                .Where(s => s.Key == key)
-                .Select(s => s.Value)
-                .FirstOrDefaultAsync();
-
-            return value == "true";
-        }
-        catch
-        {
-            return false;
-        }
     }
 
     // Only ever called when guessedValue != mysteryValue (an exact match

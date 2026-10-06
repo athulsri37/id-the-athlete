@@ -27,15 +27,17 @@ public class AiTriviaService : IAiTriviaService
     // Cache and circuit breaker shared across instances -- see AiTriviaState.
     private readonly AiTriviaState _state;
     private readonly TimeProvider _timeProvider;
+    private readonly ISettingsService _settings;
 
     public AiTriviaService(HttpClient httpClient, IConfiguration configuration, GameDbContext db,
-        AiTriviaState state, TimeProvider timeProvider)
+        AiTriviaState state, TimeProvider timeProvider, ISettingsService settings)
     {
         _httpClient = httpClient;
         _configuration = configuration;
         _db = db;
         _state = state;
         _timeProvider = timeProvider;
+        _settings = settings;
     }
 
     public async Task<string?> GetTriviaBlurbAsync(Player player)
@@ -43,7 +45,7 @@ public class AiTriviaService : IAiTriviaService
         // Checked ahead of the cache lookup (not just the API key check) so a
         // disabled flag never gets baked into a cached null — otherwise
         // re-enabling later would leave every already-seen player stuck null.
-        if (!await IsEnabledAsync())
+        if (!await _settings.IsEnabledAsync("AiTriviaEnabled"))
             return null;
 
         if (_state.Cache.TryGetValue(player.Id, out var cached) && !IsStale(player, cached))
@@ -57,23 +59,6 @@ public class AiTriviaService : IAiTriviaService
     // (LastModifiedAt == null) can never be stale.
     private static bool IsStale(Player player, CachedTriviaBlurb cached)
         => player.LastModifiedAt is { } lastModified && lastModified > cached.CachedAt;
-
-    private async Task<bool> IsEnabledAsync()
-    {
-        try
-        {
-            var value = await _db.AppSettings
-                .Where(s => s.Key == "AiTriviaEnabled")
-                .Select(s => s.Value)
-                .FirstOrDefaultAsync();
-
-            return value == "true";
-        }
-        catch
-        {
-            return false;
-        }
-    }
 
     private async Task<string?> GenerateBlurbAsync(Player player)
     {
