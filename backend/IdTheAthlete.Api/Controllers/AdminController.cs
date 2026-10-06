@@ -12,9 +12,9 @@ namespace IdTheAthlete.Api.Controllers;
 [Route("api/admin")]
 public class AdminController : ControllerBase
 {
-    private readonly AdminService _adminService;
+    private readonly IAdminService _adminService;
 
-    public AdminController(AdminService adminService)
+    public AdminController(IAdminService adminService)
     {
         _adminService = adminService;
     }

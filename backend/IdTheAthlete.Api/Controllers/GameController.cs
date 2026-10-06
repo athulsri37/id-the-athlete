@@ -9,9 +9,9 @@ namespace IdTheAthlete.Api.Controllers;
 public class GameController : ControllerBase
 {
     private readonly GameService _gameService;
-    private readonly DailyPuzzleService _dailyPuzzleService;
+    private readonly IDailyPuzzleService _dailyPuzzleService;
 
-    public GameController(GameService gameService, DailyPuzzleService dailyPuzzleService)
+    public GameController(GameService gameService, IDailyPuzzleService dailyPuzzleService)
     {
         _gameService = gameService;
         _dailyPuzzleService = dailyPuzzleService;

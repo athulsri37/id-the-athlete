@@ -11,7 +11,7 @@ namespace IdTheAthlete.Api.Services;
 // this is curator/editing logic, not gameplay logic, and keeping them
 // apart means a bug here can't accidentally change how a real game is
 // scored or a mystery player is picked.
-public class AdminService
+public class AdminService : IAdminService
 {
     private readonly GameDbContext _db;
 
