@@ -33,8 +33,8 @@ public class SettingsService : ISettingsService
     // Used only when the query for an on/off flag itself fails, so an outage
     // keeps each flag at its real state instead of switching everything off.
     // These match the database and SeedData/00-app-settings.sql when this was
-    // written (AiTriviaEnabled has no row anywhere, which means off); retune
-    // them together, or features will flip during an outage.
+    // written (AiTriviaEnabled is seeded as off); retune them together, or
+    // features will flip during an outage.
     private static readonly Dictionary<string, bool> FlagFallbacks = new()
     {
         ["CountryClosenessEnabled"] = true,

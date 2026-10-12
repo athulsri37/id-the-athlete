@@ -95,9 +95,14 @@ public class DifficultyService : IDifficultyService
         return "hard";
     }
 
-    private static int GetNumericAttribute(Player player, string key)
+    // Read with the same rule the game and the admin tool use (see
+    // NumericAttributeValue). A missing or invalid value counts as 0, which
+    // makes that stat contribute nothing towards an easier tier. Not logged
+    // here: this runs for every player on every practice start, and
+    // GameService already warns about the bad value when it's guessed.
+    private static decimal GetNumericAttribute(Player player, string key)
     {
         var value = player.AttributeValues.FirstOrDefault(v => v.AttributeDefinition?.Key == key)?.Value;
-        return value != null && int.TryParse(value, out var parsed) ? parsed : 0;
+        return NumericAttributeValue.TryParse(value, out var number) ? number : 0;
     }
 }

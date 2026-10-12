@@ -224,14 +224,11 @@ cd backend/IdTheAthlete.Api
 dotnet user-secrets init
 dotnet user-secrets set "Anthropic:ApiKey" "sk-ant-..."
 ```
-Trivia generation is also gated by a separate `AiTriviaEnabled` row in the
-`AppSettings` table — it defaults to `false`/off (no row means disabled),
-so configuring an API key alone isn't enough to turn the feature on, and
-removing the key isn't the only way to turn it off:
-```bash
-docker exec tennis-guesser-postgres-1 psql -U idtheathlete -d idtheathlete \
-  -c "INSERT INTO \"AppSettings\" (\"Key\", \"Value\") VALUES ('AiTriviaEnabled', 'true') ON CONFLICT (\"Key\") DO UPDATE SET \"Value\" = EXCLUDED.\"Value\";"
-```
+Trivia generation is also gated by the `AiTriviaEnabled` setting in the
+`AppSettings` table, which defaults to `false` (off). So configuring an API
+key alone isn't enough to turn the feature on, and removing the key isn't
+the only way to turn it off. Switch it on or off from the admin tool's
+Settings tab (see [Admin Tool](#admin-tool)).
 
 ### 4. (Required for the admin tool) Set an admin key
 
