@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using IdTheAthlete.Api.Tests.TestSupport;
 using Microsoft.Extensions.Time.Testing;
 using IdTheAthlete.Api.Data;
 using IdTheAthlete.Api.Models;
@@ -241,15 +242,6 @@ public class SettingsServiceTests
         // The same reader instance sees the new values immediately.
         Assert.False(await reader.IsEnabledAsync("CountryClosenessEnabled"));
         Assert.Equal(25m, (await reader.GetDecimalsAsync(new[] { "CricketRunsClosenessPercent" }))["CricketRunsClosenessPercent"]);
-    }
-
-    private sealed class CapturingLogger<T> : ILogger<T>
-    {
-        public List<(LogLevel Level, string Message, Exception? Exception)> Entries { get; } = new();
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-        public bool IsEnabled(LogLevel logLevel) => true;
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
-            Func<TState, Exception?, string> formatter) => Entries.Add((logLevel, formatter(state, exception), exception));
     }
 
     private GameDbContext SeedFresh(params (string Key, string Value)[] rows)

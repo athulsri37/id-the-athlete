@@ -108,7 +108,8 @@ public class AdminService : IAdminService
             var attributeValue = player.AttributeValues.FirstOrDefault(v => v.AttributeDefinition?.Key == key)
                 ?? throw new InvalidOperationException($"Attribute '{key}' not found for this player.");
 
-            if (attributeValue.AttributeDefinition!.Type == AttributeType.Numeric && !decimal.TryParse(value, out _))
+            // Same rule the game uses to read the value back (see NumericAttributeValue).
+            if (attributeValue.AttributeDefinition!.Type == AttributeType.Numeric && !NumericAttributeValue.TryParse(value, out _))
                 throw new InvalidOperationException($"Attribute '{key}' is numeric; '{value}' is not a valid number.");
 
             attributeValue.Value = value;

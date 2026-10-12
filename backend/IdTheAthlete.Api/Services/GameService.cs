@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using IdTheAthlete.Api.Data;
 using IdTheAthlete.Api.Dtos;
@@ -21,6 +22,7 @@ public class GameService : IGameService
     private readonly IPracticeSessionService _practiceSessions;
     private readonly IDailyPuzzleService _dailyPuzzleService;
     private readonly IGameTokenService _gameTokens;
+    private readonly ILogger<GameService> _logger;
 
     private const int MaxGuesses = 8;
     private const int HintAfterGuess = 5;
@@ -33,7 +35,8 @@ public class GameService : IGameService
         ICategoricalClosenessEvaluator categoricalCloseness,
         IPracticeSessionService practiceSessions,
         IDailyPuzzleService dailyPuzzleService,
-        IGameTokenService gameTokens)
+        IGameTokenService gameTokens,
+        ILogger<GameService> logger)
     {
         _db = db;
         _aiTriviaService = aiTriviaService;
@@ -43,6 +46,7 @@ public class GameService : IGameService
         _practiceSessions = practiceSessions;
         _dailyPuzzleService = dailyPuzzleService;
         _gameTokens = gameTokens;
+        _logger = logger;
     }
 
     public async Task<List<PlayerSummaryDto>> GetPlayerPoolAsync(string sportSlug)
@@ -169,8 +173,15 @@ public class GameService : IGameService
 
             if (def.Type == AttributeType.Numeric)
             {
-                var guessedNum = decimal.Parse(guessedValue);
-                var mysteryNum = decimal.Parse(mysteryValue);
+                // A missing or non-numeric value is bad data, not a reason to
+                // fail the guess: the clue stays a plain miss (no match, no
+                // arrow, not close) and a warning names the value to fix.
+                // Both values are checked first so each bad one is logged.
+                var guessedIsNumber = TryReadNumber(guessedPlayer, def, guessedValue, out var guessedNum);
+                var mysteryIsNumber = TryReadNumber(mysteryPlayer, def, mysteryValue, out var mysteryNum);
+                if (!guessedIsNumber || !mysteryIsNumber)
+                    return clue;
+
                 clue.IsMatch = guessedNum == mysteryNum;
                 clue.Direction = clue.IsMatch ? null : (mysteryNum > guessedNum ? "up" : "down");
 
@@ -253,6 +264,18 @@ public class GameService : IGameService
         return country ?? throw new InvalidOperationException("Country not available for this player.");
     }
 
+    private bool TryReadNumber(Player player, AttributeDefinition definition, string value, out decimal number)
+    {
+        if (NumericAttributeValue.TryParse(value, out number))
+            return true;
+
+        _logger.LogWarning(
+            "Player {PlayerName} ({PlayerId}) has a non-numeric value '{Value}' for numeric attribute {AttributeKey}; " +
+            "showing that clue as a plain miss. Correct it in the admin tool or the seed data.",
+            player.Name, player.Id, value, definition.Key);
+        return false;
+    }
+
     // Finds the puzzle a daily game is for and how many guesses it has had.
     // Without a token this is the game's first request: the requested date
     // (null = today) and zero guesses. With one, the token's verified state
@@ -264,8 +287,10 @@ public class GameService : IGameService
         DateOnly? date = null;
         if (requestedDate != null)
         {
-            if (!DateOnly.TryParse(requestedDate, out var parsedDate))
-                throw new InvalidOperationException($"Invalid date '{requestedDate}'.");
+            // The API's documented format, read the same way whatever the
+            // server's locale.
+            if (!DateOnly.TryParseExact(requestedDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedDate))
+                throw new InvalidOperationException($"Invalid date '{requestedDate}'. Use yyyy-MM-dd.");
             date = parsedDate;
         }
 
