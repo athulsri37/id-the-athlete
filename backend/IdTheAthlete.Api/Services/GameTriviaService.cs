@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using IdTheAthlete.Api.Data;
+using IdTheAthlete.Api.Errors;
 
 namespace IdTheAthlete.Api.Services;
 
@@ -7,7 +8,7 @@ namespace IdTheAthlete.Api.Services;
 // game-over guess response. Kept apart from GameService so the guess path
 // has no dependency on the AI call at all. The token is only issued at game
 // over, so this can't reveal anything about a game still in progress.
-public class GameTriviaService : IGameTriviaService
+public sealed class GameTriviaService : IGameTriviaService
 {
     private readonly GameDbContext _db;
     private readonly IGameTokenService _gameTokens;
@@ -24,7 +25,8 @@ public class GameTriviaService : IGameTriviaService
     // failed) -- it's cosmetic, the frontend just shows nothing. The
     // cancellation token covers the lookups only, not the AI call: a blurb
     // that finishes after the player has left is still cached for the next
-    // player to finish a game on the same answer.
+    // player to finish a game on the same answer. A bad token is an
+    // InvalidRequestException (400), an unknown sport a NotFoundException.
     public async Task<string?> GetTriviaAsync(string sportSlug, string triviaToken, CancellationToken cancellationToken = default)
     {
         var grant = _gameTokens.ReadTrivia(triviaToken);
@@ -33,16 +35,17 @@ public class GameTriviaService : IGameTriviaService
             .Where(s => s.Slug == sportSlug)
             .Select(s => (int?)s.Id)
             .FirstOrDefaultAsync(cancellationToken)
-            ?? throw new InvalidOperationException($"Sport '{sportSlug}' not found");
+            ?? throw new NotFoundException($"Sport '{sportSlug}' not found");
 
         if (grant.SportId != sportId)
-            throw new InvalidOperationException("This trivia token is for a different sport.");
+            throw new InvalidRequestException("This trivia token is for a different sport.");
 
         var player = await _db.Players
             .Include(p => p.AttributeValues)
                 .ThenInclude(v => v.AttributeDefinition)
             .FirstOrDefaultAsync(p => p.Id == grant.PlayerId && p.SportId == sportId, cancellationToken)
-            ?? throw new InvalidOperationException("Player not found");
+            // Only if the player was deleted after the game ended.
+            ?? throw new InvalidRequestException("This game's player no longer exists.");
 
         return await _aiTriviaService.GetTriviaBlurbAsync(player);
     }

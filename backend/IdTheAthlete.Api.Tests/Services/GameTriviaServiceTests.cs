@@ -1,4 +1,5 @@
 using IdTheAthlete.Api.Data;
+using IdTheAthlete.Api.Errors;
 using IdTheAthlete.Api.Models;
 using IdTheAthlete.Api.Services;
 using Microsoft.EntityFrameworkCore;
@@ -52,7 +53,7 @@ public class GameTriviaServiceTests
     {
         var token = _tokens.IssueTrivia(new TriviaGrant(2, PlayerId));
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.GetTriviaAsync(Slug, token));
+        await Assert.ThrowsAsync<InvalidRequestException>(() => _service.GetTriviaAsync(Slug, token));
         _trivia.Verify(t => t.GetTriviaBlurbAsync(It.IsAny<Player>()), Times.Never);
     }
 
@@ -61,7 +62,7 @@ public class GameTriviaServiceTests
     {
         var token = _tokens.Issue(new DailyGameState(1, new DateOnly(2026, 10, 12), 8));
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.GetTriviaAsync(Slug, token));
+        await Assert.ThrowsAsync<InvalidRequestException>(() => _service.GetTriviaAsync(Slug, token));
     }
 
     [Fact]
@@ -70,7 +71,7 @@ public class GameTriviaServiceTests
         var forged = GameTokenServiceTests.Create(key: "attacker-chosen-key-that-is-long-enough")
             .IssueTrivia(new TriviaGrant(1, PlayerId));
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.GetTriviaAsync(Slug, forged));
+        await Assert.ThrowsAsync<InvalidRequestException>(() => _service.GetTriviaAsync(Slug, forged));
     }
 
     [Fact]
@@ -78,6 +79,6 @@ public class GameTriviaServiceTests
     {
         var token = _tokens.IssueTrivia(new TriviaGrant(1, PlayerId));
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.GetTriviaAsync("no-such-sport", token));
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.GetTriviaAsync("no-such-sport", token));
     }
 }

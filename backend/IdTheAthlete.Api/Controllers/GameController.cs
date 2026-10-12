@@ -43,17 +43,10 @@ public class GameController : ControllerBase
     // from the game-over guess response; triviaBlurb is null when trivia is
     // unavailable.
     [HttpGet("trivia")]
-    public async Task<IActionResult> GetTrivia(string sportSlug, [FromQuery] string triviaToken, CancellationToken cancellationToken)
+    public async Task<ActionResult<TriviaDto>> GetTrivia(string sportSlug, [FromQuery] string triviaToken, CancellationToken cancellationToken)
     {
-        try
-        {
-            var blurb = await _gameTriviaService.GetTriviaAsync(sportSlug, triviaToken, cancellationToken);
-            return Ok(new TriviaDto { TriviaBlurb = blurb });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        var blurb = await _gameTriviaService.GetTriviaAsync(sportSlug, triviaToken, cancellationToken);
+        return new TriviaDto { TriviaBlurb = blurb };
     }
 
     // GET /api/sports/tennis-men/game/hint/country?mode=easy&sessionId=...
