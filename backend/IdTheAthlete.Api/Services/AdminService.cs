@@ -141,14 +141,9 @@ public class AdminService : IAdminService
                 throw new InvalidOperationException($"Attribute '{key}' is numeric; '{value}' is not a valid number.");
 
             attributeValue.Value = value;
-            // Marks this specific value as curator-owned so it survives
-            // every future SeedTool run regardless of which batch file
-            // re-seeds this player -- see PlayerAttributeValue.IsManuallyEdited.
-            attributeValue.IsManuallyEdited = true;
         }
 
-        // Player-level "last touched" timestamp, separate from the
-        // per-attribute IsManuallyEdited flag above -- lets consumers like
+        // Player-level "last touched" timestamp -- lets consumers like
         // AiTriviaService detect that cached derived content (e.g. a trivia
         // blurb) predates this edit and should be regenerated.
         if (request.Attributes.Count > 0)
@@ -169,11 +164,6 @@ public class AdminService : IAdminService
 
             player.DifficultyOverride = request.DifficultyOverride;
         }
-        // player.IsOverridden = true is itself the "this was manually set"
-        // signal every seed file's Players upsert now checks (see
-        // SeedRunner.cs) -- no separate flag needed, since no seed file
-        // ever bakes in IsOverridden = true except as a deliberate,
-        // permanent curatorial baseline (e.g. Grigor Dimitrov).
 
         await _db.SaveChangesAsync();
     }

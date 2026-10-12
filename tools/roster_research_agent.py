@@ -652,8 +652,8 @@ def write_players_to_db(results: list[ValidationResult], sport_slug: str) -> Non
                 for key, value in result.values.items():
                     cur.execute(
                         'INSERT INTO "PlayerAttributeValues" '
-                        '("PlayerId", "AttributeDefinitionId", "Value", "IsManuallyEdited") '
-                        'VALUES (%s, %s, %s, false)',
+                        '("PlayerId", "AttributeDefinitionId", "Value") '
+                        'VALUES (%s, %s, %s)',
                         (player_id, attr_ids[key], value),
                     )
 
