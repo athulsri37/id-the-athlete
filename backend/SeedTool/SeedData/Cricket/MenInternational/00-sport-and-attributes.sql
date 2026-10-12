@@ -11,11 +11,12 @@
 -- deliberately not seeded yet; player-batch files land in a follow-up once
 -- the roster is curated and verified.
 
-INSERT INTO "Sports" ("Name", "Slug", "Family")
-VALUES ('Men''s International Cricket', 'cricket-men-international', 'cricket')
+INSERT INTO "Sports" ("Name", "Slug", "Family", "ShortName")
+VALUES ('Men''s International Cricket', 'cricket-men-international', 'cricket', 'Men''s International')
 ON CONFLICT ("Slug") DO UPDATE SET
     "Name" = EXCLUDED."Name",
-    "Family" = EXCLUDED."Family";
+    "Family" = EXCLUDED."Family",
+    "ShortName" = EXCLUDED."ShortName";
 
 -- One-time rename: "bowling_hand" (Right/Left/Ambidextrous/Doesn't Bowl) is
 -- being replaced by "bowling_style", which distinguishes pace vs. spin

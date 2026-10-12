@@ -5,7 +5,9 @@ export interface PlayerSummary {
 
 export interface Sport {
   slug: string;
-  name: string;
+  name: string; // e.g. "Men's Tennis"
+  shortName: string; // e.g. "Men's"; empty means use name
+  family: string; // e.g. "tennis"; picks the sport's rules and display (see config/sportFamilies)
 }
 
 export interface AttributeDefinition {

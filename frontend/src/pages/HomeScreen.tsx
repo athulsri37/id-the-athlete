@@ -1,11 +1,14 @@
 import { useEffect } from "react";
+import { FamilyGroup } from "../config/sportFamilies";
 
 interface Props {
-  onSelectTennis: () => void;
-  onSelectCricket: () => void;
+  // One button per family, in display order. Null while still loading.
+  families: FamilyGroup[] | null;
+  loadFailed: boolean;
+  onSelectFamily: (family: string) => void;
 }
 
-export default function HomeScreen({ onSelectTennis, onSelectCricket }: Props) {
+export default function HomeScreen({ families, loadFailed, onSelectFamily }: Props) {
   useEffect(() => {
     document.title = "ID the Athlete";
   }, []);
@@ -22,18 +25,20 @@ export default function HomeScreen({ onSelectTennis, onSelectCricket }: Props) {
       </p>
 
       <div className="flex flex-col gap-3 w-full max-w-xs">
-        <button
-          onClick={onSelectTennis}
-          className="btn-card px-5 py-3 rounded-md font-semibold text-lg"
-        >
-          Tennis
-        </button>
-        <button
-          onClick={onSelectCricket}
-          className="btn-card px-5 py-3 rounded-md font-semibold text-lg"
-        >
-          Cricket
-        </button>
+        {loadFailed && (
+          <p className="text-[var(--accent-alt)] text-sm text-center">
+            Couldn't load the sports. Refresh the page to try again.
+          </p>
+        )}
+        {families?.map(({ family, display }) => (
+          <button
+            key={family}
+            onClick={() => onSelectFamily(family)}
+            className="btn-card px-5 py-3 rounded-md font-semibold text-lg"
+          >
+            {display.label}
+          </button>
+        ))}
       </div>
 
       <footer className="mt-auto pt-10 flex items-center justify-center gap-3">

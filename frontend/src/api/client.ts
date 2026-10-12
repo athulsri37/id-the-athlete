@@ -1,5 +1,5 @@
 import axios from "axios";
-import { PlayerSummary, GuessResponse, Difficulty, AttributeDefinition, GameRef } from "../types";
+import { PlayerSummary, GuessResponse, Difficulty, AttributeDefinition, GameRef, Sport } from "../types";
 
 // VITE_API_BASE_URL is the backend's origin in a deployed build (e.g.
 // https://<api>.onrender.com). Left unset in local dev, requests stay
@@ -8,6 +8,13 @@ import { PlayerSummary, GuessResponse, Difficulty, AttributeDefinition, GameRef 
 export const API_ROOT = `${(import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/+$/, "")}/api`;
 
 const client = axios.create({ baseURL: API_ROOT });
+
+// Every playable tour with its family -- builds the home and tour-select
+// screens, so a new tour needs no frontend change.
+export async function fetchSports(): Promise<Sport[]> {
+  const res = await client.get(`/sports`);
+  return res.data;
+}
 
 export async function fetchPlayerPool(sportSlug: string): Promise<PlayerSummary[]> {
   const res = await client.get(`/sports/${sportSlug}/players`);

@@ -1,20 +1,24 @@
 import { useEffect, useState } from "react";
 import HomeScreen from "./pages/HomeScreen";
-import TourSelect, { TENNIS_TOUR_CONFIG, CRICKET_TOUR_CONFIG } from "./pages/TourSelect";
+import TourSelect from "./pages/TourSelect";
 import SportHome from "./pages/SportHome";
 import PastChallenges from "./pages/PastChallenges";
 import GameBoard from "./pages/GameBoard";
 import { Sport, Difficulty } from "./types";
-import { fetchActiveTheme } from "./api/client";
+import { fetchActiveTheme, fetchSports } from "./api/client";
+import { FamilyGroup, groupByFamily } from "./config/sportFamilies";
 
 type Screen = "home" | "tourSelect" | "sportHome" | "pastChallenges" | "game";
-type SportFamily = "tennis" | "cricket";
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("home");
-  // Which Home card was tapped -- picks which TourSelect config to render.
+  // Which Home card was tapped -- picks which family's tours TourSelect shows.
   // Null only while on the Home screen itself.
-  const [sportFamily, setSportFamily] = useState<SportFamily | null>(null);
+  const [sportFamily, setSportFamily] = useState<string | null>(null);
+  // Every tour from the API, grouped by family for the home and tour-select
+  // screens. Null until loaded.
+  const [families, setFamilies] = useState<FamilyGroup[] | null>(null);
+  const [sportsLoadFailed, setSportsLoadFailed] = useState(false);
   const [sport, setSport] = useState<Sport | null>(null);
   const [mode, setMode] = useState<Difficulty | null>(null);
   // Set only when playing/replaying a specific past date via Past
@@ -27,6 +31,10 @@ export default function App() {
       .then((theme) => document.documentElement.setAttribute("data-theme", theme))
       .catch(() => document.documentElement.setAttribute("data-theme", "retro"))
       .finally(() => setThemeReady(true));
+
+    fetchSports()
+      .then((sports) => setFamilies(groupByFamily(sports)))
+      .catch(() => setSportsLoadFailed(true));
   }, []);
 
   const goHome = () => {
@@ -37,13 +45,8 @@ export default function App() {
     setDailyDate(null);
   };
 
-  const selectTennis = () => {
-    setSportFamily("tennis");
-    setScreen("tourSelect");
-  };
-
-  const selectCricket = () => {
-    setSportFamily("cricket");
+  const selectFamily = (family: string) => {
+    setSportFamily(family);
     setScreen("tourSelect");
   };
 
@@ -98,9 +101,9 @@ export default function App() {
     return null;
   }
 
-  if (screen === "tourSelect" && sportFamily) {
-    const config = sportFamily === "cricket" ? CRICKET_TOUR_CONFIG : TENNIS_TOUR_CONFIG;
-    return <TourSelect {...config} onSelectTour={selectTour} onBack={goHome} />;
+  const familyGroup = families?.find((g) => g.family === sportFamily);
+  if (screen === "tourSelect" && familyGroup) {
+    return <TourSelect group={familyGroup} onSelectTour={selectTour} onBack={goHome} />;
   }
 
   if (screen === "sportHome" && sport) {
@@ -122,13 +125,12 @@ export default function App() {
     return (
       <GameBoard
         mode={mode}
-        sportSlug={sport.slug}
-        sportName={sport.name}
+        sport={sport}
         dailyDate={dailyDate ?? undefined}
         onBackToHome={backToSportHome}
       />
     );
   }
 
-  return <HomeScreen onSelectTennis={selectTennis} onSelectCricket={selectCricket} />;
+  return <HomeScreen families={families} loadFailed={sportsLoadFailed} onSelectFamily={selectFamily} />;
 }
