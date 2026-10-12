@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using IdTheAthlete.Api.Dtos;
 using IdTheAthlete.Api.Services;
 
 namespace IdTheAthlete.Api.Controllers;
@@ -18,8 +19,8 @@ public class SportsController : ControllerBase
     // Every playable tour with its family, which the frontend uses to build
     // the home (one button per family) and tour-select screens.
     [HttpGet]
-    public async Task<IActionResult> GetSports()
+    public async Task<ActionResult<List<SportDto>>> GetSports()
     {
-        return Ok(await _sports.GetSportsAsync());
+        return await _sports.GetSportsAsync();
     }
 }
