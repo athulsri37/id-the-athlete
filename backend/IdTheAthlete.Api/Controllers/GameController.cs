@@ -33,15 +33,16 @@ public class GameController : ControllerBase
         }
     }
 
-    // POST /api/sports/tennis-men/game/guess?guessNumber=1
-    // Submits a guess for either the daily puzzle (mode=daily) or an
-    // active practice session (mode=easy|medium|hard, sessionId required).
+    // POST /api/sports/tennis-men/game/guess
+    // Submits a guess for either the daily puzzle (mode=daily, plus the
+    // gameToken from the previous guess after the first one) or an active
+    // practice session (mode=easy|medium|hard, sessionId required).
     [HttpPost("guess")]
-    public async Task<IActionResult> SubmitGuess(string sportSlug, [FromBody] GuessRequestDto request, [FromQuery] int guessNumber = 1)
+    public async Task<IActionResult> SubmitGuess(string sportSlug, [FromBody] GuessRequestDto request)
     {
         try
         {
-            var result = await _gameService.SubmitGuessAsync(sportSlug, request, guessNumber);
+            var result = await _gameService.SubmitGuessAsync(sportSlug, request);
             return Ok(result);
         }
         catch (InvalidOperationException ex)
@@ -52,16 +53,17 @@ public class GameController : ControllerBase
 
     // GET /api/sports/tennis-men/game/hint/country?mode=easy&sessionId=...
     // Free hint that reveals only the mystery player's country — nothing
-    // else about them. mode/sessionId identify the mystery player the same
-    // way the guess endpoint does (sessionId is omitted for mode=daily).
-    // date (yyyy-MM-dd) is daily-mode only and optional -- omitted means
-    // today, otherwise a specific Past Challenge date.
+    // else about them — once 5 guesses have been made. mode/sessionId/
+    // gameToken identify the game the same way the guess endpoint does
+    // (sessionId for practice, gameToken for mode=daily). date (yyyy-MM-dd)
+    // is daily-mode only and optional -- omitted means today, otherwise a
+    // specific Past Challenge date.
     [HttpGet("hint/country")]
-    public async Task<IActionResult> GetCountryHint(string sportSlug, [FromQuery] string mode = "daily", [FromQuery] string? sessionId = null, [FromQuery] string? date = null)
+    public async Task<IActionResult> GetCountryHint(string sportSlug, [FromQuery] string mode = "daily", [FromQuery] string? sessionId = null, [FromQuery] string? date = null, [FromQuery] string? gameToken = null)
     {
         try
         {
-            var country = await _gameService.GetCountryHintAsync(sportSlug, mode, sessionId, date);
+            var country = await _gameService.GetCountryHintAsync(sportSlug, mode, sessionId, date, gameToken);
             return Ok(new CountryHintDto { Country = country });
         }
         catch (InvalidOperationException ex)

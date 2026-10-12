@@ -1,5 +1,5 @@
 import axios from "axios";
-import { PlayerSummary, GuessResponse, Difficulty, AttributeDefinition } from "../types";
+import { PlayerSummary, GuessResponse, Difficulty, AttributeDefinition, GameRef } from "../types";
 
 // VITE_API_BASE_URL is the backend's origin in a deployed build (e.g.
 // https://<api>.onrender.com). Left unset in local dev, requests stay
@@ -26,31 +26,13 @@ export async function startPracticeGame(sportSlug: string, difficulty: Exclude<D
   return res.data as { mode: string; sessionId: string; maxGuesses: number };
 }
 
-export async function submitGuess(
-  sportSlug: string,
-  playerId: number,
-  mode: Difficulty,
-  guessNumber: number,
-  sessionId?: string,
-  date?: string
-): Promise<GuessResponse> {
-  const res = await client.post(
-    `/sports/${sportSlug}/game/guess`,
-    { playerId, mode, sessionId, date },
-    { params: { guessNumber } }
-  );
+export async function submitGuess(sportSlug: string, playerId: number, game: GameRef): Promise<GuessResponse> {
+  const res = await client.post(`/sports/${sportSlug}/game/guess`, { playerId, ...game });
   return res.data;
 }
 
-export async function fetchCountryHint(
-  sportSlug: string,
-  mode: Difficulty,
-  sessionId?: string,
-  date?: string
-): Promise<string> {
-  const res = await client.get(`/sports/${sportSlug}/game/hint/country`, {
-    params: { mode, sessionId, date },
-  });
+export async function fetchCountryHint(sportSlug: string, game: GameRef): Promise<string> {
+  const res = await client.get(`/sports/${sportSlug}/game/hint/country`, { params: game });
   return res.data.country as string;
 }
 

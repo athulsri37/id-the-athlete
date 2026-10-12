@@ -20,8 +20,10 @@ public class GameService : IGameService
     private readonly ICategoricalClosenessEvaluator _categoricalCloseness;
     private readonly IPracticeSessionService _practiceSessions;
     private readonly IDailyPuzzleService _dailyPuzzleService;
+    private readonly IGameTokenService _gameTokens;
 
     private const int MaxGuesses = 8;
+    private const int HintAfterGuess = 5;
 
     public GameService(
         GameDbContext db,
@@ -30,7 +32,8 @@ public class GameService : IGameService
         INumericClosenessEvaluator numericCloseness,
         ICategoricalClosenessEvaluator categoricalCloseness,
         IPracticeSessionService practiceSessions,
-        IDailyPuzzleService dailyPuzzleService)
+        IDailyPuzzleService dailyPuzzleService,
+        IGameTokenService gameTokens)
     {
         _db = db;
         _aiTriviaService = aiTriviaService;
@@ -39,6 +42,7 @@ public class GameService : IGameService
         _categoricalCloseness = categoricalCloseness;
         _practiceSessions = practiceSessions;
         _dailyPuzzleService = dailyPuzzleService;
+        _gameTokens = gameTokens;
     }
 
     public async Task<List<PlayerSummaryDto>> GetPlayerPoolAsync(string sportSlug)
@@ -90,14 +94,35 @@ public class GameService : IGameService
         };
     }
 
-    public async Task<GuessResponseDto> SubmitGuessAsync(string sportSlug, GuessRequestDto request, int guessNumber)
+    // The guess number always comes from server-side state -- the practice
+    // session, or the signed token from the previous daily guess -- never
+    // from the client, so the answer is only revealed after MaxGuesses real
+    // guesses (or a correct one).
+    public async Task<GuessResponseDto> SubmitGuessAsync(string sportSlug, GuessRequestDto request)
     {
         var sport = await _db.Sports.FirstOrDefaultAsync(s => s.Slug == sportSlug)
             ?? throw new InvalidOperationException($"Sport '{sportSlug}' not found");
 
-        int mysteryPlayerId = request.Mode == "daily"
-            ? await _dailyPuzzleService.ResolveDailyMysteryPlayerIdAsync(sport.Id, request.Date)
-            : _practiceSessions.ResolveSessionPlayerId(request.SessionId);
+        bool isDaily = request.Mode == "daily";
+        int mysteryPlayerId;
+        int guessesSoFar;
+        DateOnly dailyPuzzleDate = default;
+
+        if (isDaily)
+        {
+            var dailyGame = await ResolveDailyGameAsync(sport.Id, request.Date, request.GameToken);
+            mysteryPlayerId = dailyGame.Puzzle.PlayerId;
+            dailyPuzzleDate = dailyGame.Puzzle.PuzzleDate;
+            guessesSoFar = dailyGame.GuessesSoFar;
+        }
+        else
+        {
+            mysteryPlayerId = _practiceSessions.ResolveSessionPlayerId(request.SessionId);
+            guessesSoFar = _practiceSessions.GetGuessCount(request.SessionId);
+        }
+
+        if (guessesSoFar >= MaxGuesses)
+            throw new InvalidOperationException("This game is already over.");
 
         var guessedPlayer = await _db.Players
             .Include(p => p.AttributeValues)
@@ -110,6 +135,10 @@ public class GameService : IGameService
                 .ThenInclude(v => v.AttributeDefinition)
             .FirstOrDefaultAsync(p => p.Id == mysteryPlayerId)
             ?? throw new InvalidOperationException("Mystery player not found");
+
+        // Counted only once the guess is known to be valid, so a bad request
+        // doesn't use up one of the player's guesses.
+        int guessNumber = isDaily ? guessesSoFar + 1 : _practiceSessions.RecordGuess(request.SessionId);
 
         bool isCorrect = guessedPlayer.Id == mysteryPlayer.Id;
         bool gameOver = isCorrect || guessNumber >= MaxGuesses;
@@ -163,7 +192,7 @@ public class GameService : IGameService
             return clue;
         }).ToList();
 
-        if (request.Mode != "daily" && gameOver && !string.IsNullOrEmpty(request.SessionId))
+        if (!isDaily && gameOver && !string.IsNullOrEmpty(request.SessionId))
         {
             _practiceSessions.RemoveSession(request.SessionId);
         }
@@ -177,29 +206,40 @@ public class GameService : IGameService
             Clues = clues,
             GameOver = gameOver,
             AnswerName = gameOver ? mysteryPlayer.Name : null,
-            TriviaBlurb = triviaBlurb
+            TriviaBlurb = triviaBlurb,
+            GameToken = isDaily ? _gameTokens.Issue(new DailyGameState(sport.Id, dailyPuzzleDate, guessNumber)) : null
         };
     }
 
-    // Free hint: reveals only the mystery player's country, nothing else.
-    // Validation mirrors SubmitGuessAsync's mystery-player resolution:
-    // - Practice mode: PracticeSessionService throws if the session is
-    //   missing, which is also what happens once a practice game ends
-    //   (SubmitGuessAsync removes the session on game-over), so an
-    //   already-finished practice game is naturally rejected here too.
-    // - Daily mode has no server-side per-player session/guess-count state
-    //   at all (by design), so there's nothing server-side to check for
-    //   "already over" there; the frontend is responsible for only
-    //   requesting the hint when it makes sense, same trust boundary as
-    //   the client-enforced guess limit.
-    public async Task<string> GetCountryHintAsync(string sportSlug, string mode, string? sessionId, string? date = null)
+    // Free hint: reveals only the mystery player's country, nothing else,
+    // and only once HintAfterGuess guesses have been made. The count comes
+    // from the same server-side state as SubmitGuessAsync:
+    // - Practice mode: the session's count. A finished practice game's
+    //   session has been removed, so it's rejected here too.
+    // - Daily mode: the signed token from the latest guess. No token means
+    //   no guesses yet, which is always too early.
+    public async Task<string> GetCountryHintAsync(string sportSlug, string mode, string? sessionId, string? date = null, string? gameToken = null)
     {
         var sport = await _db.Sports.FirstOrDefaultAsync(s => s.Slug == sportSlug)
             ?? throw new InvalidOperationException($"Sport '{sportSlug}' not found");
 
-        int mysteryPlayerId = mode == "daily"
-            ? await _dailyPuzzleService.ResolveDailyMysteryPlayerIdAsync(sport.Id, date)
-            : _practiceSessions.ResolveSessionPlayerId(sessionId);
+        int mysteryPlayerId;
+        int guessesSoFar;
+
+        if (mode == "daily")
+        {
+            var dailyGame = await ResolveDailyGameAsync(sport.Id, date, gameToken);
+            mysteryPlayerId = dailyGame.Puzzle.PlayerId;
+            guessesSoFar = dailyGame.GuessesSoFar;
+        }
+        else
+        {
+            mysteryPlayerId = _practiceSessions.ResolveSessionPlayerId(sessionId);
+            guessesSoFar = _practiceSessions.GetGuessCount(sessionId);
+        }
+
+        if (guessesSoFar < HintAfterGuess)
+            throw new InvalidOperationException($"The country hint unlocks after {HintAfterGuess} guesses.");
 
         var mysteryPlayer = await _db.Players
             .Include(p => p.AttributeValues)
@@ -211,6 +251,32 @@ public class GameService : IGameService
             .FirstOrDefault(v => v.AttributeDefinition?.Key == "country")?.Value;
 
         return country ?? throw new InvalidOperationException("Country not available for this player.");
+    }
+
+    // Finds the puzzle a daily game is for and how many guesses it has had.
+    // Without a token this is the game's first request: the requested date
+    // (null = today) and zero guesses. With one, the token's verified state
+    // wins, and it also pins the game to the day it started on, so a game
+    // still in progress after midnight UTC keeps its original puzzle.
+    private async Task<(ResolvedDailyPuzzle Puzzle, int GuessesSoFar)> ResolveDailyGameAsync(
+        int sportId, string? requestedDate, string? gameToken)
+    {
+        DateOnly? date = null;
+        if (requestedDate != null)
+        {
+            if (!DateOnly.TryParse(requestedDate, out var parsedDate))
+                throw new InvalidOperationException($"Invalid date '{requestedDate}'.");
+            date = parsedDate;
+        }
+
+        if (string.IsNullOrEmpty(gameToken))
+            return (await _dailyPuzzleService.ResolveDailyPuzzleAsync(sportId, date), 0);
+
+        var state = _gameTokens.Read(gameToken);
+        if (state.SportId != sportId || (date != null && date != state.PuzzleDate))
+            throw new InvalidOperationException("This game token is for a different puzzle. Start the game again.");
+
+        return (await _dailyPuzzleService.ResolveDailyPuzzleAsync(sportId, state.PuzzleDate), state.GuessCount);
     }
 
     // Ordered attribute set for this sport, used by the frontend to render

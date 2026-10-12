@@ -21,7 +21,7 @@ npm run dev
 ```
 App runs at `http://localhost:5174`.
 
-Requires `dotnet user-secrets` set for `Anthropic:ApiKey` (AI trivia) and `AdminKeys:<name>` (a key-protected internal admin interface, not linked from public UI, don't reference its exact route in committed files).
+Requires `dotnet user-secrets` set for `GameTokens:SigningKey` (signs daily-game guess counts; 32+ characters; optional in Development, required elsewhere or the app won't start), `Anthropic:ApiKey` (AI trivia) and `AdminKeys:<name>` (a key-protected internal admin interface, not linked from public UI, don't reference its exact route in committed files).
 
 ## Testing
 

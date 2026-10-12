@@ -46,20 +46,19 @@ public class DailyPuzzleService : IDailyPuzzleService
     // puzzle on first access if it doesn't exist yet). A specific date is
     // always a Past Challenge, which by definition already has a puzzle
     // (the frontend only ever offers dates GetDailyPuzzleDatesAsync
-    // returned) -- so this never creates one, only looks it up.
-    public async Task<int> ResolveDailyMysteryPlayerIdAsync(int sportId, string? date)
+    // returned) -- so this never creates one, only looks it up. Returns the
+    // resolved date along with the player so a caller can pin a game to the
+    // day it started on, even if it's still being played after midnight.
+    public async Task<ResolvedDailyPuzzle> ResolveDailyPuzzleAsync(int sportId, DateOnly? date)
     {
         if (date == null)
-            return await GetTodaysMysteryPlayerIdAsync(sportId);
-
-        if (!DateOnly.TryParse(date, out var parsedDate))
-            throw new InvalidOperationException($"Invalid date '{date}'.");
+            return await GetTodaysPuzzleAsync(sportId);
 
         var puzzle = await _db.DailyPuzzles
-            .FirstOrDefaultAsync(d => d.SportId == sportId && d.PuzzleDate == parsedDate)
-            ?? throw new InvalidOperationException($"No daily puzzle exists for {date}.");
+            .FirstOrDefaultAsync(d => d.SportId == sportId && d.PuzzleDate == date.Value)
+            ?? throw new InvalidOperationException($"No daily puzzle exists for {date.Value:yyyy-MM-dd}.");
 
-        return puzzle.PlayerId;
+        return new ResolvedDailyPuzzle(puzzle.PlayerId, puzzle.PuzzleDate);
     }
 
     // Lazy/on-demand fallback: only reached when a player's request for
@@ -70,7 +69,7 @@ public class DailyPuzzleService : IDailyPuzzleService
     // it logs a warning when it actually creates a puzzle -- that should
     // never happen in normal operation, and means the scheduled mechanism
     // needs investigating.
-    private async Task<int> GetTodaysMysteryPlayerIdAsync(int sportId)
+    private async Task<ResolvedDailyPuzzle> GetTodaysPuzzleAsync(int sportId)
     {
         var today = DateOnly.FromDateTime(_timeProvider.GetUtcNow().UtcDateTime);
 
@@ -78,7 +77,7 @@ public class DailyPuzzleService : IDailyPuzzleService
             .FirstOrDefaultAsync(d => d.SportId == sportId && d.PuzzleDate == today);
 
         if (existing != null)
-            return existing.PlayerId;
+            return new ResolvedDailyPuzzle(existing.PlayerId, today);
 
         _logger.LogWarning(
             "Lazy-generating today's ({Date}) daily puzzle for sport {SportId} -- neither the scheduled " +
@@ -96,7 +95,7 @@ public class DailyPuzzleService : IDailyPuzzleService
         });
         await _db.SaveChangesAsync();
 
-        return chosen.Id;
+        return new ResolvedDailyPuzzle(chosen.Id, today);
     }
 
     // Shared by both the lazy fallback above and EnsureDailyPuzzleAsync

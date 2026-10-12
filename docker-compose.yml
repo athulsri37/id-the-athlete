@@ -17,6 +17,11 @@ services:
       - "5080:8080"
     environment:
       ConnectionStrings__DefaultConnection: "Host=postgres;Database=idtheathlete;Username=idtheathlete;Password=idtheathlete_dev_pw"
+      # This container runs in Production mode, where the API won't start
+      # without a signing key. Taken from the host environment so no key is
+      # committed; the empty default keeps `docker compose up -d postgres`
+      # working when it isn't set.
+      GameTokens__SigningKey: "${GAME_TOKEN_SIGNING_KEY:-}"
     depends_on:
       - postgres
 
