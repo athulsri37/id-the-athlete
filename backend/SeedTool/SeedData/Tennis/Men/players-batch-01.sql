@@ -3,7 +3,7 @@
 -- is smaller since it's simply the original 20-player sample set migrated
 -- into this format unchanged.
 --
--- Safe to re-run: Players upserts on the unique Name constraint, and
+-- Safe to re-run: Players upserts on the unique (SportId, Name) constraint, and
 -- PlayerAttributeValues upserts on the existing unique
 -- (PlayerId, AttributeDefinitionId) constraint, both added/confirmed in
 -- migration AddPlayerNameAndAttributeDefinitionUniqueConstraints.
@@ -34,8 +34,7 @@ CROSS JOIN (VALUES
     ('Andrey Rublev')
 ) AS v("Name")
 WHERE s."Slug" = 'tennis-men'
-ON CONFLICT ("Name") DO UPDATE SET
-    "SportId" = EXCLUDED."SportId";
+ON CONFLICT ("SportId", "Name") DO NOTHING;
 
 -- One row per (player, attribute) pair. PlayerId/AttributeDefinitionId are
 -- resolved by name/key lookup rather than hardcoded ids, so this file has
@@ -224,7 +223,8 @@ FROM (VALUES
     ('Andrey Rublev',    'turned_pro_year',     '2014'),
     ('Andrey Rublev',    'career_titles',       '17')
 ) AS v("PlayerName", "AttrKey", "Value")
-JOIN "Players" p ON p."Name" = v."PlayerName"
+JOIN "Sports" s ON s."Slug" = 'tennis-men'
+JOIN "Players" p ON p."SportId" = s."Id" AND p."Name" = v."PlayerName"
 JOIN "AttributeDefinitions" ad ON ad."Key" = v."AttrKey" AND ad."SportId" = p."SportId"
 ON CONFLICT ("PlayerId", "AttributeDefinitionId") DO UPDATE SET
     "Value" = EXCLUDED."Value"

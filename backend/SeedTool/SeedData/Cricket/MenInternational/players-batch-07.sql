@@ -1,6 +1,6 @@
 -- Men's International Cricket players, batch 7 (30 players, bringing the
 -- roster to 210 total: batches 1-6's 180 + batch 7's 30). Same upsert
--- pattern as prior batches: Players upserts on the unique Name constraint,
+-- pattern as prior batches: Players upserts on the unique (SportId, Name) constraint,
 -- PlayerAttributeValues upserts on the existing unique (PlayerId,
 -- AttributeDefinitionId) constraint, both scoped to the
 -- "cricket-men-international" Sport. No overrides in this batch -- every
@@ -42,8 +42,7 @@ CROSS JOIN (VALUES
     ('Curtis Campher',            false, NULL)
 ) AS v("Name", "IsOverridden", "DifficultyOverride")
 WHERE s."Slug" = 'cricket-men-international'
-ON CONFLICT ("Name") DO UPDATE SET
-    "SportId" = EXCLUDED."SportId",
+ON CONFLICT ("SportId", "Name") DO UPDATE SET
     "IsOverridden" = CASE WHEN "Players"."IsOverridden" THEN "Players"."IsOverridden" ELSE EXCLUDED."IsOverridden" END,
     "DifficultyOverride" = CASE WHEN "Players"."IsOverridden" THEN "Players"."DifficultyOverride" ELSE EXCLUDED."DifficultyOverride" END;
 
@@ -355,7 +354,8 @@ FROM (VALUES
     ('Curtis Campher',                  'combined_wickets',     '135'),
     ('Curtis Campher',                  'debut_year',           '2020')
 ) AS v("PlayerName", "AttrKey", "Value")
-JOIN "Players" p ON p."Name" = v."PlayerName"
+JOIN "Sports" s ON s."Slug" = 'cricket-men-international'
+JOIN "Players" p ON p."SportId" = s."Id" AND p."Name" = v."PlayerName"
 JOIN "AttributeDefinitions" ad ON ad."Key" = v."AttrKey" AND ad."SportId" = p."SportId"
 ON CONFLICT ("PlayerId", "AttributeDefinitionId") DO UPDATE SET
     "Value" = EXCLUDED."Value"

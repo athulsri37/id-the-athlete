@@ -1,6 +1,6 @@
 -- Tennis (men's) players, batch 2 (25 players, bringing the roster to 45
 -- total alongside batch 1's original 20). Same upsert pattern as batch 1:
--- Players upserts on the unique Name constraint, PlayerAttributeValues
+-- Players upserts on the unique (SportId, Name) constraint, PlayerAttributeValues
 -- upserts on the existing unique (PlayerId, AttributeDefinitionId)
 -- constraint. Both constraints added/confirmed in migration
 -- AddPlayerNameAndAttributeDefinitionUniqueConstraints.
@@ -48,8 +48,7 @@ CROSS JOIN (VALUES
     ('Guillermo Vilas',       false, NULL)
 ) AS v("Name", "IsOverridden", "DifficultyOverride")
 WHERE s."Slug" = 'tennis-men'
-ON CONFLICT ("Name") DO UPDATE SET
-    "SportId" = EXCLUDED."SportId",
+ON CONFLICT ("SportId", "Name") DO UPDATE SET
     "IsOverridden" = CASE WHEN "Players"."IsOverridden" THEN "Players"."IsOverridden" ELSE EXCLUDED."IsOverridden" END,
     "DifficultyOverride" = CASE WHEN "Players"."IsOverridden" THEN "Players"."DifficultyOverride" ELSE EXCLUDED."DifficultyOverride" END;
 
@@ -285,7 +284,8 @@ FROM (VALUES
     ('Guillermo Vilas',          'turned_pro_year',      '1969'),
     ('Guillermo Vilas',          'career_titles',        '62')
 ) AS v("PlayerName", "AttrKey", "Value")
-JOIN "Players" p ON p."Name" = v."PlayerName"
+JOIN "Sports" s ON s."Slug" = 'tennis-men'
+JOIN "Players" p ON p."SportId" = s."Id" AND p."Name" = v."PlayerName"
 JOIN "AttributeDefinitions" ad ON ad."Key" = v."AttrKey" AND ad."SportId" = p."SportId"
 ON CONFLICT ("PlayerId", "AttributeDefinitionId") DO UPDATE SET
     "Value" = EXCLUDED."Value"

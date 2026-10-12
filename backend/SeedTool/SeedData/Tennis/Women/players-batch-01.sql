@@ -1,6 +1,6 @@
 -- Tennis (women's) players, batch 1 (20 players, first batch of the WTA
 -- roster). Same upsert pattern as the Men's batch files: Players upserts
--- on the unique Name constraint, PlayerAttributeValues upserts on the
+-- on the unique (SportId, Name) constraint, PlayerAttributeValues upserts on the
 -- existing unique (PlayerId, AttributeDefinitionId) constraint. Scoped to
 -- the "tennis-women" Sport throughout -- the Players insert resolves
 -- SportId via WHERE s."Slug" = 'tennis-women' below, and the
@@ -35,8 +35,7 @@ CROSS JOIN (VALUES
     ('Li Na',                false, NULL)
 ) AS v("Name", "IsOverridden", "DifficultyOverride")
 WHERE s."Slug" = 'tennis-women'
-ON CONFLICT ("Name") DO UPDATE SET
-    "SportId" = EXCLUDED."SportId",
+ON CONFLICT ("SportId", "Name") DO UPDATE SET
     "IsOverridden" = CASE WHEN "Players"."IsOverridden" THEN "Players"."IsOverridden" ELSE EXCLUDED."IsOverridden" END,
     "DifficultyOverride" = CASE WHEN "Players"."IsOverridden" THEN "Players"."DifficultyOverride" ELSE EXCLUDED."DifficultyOverride" END;
 
@@ -228,7 +227,8 @@ FROM (VALUES
     ('Li Na',                    'turned_pro_year',      '1999'),
     ('Li Na',                    'career_titles',        '9')
 ) AS v("PlayerName", "AttrKey", "Value")
-JOIN "Players" p ON p."Name" = v."PlayerName"
+JOIN "Sports" s ON s."Slug" = 'tennis-women'
+JOIN "Players" p ON p."SportId" = s."Id" AND p."Name" = v."PlayerName"
 JOIN "AttributeDefinitions" ad ON ad."Key" = v."AttrKey" AND ad."SportId" = p."SportId"
 ON CONFLICT ("PlayerId", "AttributeDefinitionId") DO UPDATE SET
     "Value" = EXCLUDED."Value"

@@ -41,9 +41,11 @@ public class GameDbContext : DbContext
             .Property(p => p.IsOverridden)
             .HasDefaultValue(false);
 
-        // Key used for the SeedTool's upsert matching (ON CONFLICT "Name").
+        // A player's name is unique within a sport, not across sports, so two
+        // tours can each have a player of the same name. Also the key the
+        // SeedTool's upserts match on (ON CONFLICT ("SportId", "Name")).
         modelBuilder.Entity<Player>()
-            .HasIndex(p => p.Name)
+            .HasIndex(p => new { p.SportId, p.Name })
             .IsUnique();
 
         modelBuilder.Entity<PlayerAttributeValue>()
