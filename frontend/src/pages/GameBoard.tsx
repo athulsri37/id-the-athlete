@@ -150,9 +150,10 @@ export default function GameBoard({ mode, sportSlug, sportName, dailyDate, onBac
     recordDailyCompletion(sportSlug, effectiveDate, won, guesses, revealedCountry);
 
     // CRITICAL: streak logic must only ever fire for today. Catching up on
-    // a past day via Past Challenges must never affect it.
+    // a past day via Past Challenges must never affect it. effectiveDate is
+    // today's puzzle date here, the same UTC date the completion is filed under.
     if (!isPastDate) {
-      setStreak(recordDailyResult(sportSlug, won));
+      setStreak(recordDailyResult(sportSlug, effectiveDate, won));
     }
   }, [mode, gameOver, won, sportSlug, guesses, revealedCountry, isPastDate, effectiveDate]);
 

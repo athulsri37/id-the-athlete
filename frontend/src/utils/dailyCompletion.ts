@@ -6,7 +6,6 @@
 // lets a completed game be re-displayed read-only (Wordle-style) instead of
 // allowing a fresh attempt.
 import { GuessResponse } from "../types";
-import { todayLocalDateString } from "./localDate";
 
 export interface DailyCompletion {
   date: string; // YYYY-MM-DD
@@ -29,11 +28,6 @@ export function getCompletionForDate(sportSlug: string, date: string): DailyComp
   } catch {
     return null;
   }
-}
-
-// Convenience wrapper: today is just "the date = today" special case.
-export function getTodaysCompletion(sportSlug: string): DailyCompletion | null {
-  return getCompletionForDate(sportSlug, todayLocalDateString());
 }
 
 export function recordDailyCompletion(
