@@ -6,7 +6,10 @@ from roster_validation import (
     CATEGORICAL,
     NUMERIC,
     AttributeSpec,
+    describe_tiers,
+    parse_tiers,
     schema_mismatch,
+    tier_warning,
     validate_player,
 )
 
@@ -95,6 +98,30 @@ class ValidatePlayerTests(unittest.TestCase):
 
         self.assertTrue(result.is_valid)
         self.assertEqual(len(result.warnings), 1)
+
+
+class TierTests(unittest.TestCase):
+    def test_parse_tiers_accepts_any_combination_and_case(self):
+        self.assertEqual(parse_tiers("Medium, HARD"), frozenset({"medium", "hard"}))
+        self.assertEqual(parse_tiers("easy"), frozenset({"easy"}))
+
+    def test_parse_tiers_rejects_unknown_or_empty(self):
+        for bad in ["expert", "medium,impossible", "", " , "]:
+            with self.subTest(value=bad):
+                with self.assertRaises(ValueError):
+                    parse_tiers(bad)
+
+    def test_describe_tiers_is_always_easy_to_hard(self):
+        self.assertEqual(describe_tiers(frozenset({"hard", "easy"})), "easy or hard")
+
+    def test_tier_warning(self):
+        wanted = frozenset({"medium", "hard"})
+
+        self.assertEqual(tier_warning("easy", wanted), "tier is easy, but you asked for medium or hard")
+        self.assertIsNone(tier_warning("hard", wanted))
+        self.assertIsNone(tier_warning("easy", None))  # no preference
+        self.assertIsNone(tier_warning("?", wanted))  # tier unknown (API not available)
+        self.assertIsNone(tier_warning("-", wanted))  # player has errors
 
 
 class SchemaMismatchTests(unittest.TestCase):

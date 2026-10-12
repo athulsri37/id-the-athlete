@@ -54,17 +54,21 @@ ENVIRONMENT VARIABLES
 
 USAGE
 -----
-    python roster_research_agent.py <sport> [count]
+    python roster_research_agent.py <sport> [count] [--tiers TIERS]
 
-    sport  one of: cricket-men-international, cricket-women-international,
-           tennis-men, tennis-women
-    count  number of players to research, 1-30 (optional, defaults to 20)
+    sport    one of: cricket-men-international, cricket-women-international,
+             tennis-men, tennis-women
+    count    number of players to research, 1-30 (optional, defaults to 20)
+    --tiers  difficulty tiers to aim for, any of easy,medium,hard separated
+             by commas (optional; leave out for no preference). Players
+             whose actual tier turns out different are marked "check".
 
-    Example:
+    Examples:
     python roster_research_agent.py tennis-men 10
+    python roster_research_agent.py tennis-men 10 --tiers medium,hard
 
-    Run with --help to see the valid options. TIER_GUIDANCE in the CONFIG
-    section below can still be edited to override a sport's default guidance.
+    Run with --help to see the valid options. The wording used to describe
+    each tier to the model is TIER_DESCRIPTIONS in the CONFIG section.
 
 REVIEW MENU
 -----------
@@ -111,9 +115,13 @@ from claude_agent_sdk import query, ClaudeAgentOptions, AssistantMessage, TextBl
 from roster_validation import (
     CATEGORICAL,
     NUMERIC,
+    TIERS,
     AttributeSpec,
     ValidationResult,
+    describe_tiers,
+    parse_tiers,
     schema_mismatch,
+    tier_warning,
     validate_player,
 )
 
@@ -164,11 +172,6 @@ SPORT_PROFILES = {
 - combined_matches/runs/wickets: Test + ODI + T20I added together
 - debut_year: year of international debut
 """,
-        "default_tier_guidance": (
-            "Lean toward Medium/Hard-tier players: current or recent players with "
-            "solid but not legendary careers (well under 10,000 runs, 300 wickets, "
-            "or 300 matches), or genuine role-players/associate-nation cricketers."
-        ),
         "min_appearances_note": "Do not include any player with fewer than 20 combined international appearances.",
     },
     "cricket-women-international": {
@@ -187,10 +190,6 @@ SPORT_PROFILES = {
 - combined_matches/runs/wickets: Test + ODI + T20I added together
 - debut_year: year of international debut
 """,
-        "default_tier_guidance": (
-            "Lean toward Medium/Hard-tier players: current or recent players with "
-            "solid but not legendary careers, or genuine role-players/associate-nation cricketers."
-        ),
         "min_appearances_note": "Do not include any player with fewer than 20 combined international appearances.",
     },
     "tennis-men": {
@@ -210,12 +209,6 @@ SPORT_PROFILES = {
 - turned_pro_year: year turned professional
 - career_titles: total ATP singles titles won
 """,
-        "default_tier_guidance": (
-            "Lean toward Medium/Hard-tier players: current or recent players who "
-            "haven't reached #1 or won 20+ titles or 2+ Grand Slams, but have a "
-            "real, recognizable career - a notable ranking peak, a signature win, "
-            "or genuine current tour relevance."
-        ),
         "min_appearances_note": "Only include players with a genuine, verifiable ATP tour career - not purely juniors or challengers-only players.",
     },
     "tennis-women": {
@@ -235,12 +228,6 @@ SPORT_PROFILES = {
 - turned_pro_year: year turned professional
 - career_titles: total WTA singles titles won
 """,
-        "default_tier_guidance": (
-            "Lean toward Medium/Hard-tier players: current or recent players who "
-            "haven't reached #1 or won 20+ titles or 2+ Grand Slams, but have a "
-            "real, recognizable career - a notable ranking peak, a signature win, "
-            "or genuine current tour relevance."
-        ),
         "min_appearances_note": "Only include players with a genuine, verifiable WTA tour career - not purely juniors or challengers-only players.",
     },
 }
@@ -255,7 +242,6 @@ DISPLAY_ONLY_FIELDS = ["source_url"]
 CHUNK_SIZE = 10  # players requested per individual call
 MAX_BATCH_SIZE = 30  # upper bound for the count argument
 DEFAULT_BATCH_SIZE = 20  # used when count is omitted
-TIER_GUIDANCE = None  # leave as None to use that sport's default, or override with your own text
 
 OUTPUT_FILE = f"proposed_batch_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
 
@@ -266,6 +252,17 @@ DB_URL = os.environ.get(
 )
 API_URL = os.environ.get("ROSTER_API_URL", "http://localhost:5080").rstrip("/")
 ADMIN_KEY = os.environ.get("ROSTER_ADMIN_KEY")
+
+# How each tier is described to the model when --tiers is used. In words on
+# purpose: the exact thresholds belong to the backend's rules, and every
+# player's real tier is checked against them through the API afterwards.
+TIER_DESCRIPTIONS = {
+    "easy": "Easy: famous, widely recognised players - stars and all-time greats.",
+    "medium": "Medium: established players a regular follower of the sport would know, "
+    "with solid but not legendary careers.",
+    "hard": "Hard: lesser-known players with a real, verifiable career - role players, "
+    "journeymen, lower-ranked or associate-nation players.",
+}
 
 # ============================================================
 # SCRIPT - no need to edit below this line
@@ -371,8 +368,20 @@ def extract_reviewer_notes(raw_text):
     return notes
 
 
+def build_tier_guidance(wanted: frozenset[str] | None) -> str | None:
+    """Prompt text steering research towards the tiers asked for with --tiers,
+    or None for no preference. Deliberately describes the tiers in words
+    rather than the formula's thresholds, which live only in the backend;
+    each player's real tier is checked through the API after research."""
+    if not wanted:
+        return None
+    lines = [TIER_DESCRIPTIONS[tier] for tier in TIERS if tier in wanted]
+    return "Only propose players who fit these difficulty tiers:\n- " + "\n- ".join(lines)
+
+
 def build_prompt(profile, batch_size, tier_guidance, existing_names, note=None):
     existing_list = "\n".join(f"- {name}" for name in existing_names)
+    tier_section = f"\nTIER GUIDANCE:\n{tier_guidance}\n" if tier_guidance else ""
     sport = profile["display_name"]
     source_name = profile["source_name"]
     source_domain = profile["source_domain"]
@@ -389,10 +398,7 @@ def build_prompt(profile, batch_size, tier_guidance, existing_names, note=None):
 TASK: Propose exactly {batch_size} real, currently or recently active {sport} players
 who are NOT already in the existing roster below. For each player, research their
 actual career statistics using web search - do not estimate or guess.
-
-TIER GUIDANCE:
-{tier_guidance}
-{note_line}
+{tier_section}{note_line}
 SOURCE REQUIREMENT: This SDK version does not support a hard technical
 restriction to a single domain, so this is an explicit instruction instead -
 treat {source_name} ({source_domain}) as the required source for every
@@ -673,7 +679,21 @@ def build_arg_parser():
         default=DEFAULT_BATCH_SIZE,
         help=f"number of players to research (1-{MAX_BATCH_SIZE}, default {DEFAULT_BATCH_SIZE})",
     )
+    parser.add_argument(
+        "--tiers",
+        type=tiers_arg,
+        default=None,
+        help="difficulty tiers to aim for, comma-separated, e.g. medium,hard (default: no preference). "
+        "Players whose actual tier differs are flagged in the review table.",
+    )
     return parser
+
+
+def tiers_arg(value: str) -> frozenset[str]:
+    try:
+        return parse_tiers(value)
+    except ValueError as e:
+        raise argparse.ArgumentTypeError(str(e))
 
 
 async def research_players(profile, count, tier_guidance, exclusion_names, seen_keys, note=None):
@@ -800,8 +820,10 @@ async def main(args):
     sport_slug = args.sport
     target = args.count
     profile = SPORT_PROFILES[sport_slug]
-    tier_guidance = TIER_GUIDANCE or profile["default_tier_guidance"]
+    wanted_tiers = args.tiers
+    tier_guidance = build_tier_guidance(wanted_tiers)
     fields = profile["fields"] + DISPLAY_ONLY_FIELDS
+    print(f"Aiming for {describe_tiers(wanted_tiers)} players." if wanted_tiers else "No tier preference.")
 
     print(f"Connecting to {describe_db_target()} to load the existing {profile['display_name']} roster...")
     existing_names = load_existing_names(sport_slug)
@@ -845,6 +867,10 @@ async def main(args):
         if tiers:
             # A player with errors has unreliable stats, so its tier is too.
             tiers = [tier if result.is_valid else "-" for tier, result in zip(tiers, results)]
+            for tier, result in zip(tiers, results):
+                warning = tier_warning(tier, wanted_tiers)
+                if warning:
+                    result.warnings.append(warning)
 
         # Rewrite the CSV log every round so it always matches the current list.
         save_players(players, results, tiers, OUTPUT_FILE, fields)

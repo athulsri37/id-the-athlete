@@ -23,6 +23,32 @@ OPEN_VALUE_ATTRIBUTES = frozenset({"country"})
 
 _WHOLE_NUMBER = re.compile(r"\d+")
 
+# The game's difficulty tiers, easiest first (see the backend's ISportRules).
+TIERS = ("easy", "medium", "hard")
+
+
+def parse_tiers(text: str) -> frozenset[str]:
+    """Reads a --tiers value like "medium,hard". Raises ValueError naming any
+    entry that isn't a tier."""
+    tiers = {part.strip().lower() for part in text.split(",") if part.strip()}
+    unknown = sorted(tiers - set(TIERS))
+    if unknown or not tiers:
+        raise ValueError(f"tiers must be a comma-separated list of {', '.join(TIERS)}; got '{text}'")
+    return frozenset(tiers)
+
+
+def describe_tiers(tiers: frozenset[str]) -> str:
+    """e.g. "medium or hard", always in easy-to-hard order."""
+    return " or ".join(t for t in TIERS if t in tiers)
+
+
+def tier_warning(tier: str | None, wanted: frozenset[str] | None) -> str | None:
+    """A note when a player's actual tier isn't one the reviewer asked for.
+    None when there's no preference, the tier is unknown, or it matches."""
+    if not wanted or tier not in TIERS or tier in wanted:
+        return None
+    return f"tier is {tier}, but you asked for {describe_tiers(wanted)}"
+
 
 @dataclass(frozen=True)
 class AttributeSpec:
