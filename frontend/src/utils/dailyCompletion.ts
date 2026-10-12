@@ -12,6 +12,9 @@ export interface DailyCompletion {
   won: boolean;
   guesses: GuessResponse[];
   revealedCountry: string | null;
+  // Saved when it arrives, after the result, so a replay shows it without
+  // another request. Missing until then, and if trivia was unavailable.
+  triviaBlurb?: string | null;
 }
 
 function storageKey(sportSlug: string, date: string): string {
@@ -24,7 +27,14 @@ export function getCompletionForDate(sportSlug: string, date: string): DailyComp
   const raw = localStorage.getItem(storageKey(sportSlug, date));
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as DailyCompletion;
+    const completion = JSON.parse(raw) as DailyCompletion;
+    // Completions saved before trivia had its own request kept the blurb on
+    // the final guess instead.
+    if (completion.triviaBlurb === undefined) {
+      const finalGuess = completion.guesses[completion.guesses.length - 1] as { triviaBlurb?: string | null } | undefined;
+      completion.triviaBlurb = finalGuess?.triviaBlurb ?? null;
+    }
+    return completion;
   } catch {
     return null;
   }
@@ -39,4 +49,12 @@ export function recordDailyCompletion(
 ): void {
   const completion: DailyCompletion = { date, won, guesses, revealedCountry };
   localStorage.setItem(storageKey(sportSlug, date), JSON.stringify(completion));
+}
+
+// Adds the trivia blurb to an already recorded completion. Does nothing if
+// the date has no completion.
+export function recordDailyTrivia(sportSlug: string, date: string, triviaBlurb: string): void {
+  const completion = getCompletionForDate(sportSlug, date);
+  if (!completion) return;
+  localStorage.setItem(storageKey(sportSlug, date), JSON.stringify({ ...completion, triviaBlurb }));
 }

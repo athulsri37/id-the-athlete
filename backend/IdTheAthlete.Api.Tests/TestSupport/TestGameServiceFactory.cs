@@ -9,7 +9,7 @@ using Moq;
 namespace IdTheAthlete.Api.Tests.TestSupport;
 
 // The one place tests build a real GameService with its real collaborators
-// (only AI trivia is mocked), so a change to its dependencies is a change here
+// (only AI trivia is mocked, by default), so a change to its dependencies is a change here
 // rather than in every test class.
 internal static class TestGameServiceFactory
 {
@@ -18,7 +18,8 @@ internal static class TestGameServiceFactory
         IPracticeSessionService sessions,
         IGameTokenService? tokens = null,
         ILogger<GameService>? logger = null,
-        TimeProvider? time = null)
+        TimeProvider? time = null,
+        IAiTriviaService? trivia = null)
     {
         time ??= TimeProvider.System;
         var settings = new SettingsService(db, NullLogger<SettingsService>.Instance, new SettingsFailureLogThrottle(time));
@@ -27,7 +28,7 @@ internal static class TestGameServiceFactory
 
         return new GameService(
             db,
-            Mock.Of<IAiTriviaService>(),
+            trivia ?? Mock.Of<IAiTriviaService>(),
             new DifficultyService(sportRules),
             sportRules,
             sessions,

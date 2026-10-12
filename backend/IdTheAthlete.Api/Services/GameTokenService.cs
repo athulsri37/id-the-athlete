@@ -19,9 +19,14 @@ namespace IdTheAthlete.Api.Services;
 // GameTokenOptionsValidator. Changing the key invalidates every in-progress
 // daily game, which is harmless: the player just starts over. Registered as
 // a Singleton.
+//
+// The same format also carries trivia tokens (see TriviaGrant), signed with
+// a separate key derived from the configured one, so neither kind of token
+// is ever accepted as the other.
 public sealed class GameTokenService : IGameTokenService
 {
     private readonly byte[] _key;
+    private readonly byte[] _triviaKey;
 
     public GameTokenService(IOptions<GameTokenOptions> options, ILogger<GameTokenService> logger)
     {
@@ -36,23 +41,34 @@ public sealed class GameTokenService : IGameTokenService
                 "{Section}:SigningKey is not set; using a random key for this run. In-progress daily games will not survive a restart.",
                 GameTokenOptions.SectionName);
             _key = RandomNumberGenerator.GetBytes(GameTokenOptions.MinimumKeyLength);
-            return;
+        }
+        else
+        {
+            _key = Encoding.UTF8.GetBytes(configuredKey);
         }
 
-        _key = Encoding.UTF8.GetBytes(configuredKey);
+        _triviaKey = HMACSHA256.HashData(_key, "trivia-token"u8);
     }
 
-    public string Issue(DailyGameState state)
+    public string Issue(DailyGameState state) => Sign(_key, state);
+
+    public DailyGameState Read(string token) => Verify<DailyGameState>(_key, token);
+
+    public string IssueTrivia(TriviaGrant grant) => Sign(_triviaKey, grant);
+
+    public TriviaGrant ReadTrivia(string token) => Verify<TriviaGrant>(_triviaKey, token);
+
+    private static string Sign<T>(byte[] key, T value)
     {
-        var payload = JsonSerializer.SerializeToUtf8Bytes(state);
-        var signature = HMACSHA256.HashData(_key, payload);
+        var payload = JsonSerializer.SerializeToUtf8Bytes(value);
+        var signature = HMACSHA256.HashData(key, payload);
         return $"{Base64Url.EncodeToString(payload)}.{Base64Url.EncodeToString(signature)}";
     }
 
     // Throws InvalidOperationException for anything this server didn't sign
-    // exactly as-is, which the controller turns into a 400 like every other
-    // bad game request.
-    public DailyGameState Read(string token)
+    // exactly as-is with this key, which the controller turns into a 400
+    // like every other bad game request.
+    private static T Verify<T>(byte[] key, string token) where T : class
     {
         var parts = token.Split('.');
         if (parts.Length != 2)
@@ -70,13 +86,13 @@ public sealed class GameTokenService : IGameTokenService
             throw InvalidToken();
         }
 
-        var expected = HMACSHA256.HashData(_key, payload);
+        var expected = HMACSHA256.HashData(key, payload);
         if (!CryptographicOperations.FixedTimeEquals(expected, signature))
             throw InvalidToken();
 
-        // A correctly signed payload was written by Issue above, so this can
+        // A correctly signed payload was written by Sign above, so this can
         // only fail if the payload format changes between deploys.
-        return JsonSerializer.Deserialize<DailyGameState>(payload) ?? throw InvalidToken();
+        return JsonSerializer.Deserialize<T>(payload) ?? throw InvalidToken();
     }
 
     private static InvalidOperationException InvalidToken() =>

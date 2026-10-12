@@ -33,7 +33,7 @@ public class GuessResponseDto
     public List<ClueResultDto> Clues { get; set; } = new();
     public bool GameOver { get; set; }
     public string? AnswerName { get; set; } // populated only when game is over
-    public string? TriviaBlurb { get; set; } // populated only when game is over
+    public string? TriviaToken { get; set; } // populated only when game is over: pass to the trivia endpoint
     public string? GameToken { get; set; } // daily mode only: send back with the next guess or hint request
 }
 
@@ -42,6 +42,11 @@ public class StartGameResponseDto
     public string Mode { get; set; } = string.Empty;
     public string SessionId { get; set; } = string.Empty;
     public int MaxGuesses { get; set; }
+}
+
+public class TriviaDto
+{
+    public string? TriviaBlurb { get; set; } // null when trivia is unavailable
 }
 
 public class CountryHintDto

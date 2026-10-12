@@ -51,6 +51,25 @@ public class GameController : ControllerBase
         }
     }
 
+    // GET /api/sports/tennis-men/game/trivia?triviaToken=...
+    // The finished game's AI trivia blurb, fetched after the result is
+    // shown so the final guess never waits on the AI call. triviaToken comes
+    // from the game-over guess response; triviaBlurb is null when trivia is
+    // unavailable.
+    [HttpGet("trivia")]
+    public async Task<IActionResult> GetTrivia(string sportSlug, [FromQuery] string triviaToken)
+    {
+        try
+        {
+            var blurb = await _gameService.GetTriviaAsync(sportSlug, triviaToken);
+            return Ok(new TriviaDto { TriviaBlurb = blurb });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     // GET /api/sports/tennis-men/game/hint/country?mode=easy&sessionId=...
     // Free hint that reveals only the mystery player's country — nothing
     // else about them — once 5 guesses have been made. mode/sessionId/

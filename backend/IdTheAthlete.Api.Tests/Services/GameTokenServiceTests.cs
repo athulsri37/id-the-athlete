@@ -68,6 +68,39 @@ public class GameTokenServiceTests
     }
 
     [Fact]
+    public void ReadTrivia_TokenItIssued_ReturnsSameGrant()
+    {
+        var service = Create();
+        var grant = new TriviaGrant(SportId: 3, PlayerId: 42);
+
+        Assert.Equal(grant, service.ReadTrivia(service.IssueTrivia(grant)));
+    }
+
+    [Fact]
+    public void ReadTrivia_DailyGameToken_Throws()
+    {
+        var service = Create();
+
+        Assert.Throws<InvalidOperationException>(() => service.ReadTrivia(service.Issue(State)));
+    }
+
+    [Fact]
+    public void Read_TriviaToken_Throws()
+    {
+        var service = Create();
+
+        Assert.Throws<InvalidOperationException>(() => service.Read(service.IssueTrivia(new TriviaGrant(3, 42))));
+    }
+
+    [Fact]
+    public void ReadTrivia_TokenSignedWithDifferentKey_Throws()
+    {
+        var other = Create(key: "a-completely-different-signing-key-456");
+
+        Assert.Throws<InvalidOperationException>(() => Create().ReadTrivia(other.IssueTrivia(new TriviaGrant(3, 42))));
+    }
+
+    [Fact]
     public void Validate_NoKeyOutsideDevelopment_Fails()
     {
         Assert.True(Validate(key: null, environment: "Production").Failed);

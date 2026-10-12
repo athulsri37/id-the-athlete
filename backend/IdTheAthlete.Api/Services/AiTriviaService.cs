@@ -21,6 +21,12 @@ public class AiTriviaService : IAiTriviaService
     private const int MaxRateLimitCooldownSeconds = 30;
     private static readonly TimeSpan MaxBackoffDelay = TimeSpan.FromSeconds(5);
 
+    // Per attempt, set on the HttpClient in Program.cs. HttpClient's default
+    // is 100 seconds; a 2-sentence blurb normally takes a few. A timed-out
+    // attempt is retried like a network error, so the worst case is
+    // MaxAttempts timeouts plus backoff.
+    public static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(10);
+
     private readonly HttpClient _httpClient;
     private readonly IConfiguration _configuration;
     private readonly GameDbContext _db;

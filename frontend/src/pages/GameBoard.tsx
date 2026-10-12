@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { fetchPlayerPool, startPracticeGame, submitGuess, fetchCountryHint, fetchAttributeDefinitions } from "../api/client";
+import { fetchPlayerPool, startPracticeGame, submitGuess, fetchCountryHint, fetchAttributeDefinitions, fetchTrivia } from "../api/client";
 import { PlayerSummary, GuessResponse, Difficulty, AttributeDefinition, GameRef, Sport } from "../types";
 import { familyDisplay } from "../config/sportFamilies";
 import PlayerSearch from "../components/PlayerSearch";
@@ -7,7 +7,7 @@ import ClueGrid from "../components/ClueGrid";
 import ClueLegend from "../components/ClueLegend";
 import ShareResult from "../components/ShareResult";
 import { recordDailyResult, getStreak, StreakData } from "../utils/dailyStreak";
-import { getCompletionForDate, recordDailyCompletion } from "../utils/dailyCompletion";
+import { getCompletionForDate, recordDailyCompletion, recordDailyTrivia } from "../utils/dailyCompletion";
 import { todayUtcDateString } from "../utils/localDate";
 
 const MAX_GUESSES = 8;
@@ -38,6 +38,7 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
   const [hintOffered, setHintOffered] = useState(false);
   const [hintDeclined, setHintDeclined] = useState(false);
   const [revealedCountry, setRevealedCountry] = useState<string | null>(null);
+  const [triviaBlurb, setTriviaBlurb] = useState<string | null>(null);
 
   const [streak, setStreak] = useState<StreakData | null>(null);
   const streakRecordedRef = useRef(false);
@@ -72,6 +73,7 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
     setHintOffered(false);
     setHintDeclined(false);
     setRevealedCountry(null);
+    setTriviaBlurb(null);
     setStreak(null);
     setIsDailyReplay(false);
     streakRecordedRef.current = false;
@@ -81,6 +83,7 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
       if (completed) {
         setGuesses(completed.guesses);
         setRevealedCountry(completed.revealedCountry);
+        setTriviaBlurb(completed.triviaBlurb ?? null);
         // Never surface a streak for a past-date replay -- that day never
         // contributed to it, showing a number here would be misleading.
         if (!isPastDate) {
@@ -158,6 +161,27 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
       setStreak(recordDailyResult(sportSlug, effectiveDate, won));
     }
   }, [mode, gameOver, won, sportSlug, guesses, revealedCountry, isPastDate, effectiveDate]);
+
+  // Trivia comes from its own request once the result is showing, so the
+  // final guess never waits on the AI call. It's cosmetic: on failure or
+  // when unavailable, nothing is shown. A replay already has its trivia
+  // from the saved completion.
+  const triviaToken = gameOver && !isDailyReplay ? guesses[guesses.length - 1].triviaToken : null;
+  useEffect(() => {
+    if (!triviaToken) return;
+    let current = true;
+    fetchTrivia(sportSlug, triviaToken)
+      .then((blurb) => {
+        if (!blurb) return;
+        // Saved even if the player has moved on, so a later replay has it.
+        if (mode === "daily") recordDailyTrivia(sportSlug, effectiveDate, blurb);
+        if (current) setTriviaBlurb(blurb);
+      })
+      .catch(() => {});
+    return () => {
+      current = false;
+    };
+  }, [triviaToken, sportSlug, mode, effectiveDate]);
 
   const handleGuess = async (player: PlayerSummary) => {
     if (gameOver) return;
@@ -277,7 +301,7 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
             <p className="text-[var(--text-primary)] text-lg font-semibold">
               {won ? `${winEmoji ? `${winEmoji} ` : ""}Nailed it!` : `The player was ${guesses[guesses.length - 1].answerName}`}
             </p>
-            {guesses[guesses.length - 1].triviaBlurb && (
+            {triviaBlurb && (
               <div className="mt-3 max-w-sm mx-auto flex items-start gap-3 text-left rounded-md border-l-4 border-[var(--accent)] bg-[var(--bg-card)] px-4 py-3">
                 <span
                   className="flex-shrink-0 flex items-center justify-center w-6 h-6 text-lg"
@@ -290,7 +314,7 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
                     Did you know?
                   </p>
                   <p className="text-[var(--text-primary)] text-sm leading-relaxed text-justify">
-                    {guesses[guesses.length - 1].triviaBlurb}
+                    {triviaBlurb}
                   </p>
                 </div>
               </div>

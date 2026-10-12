@@ -31,7 +31,9 @@ export interface GuessResponse {
   clues: ClueResult[];
   gameOver: boolean;
   answerName: string | null;
-  triviaBlurb: string | null;
+  // Game over only: unlocks the trivia blurb via fetchTrivia, fetched after
+  // the result is shown so the final guess never waits on the AI call.
+  triviaToken: string | null;
   // Daily mode only: send back with the next guess or hint request.
   gameToken: string | null;
 }
