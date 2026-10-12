@@ -1,0 +1,182 @@
+# Runs on every pull request to main and every push to main. Each job is
+# one part of CLAUDE.md's definition of done that a machine can check; the
+# real-API and browser checks against a copy of the dev data still happen
+# before a PR is opened.
+#
+# main's branch protection requires every job below by its `name`. Renaming,
+# adding or removing a job means updating the required checks in the repo's
+# branch protection too, or PRs wait forever for a check that never runs.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A new push to the same PR cancels its run still in progress.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet test backend/IdTheAthlete.Api.Tests --configuration Release
+
+  frontend:
+    name: Frontend tests, type check and build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm test
+      # "build" runs tsc before vite build.
+      - run: npm run build
+
+  roster-agent:
+    name: Roster agent checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - run: python -m unittest test_roster_validation
+
+  app:
+    name: Migrations and app smoke test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: idtheathlete
+          POSTGRES_PASSWORD: ci_only_password
+          POSTGRES_DB: idtheathlete
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U idtheathlete"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      ConnectionStrings__DefaultConnection: Host=localhost;Database=idtheathlete;Username=idtheathlete;Password=ci_only_password
+      PGPASSWORD: ci_only_password
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet tool install --global dotnet-ef --version 10.0.*
+
+      # dotnet ef doesn't restore packages, so build once here and reuse it.
+      - name: Build the API
+        run: dotnet build backend/IdTheAthlete.Api
+
+      - name: Every model change has a migration
+        working-directory: backend/IdTheAthlete.Api
+        run: dotnet ef migrations has-pending-model-changes --no-build
+
+      - name: Migrations build an empty database
+        working-directory: backend/IdTheAthlete.Api
+        run: dotnet ef database update --no-build
+
+      - name: Reference data exists, and every sport has clue columns
+        run: |
+          result=$(psql -h localhost -U idtheathlete -d idtheathlete -tA -c '
+            SELECT (SELECT count(*) FROM "Sports") > 0
+               AND NOT EXISTS (SELECT 1 FROM "Sports" s
+                               WHERE NOT EXISTS (SELECT 1 FROM "AttributeDefinitions" a WHERE a."SportId" = s."Id"))
+               AND (SELECT count(*) FROM "AppSettings") > 0')
+          echo "Reference data check: $result"
+          test "$result" = "t"
+
+      # Production mode, as deployed: the signing key and allowed origins
+      # are required there. The key below only signs CI test games.
+      - name: Start the API
+        working-directory: backend/IdTheAthlete.Api
+        env:
+          ASPNETCORE_ENVIRONMENT: Production
+          ASPNETCORE_URLS: http://localhost:5080
+          GameTokens__SigningKey: ci-only-signing-key-not-used-anywhere-else
+          AllowedOrigins: http://localhost:5174
+        run: |
+          nohup dotnet run --no-launch-profile --no-build > "$RUNNER_TEMP/api.log" 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:5080/api/sports > /dev/null; then exit 0; fi
+            sleep 2
+          done
+          echo "The API didn't start:"
+          cat "$RUNNER_TEMP/api.log"
+          exit 1
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - working-directory: frontend
+        run: npm ci
+      - working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Start the frontend
+        working-directory: frontend
+        run: |
+          nohup npm run dev -- --port 5174 --strictPort > "$RUNNER_TEMP/vite.log" 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:5174 > /dev/null; then exit 0; fi
+            sleep 2
+          done
+          echo "The frontend didn't start:"
+          cat "$RUNNER_TEMP/vite.log"
+          exit 1
+
+      - name: Browser tests
+        working-directory: frontend
+        run: npm run test:e2e
+
+      - name: Server logs
+        if: failure()
+        run: |
+          echo "--- API"; cat "$RUNNER_TEMP/api.log" || true
+          echo "--- Vite"; cat "$RUNNER_TEMP/vite.log" || true
+
+  attribution:
+    name: No AI attribution in commits or PR description
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      # The PR body arrives through an environment variable, never pasted
+      # into the script, so its text can't run as shell code. Editing the
+      # description doesn't rerun this; push a commit or re-run the job.
+      - env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: bash scripts/check-attribution.sh "$BASE_SHA..$HEAD_SHA"

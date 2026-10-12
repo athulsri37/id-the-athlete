@@ -65,11 +65,12 @@ Everything else (naming, structure, refactors within scope, test design, choices
 - One item per branch, named `fix/<item-id>-<kebab-summary>` (e.g. `fix/F9-practice-session-expiry`), from the latest `origin/main`.
 - Before starting, run `gh pr list` and check whether an open PR touches the same files. If it does, say so in your PR and describe how the conflict should be resolved. Merge `origin/main` into your branch again right before opening the PR.
 - Never merge your own PR and never force-push; the owner merges.
+- `main` is protected: a PR can only merge when every CI job passes on a branch that's up to date with `main` (GitHub's "Update branch" button, or merge `origin/main` and push). The required checks are the job names in `.github/workflows/ci.yml`; changing a job's name means updating the branch protection in the same PR, or PRs wait on a check that never runs.
 - PR body sections: Problem, Fix, Decisions I made, Behaviour/API changes, Interactions with open PRs, Testing, Not tested.
 
 ### Attribution
 - No `Co-authored-by`, `Claude-Session`, "Generated with Claude Code" or session links in commits or PR bodies.
-- Before every push, run `git log origin/main..HEAD --format=%B | grep -iE "co-authored|claude-session|generated with"`; it must print nothing. Fix the messages before pushing.
+- Before every push, run `scripts/check-attribution.sh` (and with `PR_BODY` set to the description before opening a PR); it must pass. CI runs the same check on every PR.
 
 ### Definition of done (all of these, every PR)
 1. Unit tests: `dotnet test`, `npm test`, `python -m unittest test_roster_validation` (if `tools/` changed); plus `tsc` and `npm run build`.
@@ -78,6 +79,7 @@ Everything else (naming, structure, refactors within scope, test design, choices
 4. Paid APIs are never called: use a fake key (rejected free) or mock the response.
 5. Use non-default ports (API 5082, Vite 5175 with `API_PROXY_TARGET`); never stop a process you didn't start.
 6. The PR's Testing section lists what ran with results; "Not tested" says what wasn't and why.
+7. CI (`.github/workflows/ci.yml`) is green on the PR. It repeats steps 1 and part of 3 on an empty database; it doesn't replace 2 and 3.
 
 ### Code standards
 - C#: an interface for every DI service; `sealed` classes; records for DTOs and value types; one public type per file; options classes with validation instead of `IConfiguration` lookups; `ActionResult<T>` on every action; services throw `NotFoundException`/`InvalidRequestException`; controllers never catch; pass `CancellationToken` through.
