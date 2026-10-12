@@ -271,10 +271,12 @@ App will be available at `http://localhost:5174`.
 
 ## Testing
 
-The project has three independent test layers. The backend suite covers the
-game rules (clue scoring for every sport, difficulty tiers, guess counting,
-settings fallbacks); the frontend suite covers daily streaks; the end-to-end
-suite is still a single smoke test.
+The project has three independent test layers, all run by CI on every pull
+request (see [Continuous integration](#continuous-integration)). The backend
+suite covers the game rules (clue scoring for every sport, difficulty tiers,
+guess counting, practice-game expiry, settings fallbacks); the frontend suite
+covers daily streaks and completions, trivia fetching and error messages; the
+end-to-end suite is still a single smoke test.
 
 ### Backend unit tests
 
@@ -311,6 +313,27 @@ cd frontend
 npx playwright install chromium   # one-time browser install
 npm run test:e2e
 ```
+
+### Continuous integration
+
+`.github/workflows/ci.yml` runs on every pull request to `main` and every
+push to it, in parallel jobs:
+
+- **Backend tests:** `dotnet test`.
+- **Frontend tests, type check and build:** `npm test`, `npm run build`.
+- **Roster agent checks:** the Python unit tests in `tools/`.
+- **Migrations and app smoke test:** against an empty Postgres, checks that
+  every model change has a migration, applies the migrations, checks the
+  reference data, starts the API in Production mode and the frontend, and
+  runs the Playwright suite.
+- **Attribution (pull requests only):** `scripts/check-attribution.sh`
+  fails if a commit message or the PR description carries an AI
+  attribution line. Run it locally before pushing; editing a PR description
+  doesn't rerun it, so re-run the job after a fix.
+
+CI uses no secrets and no paid APIs, and never touches a real database. It
+can't replace the checks against a copy of the dev data before opening a
+PR (CLAUDE.md, Definition of done), since the CI database has no players.
 
 ## Player Data & Backups
 
