@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
 using IdTheAthlete.Api.Data;
+using IdTheAthlete.Api.Errors;
 using IdTheAthlete.Api.Middleware;
 using IdTheAthlete.Api.Rules;
 using IdTheAthlete.Api.Services;
@@ -19,6 +20,14 @@ if (!string.IsNullOrWhiteSpace(hostPort) && string.IsNullOrWhiteSpace(builder.Co
 }
 
 builder.Services.AddControllers();
+
+// Every API error is a problem response (RFC 9457). ClientErrorException
+// subclasses become 4xx responses carrying their message; any other
+// exception becomes a 500 that reveals nothing (see ClientErrorExceptionHandler).
+builder.Services.AddProblemDetails(options =>
+    options.CustomizeProblemDetails = context =>
+        context.ProblemDetails.Instance ??= context.HttpContext.Request.Path);
+builder.Services.AddExceptionHandler<ClientErrorExceptionHandler>();
 builder.Services.AddOpenApi();
 
 builder.Services.AddDbContext<GameDbContext>(options =>
@@ -91,6 +100,8 @@ if (app.Environment.IsDevelopment())
     app.MapScalarApiReference();
 }
 
+// First, so it catches exceptions from everything after it.
+app.UseExceptionHandler();
 app.UseCors();
 app.UseMiddleware<AdminAuthMiddleware>();
 app.UseAuthorization();

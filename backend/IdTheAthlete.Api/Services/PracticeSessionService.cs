@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using IdTheAthlete.Api.Errors;
 
 namespace IdTheAthlete.Api.Services;
 
@@ -54,7 +55,7 @@ public class PracticeSessionService : IPracticeSessionService
     private PracticeSession GetSession(string? sessionId)
     {
         if (string.IsNullOrEmpty(sessionId) || !_sessions.TryGetValue(sessionId, out var session))
-            throw new InvalidOperationException("Practice session not found or has expired. Start a new game.");
+            throw new InvalidRequestException("Practice session not found or has expired. Start a new game.");
 
         return session;
     }

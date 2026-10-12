@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using IdTheAthlete.Api.Data;
 using IdTheAthlete.Api.Models;
+using IdTheAthlete.Api.Errors;
 
 namespace IdTheAthlete.Api.Services;
 
@@ -31,7 +32,7 @@ public class DailyPuzzleService : IDailyPuzzleService
     public async Task<List<string>> GetDailyPuzzleDatesAsync(string sportSlug)
     {
         var sport = await _db.Sports.FirstOrDefaultAsync(s => s.Slug == sportSlug)
-            ?? throw new InvalidOperationException($"Sport '{sportSlug}' not found");
+            ?? throw new NotFoundException($"Sport '{sportSlug}' not found");
 
         var dates = await _db.DailyPuzzles
             .Where(d => d.SportId == sport.Id)
@@ -56,7 +57,7 @@ public class DailyPuzzleService : IDailyPuzzleService
 
         var puzzle = await _db.DailyPuzzles
             .FirstOrDefaultAsync(d => d.SportId == sportId && d.PuzzleDate == date.Value)
-            ?? throw new InvalidOperationException($"No daily puzzle exists for {date.Value:yyyy-MM-dd}.");
+            ?? throw new InvalidRequestException($"No daily puzzle exists for {date.Value:yyyy-MM-dd}.");
 
         return new ResolvedDailyPuzzle(puzzle.PlayerId, puzzle.PuzzleDate);
     }

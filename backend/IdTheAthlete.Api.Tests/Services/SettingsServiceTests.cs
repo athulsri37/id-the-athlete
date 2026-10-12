@@ -5,6 +5,7 @@ using IdTheAthlete.Api.Tests.TestSupport;
 using Microsoft.Extensions.Time.Testing;
 using IdTheAthlete.Api.Data;
 using IdTheAthlete.Api.Models;
+using IdTheAthlete.Api.Errors;
 using IdTheAthlete.Api.Services;
 using Microsoft.EntityFrameworkCore;
 
@@ -211,10 +212,10 @@ public class SettingsServiceTests
     {
         var settings = Seed(("Flag", "true"), ("Theme", "retro"));
 
-        var unknown = await Assert.ThrowsAsync<InvalidOperationException>(() => settings.UpdateAsync("Nope", "x"));
+        var unknown = await Assert.ThrowsAsync<NotFoundException>(() => settings.UpdateAsync("Nope", "x"));
         Assert.Equal("Setting 'Nope' not found.", unknown.Message);
 
-        var notBoolean = await Assert.ThrowsAsync<InvalidOperationException>(() => settings.UpdateAsync("Flag", "maybe"));
+        var notBoolean = await Assert.ThrowsAsync<InvalidRequestException>(() => settings.UpdateAsync("Flag", "maybe"));
         Assert.Equal("Setting 'Flag' is boolean; value must be 'true' or 'false'.", notBoolean.Message);
 
         await settings.UpdateAsync("Flag", "false");

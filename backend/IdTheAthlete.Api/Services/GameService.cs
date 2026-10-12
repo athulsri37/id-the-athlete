@@ -4,6 +4,7 @@ using IdTheAthlete.Api.Data;
 using IdTheAthlete.Api.Dtos;
 using IdTheAthlete.Api.Models;
 using IdTheAthlete.Api.Rules;
+using IdTheAthlete.Api.Errors;
 
 namespace IdTheAthlete.Api.Services;
 
@@ -50,7 +51,7 @@ public class GameService : IGameService
     public async Task<List<PlayerSummaryDto>> GetPlayerPoolAsync(string sportSlug)
     {
         var sport = await _db.Sports.FirstOrDefaultAsync(s => s.Slug == sportSlug)
-            ?? throw new InvalidOperationException($"Sport '{sportSlug}' not found");
+            ?? throw new NotFoundException($"Sport '{sportSlug}' not found");
 
         return await _db.Players
             .Where(p => p.SportId == sport.Id)
@@ -62,14 +63,14 @@ public class GameService : IGameService
     public async Task<StartGameResponseDto> StartPracticeGameAsync(string sportSlug, string difficulty)
     {
         var sport = await _db.Sports.FirstOrDefaultAsync(s => s.Slug == sportSlug)
-            ?? throw new InvalidOperationException($"Sport '{sportSlug}' not found");
+            ?? throw new NotFoundException($"Sport '{sportSlug}' not found");
 
         var tiersAllowed = difficulty switch
         {
             "easy" => new[] { "easy" },
             "medium" => new[] { "easy", "medium" },
             "hard" => new[] { "easy", "medium", "hard" },
-            _ => throw new ArgumentException("Invalid difficulty. Use easy, medium, or hard.")
+            _ => throw new InvalidRequestException("Invalid difficulty. Use easy, medium, or hard.")
         };
 
         var players = await _db.Players
@@ -83,7 +84,7 @@ public class GameService : IGameService
             .ToList();
 
         if (pool.Count == 0)
-            throw new InvalidOperationException("No players available for this difficulty yet.");
+            throw new InvalidRequestException("No players available for this difficulty yet.");
 
         var mysteryPlayer = pool[Random.Shared.Next(pool.Count)];
         var sessionId = _practiceSessions.CreateSession(mysteryPlayer.Id);
@@ -103,7 +104,7 @@ public class GameService : IGameService
     public async Task<GuessResponseDto> SubmitGuessAsync(string sportSlug, GuessRequestDto request)
     {
         var sport = await _db.Sports.FirstOrDefaultAsync(s => s.Slug == sportSlug)
-            ?? throw new InvalidOperationException($"Sport '{sportSlug}' not found");
+            ?? throw new NotFoundException($"Sport '{sportSlug}' not found");
 
         bool isDaily = request.Mode == "daily";
         int mysteryPlayerId;
@@ -124,13 +125,13 @@ public class GameService : IGameService
         }
 
         if (guessesSoFar >= MaxGuesses)
-            throw new InvalidOperationException("This game is already over.");
+            throw new InvalidRequestException("This game is already over.");
 
         var guessedPlayer = await _db.Players
             .Include(p => p.AttributeValues)
                 .ThenInclude(v => v.AttributeDefinition)
             .FirstOrDefaultAsync(p => p.Id == request.PlayerId)
-            ?? throw new InvalidOperationException("Guessed player not found");
+            ?? throw new InvalidRequestException("Guessed player not found");
 
         var mysteryPlayer = await _db.Players
             .Include(p => p.AttributeValues)
@@ -229,7 +230,7 @@ public class GameService : IGameService
     public async Task<string> GetCountryHintAsync(string sportSlug, string mode, string? sessionId, string? date = null, string? gameToken = null)
     {
         var sport = await _db.Sports.FirstOrDefaultAsync(s => s.Slug == sportSlug)
-            ?? throw new InvalidOperationException($"Sport '{sportSlug}' not found");
+            ?? throw new NotFoundException($"Sport '{sportSlug}' not found");
 
         int mysteryPlayerId;
         int guessesSoFar;
@@ -247,7 +248,7 @@ public class GameService : IGameService
         }
 
         if (guessesSoFar < HintAfterGuess)
-            throw new InvalidOperationException($"The country hint unlocks after {HintAfterGuess} guesses.");
+            throw new InvalidRequestException($"The country hint unlocks after {HintAfterGuess} guesses.");
 
         var mysteryPlayer = await _db.Players
             .Include(p => p.AttributeValues)
@@ -287,7 +288,7 @@ public class GameService : IGameService
             // The API's documented format, read the same way whatever the
             // server's locale.
             if (!DateOnly.TryParseExact(requestedDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedDate))
-                throw new InvalidOperationException($"Invalid date '{requestedDate}'. Use yyyy-MM-dd.");
+                throw new InvalidRequestException($"Invalid date '{requestedDate}'. Use yyyy-MM-dd.");
             date = parsedDate;
         }
 
@@ -296,7 +297,7 @@ public class GameService : IGameService
 
         var state = _gameTokens.Read(gameToken);
         if (state.SportId != sportId || (date != null && date != state.PuzzleDate))
-            throw new InvalidOperationException("This game token is for a different puzzle. Start the game again.");
+            throw new InvalidRequestException("This game token is for a different puzzle. Start the game again.");
 
         return (await _dailyPuzzleService.ResolveDailyPuzzleAsync(sportId, state.PuzzleDate), state.GuessCount);
     }
@@ -308,7 +309,7 @@ public class GameService : IGameService
     public async Task<List<AttributeDefinitionDto>> GetAttributeDefinitionsAsync(string sportSlug)
     {
         var sport = await _db.Sports.FirstOrDefaultAsync(s => s.Slug == sportSlug)
-            ?? throw new InvalidOperationException($"Sport '{sportSlug}' not found");
+            ?? throw new NotFoundException($"Sport '{sportSlug}' not found");
 
         return await _db.AttributeDefinitions
             .Where(a => a.SportId == sport.Id)
