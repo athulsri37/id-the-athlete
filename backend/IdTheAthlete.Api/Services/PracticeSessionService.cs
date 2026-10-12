@@ -6,8 +6,8 @@ namespace IdTheAthlete.Api.Services;
 
 // In-memory store for practice-mode sessions (sessionId -> playerId and
 // guesses made so far). Sessions don't survive a restart and aren't shared
-// between servers; a deploy ends practice games in progress, which the
-// player sees as "start a new game", the same as after a page refresh.
+// between servers, so a deploy ends practice games in progress; the player
+// is then told to start a new game, as when one expires.
 // Registered as a Singleton so the dictionary is shared for the app's
 // lifetime.
 //

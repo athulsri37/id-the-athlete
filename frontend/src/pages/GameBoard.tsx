@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { fetchPlayerPool, startPracticeGame, submitGuess, fetchCountryHint, fetchAttributeDefinitions } from "../api/client";
+import { problemDetail } from "../api/problemDetails";
 import { PlayerSummary, GuessResponse, Difficulty, AttributeDefinition, GameRef, Sport } from "../types";
 import { familyDisplay } from "../config/sportFamilies";
 import PlayerSearch from "../components/PlayerSearch";
@@ -105,8 +106,8 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
       try {
         const res = await startPracticeGame(sportSlug, mode);
         setSessionId(res.sessionId);
-      } catch {
-        setError("Couldn't start a new game. Try again.");
+      } catch (err) {
+        setError(problemDetail(err, "Couldn't start a new game. Try again."));
       } finally {
         setLoading(false);
       }
@@ -181,8 +182,10 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
     try {
       const result = await submitGuess(sportSlug, player.id, gameRef);
       setGuesses((prev) => [...prev, result]);
-    } catch {
-      setError("Something went wrong submitting that guess.");
+    } catch (err) {
+      // The server's message when it refused the guess, e.g. an expired
+      // practice game; the generic one for a network error or a 500.
+      setError(problemDetail(err, "Something went wrong submitting that guess."));
     } finally {
       setLoading(false);
     }
@@ -193,8 +196,8 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
       const country = await fetchCountryHint(sportSlug, gameRef);
       setRevealedCountry(country);
       setHintDeclined(false);
-    } catch {
-      setError("Couldn't fetch the hint right now.");
+    } catch (err) {
+      setError(problemDetail(err, "Couldn't fetch the hint right now."));
     } finally {
       setShowHintModal(false);
     }
