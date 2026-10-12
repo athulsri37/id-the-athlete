@@ -17,4 +17,8 @@
     <PackageReference Include="Scalar.AspNetCore" Version="2.16.11" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="IdTheAthlete.Api.Tests" />
+  </ItemGroup>
+
 </Project>

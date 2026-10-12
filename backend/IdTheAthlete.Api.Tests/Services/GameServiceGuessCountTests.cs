@@ -21,7 +21,7 @@ public class GameServiceGuessCountTests
 
     private readonly GameService _service;
     private readonly GameTokenService _tokens = GameTokenServiceTests.Create();
-    private readonly PracticeSessionService _sessions = new();
+    private readonly PracticeSessionService _sessions = PracticeSessionServiceTests.Create();
 
     public GameServiceGuessCountTests()
     {

@@ -53,7 +53,7 @@ public class ClueClosenessTests
             db.AppSettings.Add(new AppSetting { Key = key, Value = value });
         await db.SaveChangesAsync();
 
-        var sessions = new PracticeSessionService();
+        var sessions = PracticeSessionServiceTests.Create();
         var service = TestGameServiceFactory.Create(db, sessions);
         var sessionId = sessions.CreateSession(1);
 
