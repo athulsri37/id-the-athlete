@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { fetchPlayerPool, startPracticeGame, submitGuess, fetchCountryHint, fetchAttributeDefinitions } from "../api/client";
-import { PlayerSummary, GuessResponse, Difficulty, AttributeDefinition } from "../types";
+import { PlayerSummary, GuessResponse, Difficulty, AttributeDefinition, GameRef } from "../types";
 import PlayerSearch from "../components/PlayerSearch";
 import ClueGrid from "../components/ClueGrid";
 import ClueLegend from "../components/ClueLegend";
@@ -124,6 +124,7 @@ export default function GameBoard({ mode, sportSlug, sportName, dailyDate, onBac
   // count, always taken from the latest guess and sent back with the next
   // guess or hint request.
   const gameToken = guesses.length > 0 ? guesses[guesses.length - 1].gameToken ?? undefined : undefined;
+  const gameRef: GameRef = { mode, sessionId, date: isPastDate ? effectiveDate : undefined, gameToken };
 
   // Offer the country hint once, right after the 5th guess, unless the
   // player already matched the country naturally or the game just ended.
@@ -160,7 +161,7 @@ export default function GameBoard({ mode, sportSlug, sportName, dailyDate, onBac
     setError("");
     setLoading(true);
     try {
-      const result = await submitGuess(sportSlug, player.id, mode, sessionId, isPastDate ? effectiveDate : undefined, gameToken);
+      const result = await submitGuess(sportSlug, player.id, gameRef);
       setGuesses((prev) => [...prev, result]);
     } catch {
       setError("Something went wrong submitting that guess.");
@@ -171,7 +172,7 @@ export default function GameBoard({ mode, sportSlug, sportName, dailyDate, onBac
 
   const handleHintYes = async () => {
     try {
-      const country = await fetchCountryHint(sportSlug, mode, sessionId, isPastDate ? effectiveDate : undefined, gameToken);
+      const country = await fetchCountryHint(sportSlug, gameRef);
       setRevealedCountry(country);
       setHintDeclined(false);
     } catch {
