@@ -2,6 +2,10 @@
 # one part of CLAUDE.md's definition of done that a machine can check; the
 # real-API and browser checks against a copy of the dev data still happen
 # before a PR is opened.
+#
+# main's branch protection requires every job below by its `name`. Renaming,
+# adding or removing a job means updating the required checks in the repo's
+# branch protection too, or PRs wait forever for a check that never runs.
 name: CI
 
 on:
