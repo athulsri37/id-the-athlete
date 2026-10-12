@@ -7,7 +7,7 @@ using IdTheAthlete.Api.Data;
 using IdTheAthlete.Api.Models;
 using IdTheAthlete.Api.Services;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 
 namespace IdTheAthlete.Api.Tests.Services;
@@ -49,12 +49,10 @@ public class AiTriviaServiceTests
         db.AppSettings.Add(new AppSetting { Key = "AiTriviaEnabled", Value = "true" });
         db.SaveChanges();
 
-        var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?> { ["Anthropic:ApiKey"] = "test-key" })
-            .Build();
+        var options = Options.Create(new AnthropicOptions { ApiKey = "test-key" });
         var time = new FakeTimeProvider(Start);
 
-        return (new AiTriviaService(new HttpClient(handler), config, db, new AiTriviaState(), time, new SettingsService(db, NullLogger<SettingsService>.Instance, new SettingsFailureLogThrottle(TimeProvider.System))), time);
+        return (new AiTriviaService(new HttpClient(handler), options, db, new AiTriviaState(), time, new SettingsService(db, NullLogger<SettingsService>.Instance, new SettingsFailureLogThrottle(TimeProvider.System))), time);
     }
 
     private static Player PlayerWithId(int id) => new() { Id = id, SportId = 1, Name = $"Player {id}" };

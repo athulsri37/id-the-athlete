@@ -16,7 +16,6 @@ namespace IdTheAthlete.Api.Services;
 public class GameService : IGameService
 {
     private readonly GameDbContext _db;
-    private readonly IAiTriviaService _aiTriviaService;
     private readonly IDifficultyService _difficultyService;
     private readonly ISportRulesRegistry _sportRules;
     private readonly IPracticeSessionService _practiceSessions;
@@ -29,7 +28,6 @@ public class GameService : IGameService
 
     public GameService(
         GameDbContext db,
-        IAiTriviaService aiTriviaService,
         IDifficultyService difficultyService,
         ISportRulesRegistry sportRules,
         IPracticeSessionService practiceSessions,
@@ -38,7 +36,6 @@ public class GameService : IGameService
         ILogger<GameService> logger)
     {
         _db = db;
-        _aiTriviaService = aiTriviaService;
         _difficultyService = difficultyService;
         _sportRules = sportRules;
         _practiceSessions = practiceSessions;
@@ -212,33 +209,11 @@ public class GameService : IGameService
             Clues = clues,
             GameOver = gameOver,
             AnswerName = gameOver ? mysteryPlayer.Name : null,
-            // Trivia is fetched separately with this token (GetTriviaAsync),
-            // so the final guess never waits on the AI call.
+            // Trivia is fetched separately with this token (see
+            // GameTriviaService), so the final guess never waits on the AI call.
             TriviaToken = gameOver ? _gameTokens.IssueTrivia(new TriviaGrant(sport.Id, mysteryPlayer.Id)) : null,
             GameToken = isDaily ? _gameTokens.Issue(new DailyGameState(sport.Id, dailyPuzzleDate, guessNumber)) : null
         };
-    }
-
-    // The finished game's AI trivia blurb. The trivia token is issued only in
-    // a game-over response, so this can't reveal anything about a game still
-    // in progress. Null whenever trivia is unavailable (disabled, no API key,
-    // the AI call failed) -- it's cosmetic, the frontend just shows nothing.
-    public async Task<string?> GetTriviaAsync(string sportSlug, string triviaToken)
-    {
-        var sport = await _db.Sports.FirstOrDefaultAsync(s => s.Slug == sportSlug)
-            ?? throw new InvalidOperationException($"Sport '{sportSlug}' not found");
-
-        var grant = _gameTokens.ReadTrivia(triviaToken);
-        if (grant.SportId != sport.Id)
-            throw new InvalidOperationException("This trivia token is for a different sport.");
-
-        var player = await _db.Players
-            .Include(p => p.AttributeValues)
-                .ThenInclude(v => v.AttributeDefinition)
-            .FirstOrDefaultAsync(p => p.Id == grant.PlayerId && p.SportId == sport.Id)
-            ?? throw new InvalidOperationException("Player not found");
-
-        return await _aiTriviaService.GetTriviaBlurbAsync(player);
     }
 
     // Free hint: reveals only the mystery player's country, nothing else,

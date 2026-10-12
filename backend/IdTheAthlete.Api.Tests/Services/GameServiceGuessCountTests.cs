@@ -162,4 +162,27 @@ public class GameServiceGuessCountTests
 
         Assert.Equal(0, _sessions.GetGuessCount(sessionId));
     }
+
+    [Fact]
+    public async Task Practice_OnlyTheGameOverGuessCarriesATriviaToken()
+    {
+        var sessionId = _sessions.CreateSession(MysteryId);
+
+        var wrong = await _service.SubmitGuessAsync(Slug, new GuessRequestDto { PlayerId = 2, Mode = "easy", SessionId = sessionId });
+        var correct = await _service.SubmitGuessAsync(Slug, new GuessRequestDto { PlayerId = MysteryId, Mode = "easy", SessionId = sessionId });
+
+        Assert.Null(wrong.TriviaToken);
+        Assert.Equal(new TriviaGrant(1, MysteryId), _tokens.ReadTrivia(correct.TriviaToken!));
+    }
+
+    [Fact]
+    public async Task Daily_LostGame_CarriesTriviaTokenForTheMysteryPlayer()
+    {
+        var token = await DailyTokenAfter(MaxGuesses - 1);
+
+        var result = await DailyWrongGuess(token);
+
+        Assert.True(result.GameOver);
+        Assert.Equal(new TriviaGrant(1, MysteryId), _tokens.ReadTrivia(result.TriviaToken!));
+    }
 }

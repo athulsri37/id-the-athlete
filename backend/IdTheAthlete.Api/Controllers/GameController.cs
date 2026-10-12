@@ -10,11 +10,13 @@ public class GameController : ControllerBase
 {
     private readonly IGameService _gameService;
     private readonly IDailyPuzzleService _dailyPuzzleService;
+    private readonly IGameTriviaService _gameTriviaService;
 
-    public GameController(IGameService gameService, IDailyPuzzleService dailyPuzzleService)
+    public GameController(IGameService gameService, IDailyPuzzleService dailyPuzzleService, IGameTriviaService gameTriviaService)
     {
         _gameService = gameService;
         _dailyPuzzleService = dailyPuzzleService;
+        _gameTriviaService = gameTriviaService;
     }
 
     // POST /api/sports/tennis-men/game/start?difficulty=easy
@@ -57,11 +59,11 @@ public class GameController : ControllerBase
     // from the game-over guess response; triviaBlurb is null when trivia is
     // unavailable.
     [HttpGet("trivia")]
-    public async Task<IActionResult> GetTrivia(string sportSlug, [FromQuery] string triviaToken)
+    public async Task<IActionResult> GetTrivia(string sportSlug, [FromQuery] string triviaToken, CancellationToken cancellationToken)
     {
         try
         {
-            var blurb = await _gameService.GetTriviaAsync(sportSlug, triviaToken);
+            var blurb = await _gameTriviaService.GetTriviaAsync(sportSlug, triviaToken, cancellationToken);
             return Ok(new TriviaDto { TriviaBlurb = blurb });
         }
         catch (InvalidOperationException ex)

@@ -147,6 +147,7 @@ id-the-athlete/
 │   │   ├── DailyPuzzleService.cs           # Daily puzzle selection, lookup, persistence
 │   │   ├── DailyPuzzleGenerationService.cs # Background service: 00:00 UTC scheduled generation + startup catch-up
 │   │   ├── AiTriviaService.cs              # AI trivia blurb generation
+│   │   ├── GameTriviaService.cs            # Unlocks a finished game's trivia from its trivia token
 │   │   └── AdminService.cs                 # Backs the internal admin tool
 │   ├── Controllers/      # PlayersController, GameController, SettingsController, AdminController
 │   └── Dtos/             # Request/response contracts
@@ -159,6 +160,7 @@ id-the-athlete/
 └── frontend/src/
     ├── api/              # Axios client
     ├── components/       # PlayerSearch, ClueGrid, ClueLegend, ShareResult
+    ├── hooks/             # useGameTrivia (fetches a finished game's trivia blurb)
     ├── pages/             # HomeScreen, TourSelect, SportHome, GameBoard, PastChallenges (home → tour → sport → game flow)
     ├── admin/             # Login gate, tab shell, player editor, settings editor — the internal admin tool
     ├── utils/              # dailyStreak, dailyCompletion, localDate (UTC-aligned "today" helpers)
@@ -351,7 +353,8 @@ Every gameplay route is sport-agnostic, parameterized by `{sportSlug}`
 - `GET /api/sports/{sportSlug}/attributes` — this sport's ordered clue columns
 - `GET /api/sports/{sportSlug}/daily-puzzles` — every date with an existing Daily Challenge, for Past Challenges
 - `POST /api/sports/{sportSlug}/game/start?difficulty=easy|medium|hard` — start a practice game, returns a `sessionId`
-- `POST /api/sports/{sportSlug}/game/guess` — submit a guess, returns per-attribute clue feedback (daily games pass back the `gameToken` from the previous guess)
+- `POST /api/sports/{sportSlug}/game/guess` — submit a guess, returns per-attribute clue feedback (daily games pass back the `gameToken` from the previous guess); the game-over guess also returns a `triviaToken`
+- `GET /api/sports/{sportSlug}/game/trivia?triviaToken=...` — the finished game's AI trivia blurb, or null when unavailable; fetched after the result is shown so the final guess never waits on the AI call
 - `GET /api/sports/{sportSlug}/game/hint/country?mode=...&sessionId=...&gameToken=...` — free hint after 5 guesses (enforced by the server), reveals only the mystery player's country
 - `GET /api/settings/theme` — the currently active visual theme
 
