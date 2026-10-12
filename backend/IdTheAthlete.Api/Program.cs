@@ -38,7 +38,11 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<IGameService, GameService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<ISportCatalogService, SportCatalogService>();
-builder.Services.AddHttpClient<IAiTriviaService, AiTriviaService>();
+builder.Services.AddOptions<AnthropicOptions>()
+    .Bind(builder.Configuration.GetSection(AnthropicOptions.SectionName));
+builder.Services.AddHttpClient<IAiTriviaService, AiTriviaService>((services, client) =>
+    client.Timeout = services.GetRequiredService<IOptions<AnthropicOptions>>().Value.RequestTimeout);
+builder.Services.AddScoped<IGameTriviaService, GameTriviaService>();
 builder.Services.AddSingleton<AiTriviaState>();
 builder.Services.AddHostedService<DailyPuzzleGenerationService>();
 

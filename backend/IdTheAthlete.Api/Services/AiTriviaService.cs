@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using IdTheAthlete.Api.Data;
 using IdTheAthlete.Api.Models;
 
@@ -14,7 +15,6 @@ public class AiTriviaService : IAiTriviaService
 {
     private const string AnthropicApiUrl = "https://api.anthropic.com/v1/messages";
     private const string AnthropicVersion = "2023-06-01";
-    private const string DefaultModel = "claude-sonnet-5";
 
     private const int MaxAttempts = 3;
     private const int DefaultRetryAfterSeconds = 10;
@@ -22,18 +22,18 @@ public class AiTriviaService : IAiTriviaService
     private static readonly TimeSpan MaxBackoffDelay = TimeSpan.FromSeconds(5);
 
     private readonly HttpClient _httpClient;
-    private readonly IConfiguration _configuration;
+    private readonly AnthropicOptions _options;
     private readonly GameDbContext _db;
     // Cache and circuit breaker shared across instances -- see AiTriviaState.
     private readonly AiTriviaState _state;
     private readonly TimeProvider _timeProvider;
     private readonly ISettingsService _settings;
 
-    public AiTriviaService(HttpClient httpClient, IConfiguration configuration, GameDbContext db,
+    public AiTriviaService(HttpClient httpClient, IOptions<AnthropicOptions> options, GameDbContext db,
         AiTriviaState state, TimeProvider timeProvider, ISettingsService settings)
     {
         _httpClient = httpClient;
-        _configuration = configuration;
+        _options = options.Value;
         _db = db;
         _state = state;
         _timeProvider = timeProvider;
@@ -71,13 +71,11 @@ public class AiTriviaService : IAiTriviaService
             if (_state.IsCircuitOpen(_timeProvider.GetUtcNow()))
                 return null;
 
-            var apiKey = _configuration["Anthropic:ApiKey"];
+            var apiKey = _options.ApiKey;
             if (string.IsNullOrWhiteSpace(apiKey))
                 return null;
 
-            var model = _configuration["Anthropic:Model"];
-            if (string.IsNullOrWhiteSpace(model))
-                model = DefaultModel;
+            var model = string.IsNullOrWhiteSpace(_options.Model) ? AnthropicOptions.DefaultModel : _options.Model;
 
             // player.Sport may or may not be Included by the caller, but
             // player.SportId (the scalar FK) is always populated by EF

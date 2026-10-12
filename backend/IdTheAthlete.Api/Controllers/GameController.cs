@@ -10,11 +10,13 @@ public class GameController : ControllerBase
 {
     private readonly IGameService _gameService;
     private readonly IDailyPuzzleService _dailyPuzzleService;
+    private readonly IGameTriviaService _gameTriviaService;
 
-    public GameController(IGameService gameService, IDailyPuzzleService dailyPuzzleService)
+    public GameController(IGameService gameService, IDailyPuzzleService dailyPuzzleService, IGameTriviaService gameTriviaService)
     {
         _gameService = gameService;
         _dailyPuzzleService = dailyPuzzleService;
+        _gameTriviaService = gameTriviaService;
     }
 
     // POST /api/sports/tennis-men/game/start?difficulty=easy
@@ -33,6 +35,18 @@ public class GameController : ControllerBase
     public async Task<ActionResult<GuessResponseDto>> SubmitGuess(string sportSlug, [FromBody] GuessRequestDto request)
     {
         return await _gameService.SubmitGuessAsync(sportSlug, request);
+    }
+
+    // GET /api/sports/tennis-men/game/trivia?triviaToken=...
+    // The finished game's AI trivia blurb, fetched after the result is
+    // shown so the final guess never waits on the AI call. triviaToken comes
+    // from the game-over guess response; triviaBlurb is null when trivia is
+    // unavailable.
+    [HttpGet("trivia")]
+    public async Task<ActionResult<TriviaDto>> GetTrivia(string sportSlug, [FromQuery] string triviaToken, CancellationToken cancellationToken)
+    {
+        var blurb = await _gameTriviaService.GetTriviaAsync(sportSlug, triviaToken, cancellationToken);
+        return new TriviaDto { TriviaBlurb = blurb };
     }
 
     // GET /api/sports/tennis-men/game/hint/country?mode=easy&sessionId=...

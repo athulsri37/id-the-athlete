@@ -7,8 +7,9 @@ import ClueGrid from "../components/ClueGrid";
 import ClueLegend from "../components/ClueLegend";
 import ShareResult from "../components/ShareResult";
 import { recordDailyResult, getStreak, StreakData } from "../utils/dailyStreak";
-import { getCompletionForDate, recordDailyCompletion } from "../utils/dailyCompletion";
+import { getCompletionForDate, recordDailyCompletion, recordDailyTrivia } from "../utils/dailyCompletion";
 import { todayUtcDateString } from "../utils/localDate";
+import { useGameTrivia } from "../hooks/useGameTrivia";
 
 const MAX_GUESSES = 8;
 const HINT_AFTER_GUESS = 5;
@@ -38,6 +39,8 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
   const [hintOffered, setHintOffered] = useState(false);
   const [hintDeclined, setHintDeclined] = useState(false);
   const [revealedCountry, setRevealedCountry] = useState<string | null>(null);
+  // A replayed Daily Challenge's trivia, saved with its completion.
+  const [replayTriviaBlurb, setReplayTriviaBlurb] = useState<string | null>(null);
 
   const [streak, setStreak] = useState<StreakData | null>(null);
   const streakRecordedRef = useRef(false);
@@ -72,6 +75,7 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
     setHintOffered(false);
     setHintDeclined(false);
     setRevealedCountry(null);
+    setReplayTriviaBlurb(null);
     setStreak(null);
     setIsDailyReplay(false);
     streakRecordedRef.current = false;
@@ -81,6 +85,7 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
       if (completed) {
         setGuesses(completed.guesses);
         setRevealedCountry(completed.revealedCountry);
+        setReplayTriviaBlurb(completed.triviaBlurb ?? null);
         // Never surface a streak for a past-date replay -- that day never
         // contributed to it, showing a number here would be misleading.
         if (!isPastDate) {
@@ -158,6 +163,16 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
       setStreak(recordDailyResult(sportSlug, effectiveDate, won));
     }
   }, [mode, gameOver, won, sportSlug, guesses, revealedCountry, isPastDate, effectiveDate]);
+
+  // A live game's trivia arrives after the result is showing; a daily one
+  // is saved with its completion so a replay shows it without refetching.
+  const triviaToken = gameOver && !isDailyReplay ? guesses[guesses.length - 1].triviaToken : null;
+  const liveTriviaBlurb = useGameTrivia(
+    sportSlug,
+    triviaToken,
+    mode === "daily" ? (blurb) => recordDailyTrivia(sportSlug, effectiveDate, blurb) : undefined
+  );
+  const triviaBlurb = isDailyReplay ? replayTriviaBlurb : liveTriviaBlurb;
 
   const handleGuess = async (player: PlayerSummary) => {
     if (gameOver) return;
@@ -277,7 +292,7 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
             <p className="text-[var(--text-primary)] text-lg font-semibold">
               {won ? `${winEmoji ? `${winEmoji} ` : ""}Nailed it!` : `The player was ${guesses[guesses.length - 1].answerName}`}
             </p>
-            {guesses[guesses.length - 1].triviaBlurb && (
+            {triviaBlurb && (
               <div className="mt-3 max-w-sm mx-auto flex items-start gap-3 text-left rounded-md border-l-4 border-[var(--accent)] bg-[var(--bg-card)] px-4 py-3">
                 <span
                   className="flex-shrink-0 flex items-center justify-center w-6 h-6 text-lg"
@@ -290,7 +305,7 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
                     Did you know?
                   </p>
                   <p className="text-[var(--text-primary)] text-sm leading-relaxed text-justify">
-                    {guesses[guesses.length - 1].triviaBlurb}
+                    {triviaBlurb}
                   </p>
                 </div>
               </div>

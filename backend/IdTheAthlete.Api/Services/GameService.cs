@@ -17,7 +17,6 @@ namespace IdTheAthlete.Api.Services;
 public class GameService : IGameService
 {
     private readonly GameDbContext _db;
-    private readonly IAiTriviaService _aiTriviaService;
     private readonly IDifficultyService _difficultyService;
     private readonly ISportRulesRegistry _sportRules;
     private readonly IPracticeSessionService _practiceSessions;
@@ -30,7 +29,6 @@ public class GameService : IGameService
 
     public GameService(
         GameDbContext db,
-        IAiTriviaService aiTriviaService,
         IDifficultyService difficultyService,
         ISportRulesRegistry sportRules,
         IPracticeSessionService practiceSessions,
@@ -39,7 +37,6 @@ public class GameService : IGameService
         ILogger<GameService> logger)
     {
         _db = db;
-        _aiTriviaService = aiTriviaService;
         _difficultyService = difficultyService;
         _sportRules = sportRules;
         _practiceSessions = practiceSessions;
@@ -207,8 +204,6 @@ public class GameService : IGameService
             _practiceSessions.RemoveSession(request.SessionId);
         }
 
-        string? triviaBlurb = gameOver ? await _aiTriviaService.GetTriviaBlurbAsync(mysteryPlayer) : null;
-
         return new GuessResponseDto
         {
             GuessedPlayerName = guessedPlayer.Name,
@@ -216,7 +211,9 @@ public class GameService : IGameService
             Clues = clues,
             GameOver = gameOver,
             AnswerName = gameOver ? mysteryPlayer.Name : null,
-            TriviaBlurb = triviaBlurb,
+            // Trivia is fetched separately with this token (see
+            // GameTriviaService), so the final guess never waits on the AI call.
+            TriviaToken = gameOver ? _gameTokens.IssueTrivia(new TriviaGrant(sport.Id, mysteryPlayer.Id)) : null,
             GameToken = isDaily ? _gameTokens.Issue(new DailyGameState(sport.Id, dailyPuzzleDate, guessNumber)) : null
         };
     }

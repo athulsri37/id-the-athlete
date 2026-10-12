@@ -43,6 +43,13 @@ export async function fetchCountryHint(sportSlug: string, game: GameRef): Promis
   return res.data.country as string;
 }
 
+// The finished game's trivia blurb, using the triviaToken from the game-over
+// guess. Null when trivia is unavailable.
+export async function fetchTrivia(sportSlug: string, triviaToken: string): Promise<string | null> {
+  const res = await client.get(`/sports/${sportSlug}/game/trivia`, { params: { triviaToken } });
+  return res.data.triviaBlurb as string | null;
+}
+
 // Every date (yyyy-MM-dd) with an existing Daily Challenge puzzle for this
 // sport, most recent first -- powers the Past Challenges list.
 export async function fetchDailyPuzzleDates(sportSlug: string): Promise<string[]> {
