@@ -134,10 +134,8 @@ namespace IdTheAthlete.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Name")
+                    b.HasIndex("SportId", "Name")
                         .IsUnique();
-
-                    b.HasIndex("SportId");
 
                     b.ToTable("Players");
                 });
