@@ -187,6 +187,10 @@ namespace IdTheAthlete.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("ShortName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("Slug")
                         .IsRequired()
                         .HasColumnType("text");

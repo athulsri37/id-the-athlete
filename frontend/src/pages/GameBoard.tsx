@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { fetchPlayerPool, startPracticeGame, submitGuess, fetchCountryHint, fetchAttributeDefinitions } from "../api/client";
-import { PlayerSummary, GuessResponse, Difficulty, AttributeDefinition, GameRef } from "../types";
+import { PlayerSummary, GuessResponse, Difficulty, AttributeDefinition, GameRef, Sport } from "../types";
+import { familyDisplay } from "../config/sportFamilies";
 import PlayerSearch from "../components/PlayerSearch";
 import ClueGrid from "../components/ClueGrid";
 import ClueLegend from "../components/ClueLegend";
@@ -14,8 +15,7 @@ const HINT_AFTER_GUESS = 5;
 
 interface Props {
   mode: Difficulty;
-  sportSlug: string;
-  sportName: string;
+  sport: Sport;
   // Specific date (yyyy-MM-dd) to play/replay, daily mode only. Omitted
   // means today -- the normal Daily Challenge flow. Set only when arriving
   // via Past Challenges.
@@ -23,7 +23,9 @@ interface Props {
   onBackToHome: () => void;
 }
 
-export default function GameBoard({ mode, sportSlug, sportName, dailyDate, onBackToHome }: Props) {
+export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Props) {
+  const { slug: sportSlug, name: sportName, family } = sport;
+  const { winEmoji } = familyDisplay(family);
   const [players, setPlayers] = useState<PlayerSummary[]>([]);
   const [attributes, setAttributes] = useState<AttributeDefinition[]>([]);
   const [sessionId, setSessionId] = useState<string | undefined>(undefined);
@@ -257,7 +259,7 @@ export default function GameBoard({ mode, sportSlug, sportName, dailyDate, onBac
             <h2 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wide mb-2">
               What do the clues mean?
             </h2>
-            <ClueLegend sportSlug={sportSlug} />
+            <ClueLegend family={family} />
           </div>
         )}
 
@@ -273,7 +275,7 @@ export default function GameBoard({ mode, sportSlug, sportName, dailyDate, onBac
               </p>
             )}
             <p className="text-[var(--text-primary)] text-lg font-semibold">
-              {won ? "🎾 Nailed it!" : `The player was ${guesses[guesses.length - 1].answerName}`}
+              {won ? `${winEmoji ? `${winEmoji} ` : ""}Nailed it!` : `The player was ${guesses[guesses.length - 1].answerName}`}
             </p>
             {guesses[guesses.length - 1].triviaBlurb && (
               <div className="mt-3 max-w-sm mx-auto flex items-start gap-3 text-left rounded-md border-l-4 border-[var(--accent)] bg-[var(--bg-card)] px-4 py-3">

@@ -28,6 +28,7 @@ builder.Services.AddSingleton(TimeProvider.System);
 
 builder.Services.AddScoped<IGameService, GameService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
+builder.Services.AddScoped<ISportCatalogService, SportCatalogService>();
 builder.Services.AddHttpClient<IAiTriviaService, AiTriviaService>();
 builder.Services.AddSingleton<AiTriviaState>();
 builder.Services.AddHostedService<DailyPuzzleGenerationService>();

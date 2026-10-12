@@ -6,8 +6,8 @@ A multi-sport, Wordle-style athlete deduction game. React/TypeScript frontend, C
 
 Core schema is sport-agnostic by design: `Sport → Player → AttributeDefinition → PlayerAttributeValue`. A sport's clue columns are rows, so the schema and frontend need no changes for a new sport. Scoring rules (difficulty formulas, what counts as "close") live per sport family: `Sports.Family` picks an `ISportRules` implementation in `backend/IdTheAthlete.Api/Rules/` (`TennisRules`, `CricketRules`), registered in `Program.cs`.
 
-- New tour of an existing family (e.g. a domestic Cricket league): data rows with the right `Family`, plus anything that family's rules need per tour (Cricket: an entry in `CricketRules.ThresholdsByTour`).
-- New sport: data rows plus a new `ISportRules` class registered in `Program.cs`.
+- New tour of an existing family (e.g. a domestic Cricket league): data rows with the right `Family` and a `ShortName` (its tour-select button label), plus anything that family's rules need per tour (Cricket: an entry in `CricketRules.ThresholdsByTour`). No frontend change: the home and tour screens come from `GET /api/sports`.
+- New sport: data rows, a new `ISportRules` class registered in `Program.cs`, and an entry in `frontend/src/config/sportFamilies.ts` (home button, title wording, win emoji, clue legend examples). Without that entry the sport still works, with plain defaults.
 - Never branch on a sport's slug outside its family's rules class. The app refuses to start if any sport's family has no rules or its tour isn't supported, so a gap fails loudly instead of silently scoring with another sport's rules.
 
 ## Setup

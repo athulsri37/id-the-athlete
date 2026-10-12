@@ -60,7 +60,7 @@ export default function SportHome({ sport, onSelectMode, onPastChallenges, onBac
             <h2 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wide mb-2">
               Reading clues
             </h2>
-            <ClueLegend sportSlug={sport.slug} />
+            <ClueLegend family={sport.family} />
           </div>
 
           <div>
