@@ -326,10 +326,15 @@ push to it, in parallel jobs:
   every model change has a migration, applies the migrations, checks the
   reference data, starts the API in Production mode and the frontend, and
   runs the Playwright suite.
-- **Attribution (pull requests only):** `scripts/check-attribution.sh`
-  fails if a commit message or the PR description carries an AI
-  attribution line. Run it locally before pushing; editing a PR description
-  doesn't rerun it, so re-run the job after a fix.
+
+`.github/workflows/pr-description.yml` adds one more check on pull
+requests: `scripts/check-attribution.sh --description` fails if the PR
+description carries an AI attribution line. PRs are squash-merged with the
+title and description as the commit message, so the description is what
+reaches `main`. It reruns whenever the description is edited.
+
+`main` is protected: a PR merges only when all of these checks pass on a
+branch that's up to date with `main`.
 
 CI uses no secrets and no paid APIs, and never touches a real database. It
 can't replace the checks against a copy of the dev data before opening a

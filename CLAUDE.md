@@ -70,7 +70,8 @@ Everything else (naming, structure, refactors within scope, test design, choices
 
 ### Attribution
 - No `Co-authored-by`, `Claude-Session`, "Generated with Claude Code" or session links in commits or PR bodies.
-- Before every push, run `scripts/check-attribution.sh` (and with `PR_BODY` set to the description before opening a PR); it must pass. CI runs the same check on every PR.
+- PRs are squash-merged with the PR title and description as the commit message (the only merge method enabled), so the description is what reaches `main`. Before opening or editing a PR, run `PR_BODY="<description>" scripts/check-attribution.sh --description`; CI runs the same check whenever a description changes, and the PR can't merge until it passes.
+- Keep commit messages clean too: `scripts/check-attribution.sh` checks the commits in `origin/main..HEAD` before you push.
 
 ### Definition of done (all of these, every PR)
 1. Unit tests: `dotnet test`, `npm test`, `python -m unittest test_roster_validation` (if `tools/` changed); plus `tsc` and `npm run build`.
@@ -110,3 +111,4 @@ Player names are unique per sport (the `(SportId, Name)` index). A different per
 - The `claude-agent-sdk` Python package's `ClaudeAgentOptions` has no `allow_dangerously_skip_permissions` parameter (at least as of version 0.2.156), `permission_mode="bypassPermissions"` alone is sufficient for headless tool approval. Verify exact parameters via `inspect.signature()` against the actually installed version rather than trusting external documentation, which may describe a different version or language binding.
 - The same SDK's `allowed_tools` is a plain list of tool name strings with no way to attach extra configuration like `allowed_domains`, unlike the raw Messages API's tool definition format, which does support this directly. If a tool needs domain restriction through this SDK, a prompt-level instruction is the fallback, not a technical guarantee.
 - `db.Database.Migrate()` in `Program.cs` creates the target database if it doesn't exist instead of failing, so a connection string with a mistyped database name starts the app normally against a new, empty database (schema, no players). When pointing at a database that may not exist, check `pg_database` afterwards and drop anything created by accident.
+- A merged PR ignores later pushes to its branch: the commits stay on the branch and never reach `main`. Before pushing a follow-up commit to an open PR, check it's still open (`gh pr view <n> --json state`); if it was merged, open a new PR from `origin/main` with the commit cherry-picked.

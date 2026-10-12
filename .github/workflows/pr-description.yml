@@ -1,0 +1,34 @@
+# PRs are squash-merged with their title and description as the commit
+# message, so the description is what reaches main. This checks it for AI
+# attribution lines (CLAUDE.md, Attribution). It's separate from ci.yml so
+# that editing a description reruns only this check.
+#
+# main's branch protection requires this job by its `name`; renaming it
+# means updating the required checks too.
+name: PR description
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-description-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  attribution:
+    name: No AI attribution in PR description
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: scripts
+      # The description arrives through an environment variable, never
+      # pasted into the script, so its text can't run as shell code.
+      - env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: bash scripts/check-attribution.sh --description
