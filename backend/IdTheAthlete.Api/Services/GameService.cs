@@ -126,16 +126,17 @@ public class GameService : IGameService
         if (guessesSoFar >= MaxGuesses)
             throw new InvalidOperationException("This game is already over.");
 
-        var guessedPlayer = await _db.Players
+        // Both players in one query (one row when the guess is correct).
+        var players = await _db.Players
             .Include(p => p.AttributeValues)
                 .ThenInclude(v => v.AttributeDefinition)
-            .FirstOrDefaultAsync(p => p.Id == request.PlayerId)
+            .Where(p => p.Id == request.PlayerId || p.Id == mysteryPlayerId)
+            .ToListAsync();
+
+        var guessedPlayer = players.FirstOrDefault(p => p.Id == request.PlayerId)
             ?? throw new InvalidOperationException("Guessed player not found");
 
-        var mysteryPlayer = await _db.Players
-            .Include(p => p.AttributeValues)
-                .ThenInclude(v => v.AttributeDefinition)
-            .FirstOrDefaultAsync(p => p.Id == mysteryPlayerId)
+        var mysteryPlayer = players.FirstOrDefault(p => p.Id == mysteryPlayerId)
             ?? throw new InvalidOperationException("Mystery player not found");
 
         // Counted only once the guess is known to be valid, so a bad request
