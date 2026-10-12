@@ -27,8 +27,8 @@ public class GameServiceGuessCountTests
         var db = new GameDbContext(new DbContextOptionsBuilder<GameDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
 
-        db.Sports.Add(new Sport { Id = 1, Name = "Men's Tennis", Slug = Slug });
-        db.Sports.Add(new Sport { Id = 2, Name = "Women's Tennis", Slug = "tennis-women" });
+        db.Sports.Add(new Sport { Id = 1, Name = "Men's Tennis", Slug = Slug, Family = "tennis" });
+        db.Sports.Add(new Sport { Id = 2, Name = "Women's Tennis", Slug = "tennis-women", Family = "tennis" });
         db.AttributeDefinitions.Add(new AttributeDefinition { Id = 1, SportId = 1, Key = "country", Label = "Country", Type = AttributeType.Categorical });
         db.Players.Add(new Player { Id = MysteryId, SportId = 1, Name = "Mystery Player" });
         db.Players.Add(new Player { Id = 2, SportId = 1, Name = "Wrong Guess" });

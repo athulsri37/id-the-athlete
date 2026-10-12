@@ -9,10 +9,11 @@
 -- "tennis-women" sport. This upsert now matches ON CONFLICT("Slug") against
 -- that already-renamed row -- it does NOT create a second Sports row.
 
-INSERT INTO "Sports" ("Name", "Slug")
-VALUES ('Men''s Tennis', 'tennis-men')
+INSERT INTO "Sports" ("Name", "Slug", "Family")
+VALUES ('Men''s Tennis', 'tennis-men', 'tennis')
 ON CONFLICT ("Slug") DO UPDATE SET
-    "Name" = EXCLUDED."Name";
+    "Name" = EXCLUDED."Name",
+    "Family" = EXCLUDED."Family";
 
 INSERT INTO "AttributeDefinitions" ("SportId", "Key", "Label", "Type", "DisplayOrder")
 SELECT s."Id", v."Key", v."Label", v."Type", v."DisplayOrder"

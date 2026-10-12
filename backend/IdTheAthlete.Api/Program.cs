@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
 using IdTheAthlete.Api.Data;
 using IdTheAthlete.Api.Middleware;
+using IdTheAthlete.Api.Rules;
 using IdTheAthlete.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -32,14 +33,17 @@ builder.Services.AddSingleton<AiTriviaState>();
 builder.Services.AddHostedService<DailyPuzzleGenerationService>();
 
 // GameService's former responsibilities, now split into focused
-// components (see each class's own file for why). DifficultyService is
-// pure/stateless -> Singleton. The rest depend on GameDbContext (Scoped)
-// or, for PracticeSessionService, need one shared instance for the app's
-// lifetime -> Singleton there too, holding the state itself rather than
-// via a static field.
-builder.Services.AddSingleton<IDifficultyService, DifficultyService>();
-builder.Services.AddScoped<INumericClosenessEvaluator, NumericClosenessEvaluator>();
-builder.Services.AddScoped<ICategoricalClosenessEvaluator, CategoricalClosenessEvaluator>();
+// components (see each class's own file for why). Most depend on
+// GameDbContext or ISettingsService (Scoped); PracticeSessionService needs
+// one shared instance for the app's lifetime -> Singleton, holding the
+// state itself rather than via a static field.
+builder.Services.AddScoped<IDifficultyService, DifficultyService>();
+
+// One ISportRules per sport family (Sport.Family). A new sport adds its
+// rules class here; SportRulesRegistry picks the right one per sport.
+builder.Services.AddScoped<ISportRules, TennisRules>();
+builder.Services.AddScoped<ISportRules, CricketRules>();
+builder.Services.AddScoped<ISportRulesRegistry, SportRulesRegistry>();
 builder.Services.AddSingleton<IPracticeSessionService, PracticeSessionService>();
 builder.Services.AddScoped<IDailyPuzzleService, DailyPuzzleService>();
 builder.Services.AddScoped<ISettingsService, SettingsService>();
@@ -74,6 +78,11 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<GameDbContext>();
     db.Database.Migrate();
+
+    // Refuse to start if any sport can't be scored (unknown family, or a
+    // tour its family's rules don't support), instead of failing mid-game.
+    scope.ServiceProvider.GetRequiredService<ISportRulesRegistry>()
+        .EnsureEverySportIsSupported(db.Sports.AsNoTracking().ToList());
 }
 if (app.Environment.IsDevelopment())
 {

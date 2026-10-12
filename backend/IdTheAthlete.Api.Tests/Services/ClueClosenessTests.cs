@@ -39,7 +39,7 @@ public class ClueClosenessTests
         var db = new GameDbContext(new DbContextOptionsBuilder<GameDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
 
-        db.Sports.Add(new Sport { Id = 1, Name = sportSlug, Slug = sportSlug });
+        db.Sports.Add(new Sport { Id = 1, Name = sportSlug, Slug = sportSlug, Family = sportSlug.Split('-')[0] });
         db.AttributeDefinitions.Add(new AttributeDefinition { Id = 1, SportId = 1, Key = attributeKey, Label = attributeKey, Type = type });
         db.Players.Add(new Player { Id = 1, SportId = 1, Name = "Mystery" });
         db.Players.Add(new Player { Id = 2, SportId = 1, Name = "Guess" });

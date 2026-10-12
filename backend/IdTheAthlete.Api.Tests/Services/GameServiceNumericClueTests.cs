@@ -26,7 +26,7 @@ public class GameServiceNumericClueTests
     {
         _db = new GameDbContext(new DbContextOptionsBuilder<GameDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
-        _db.Sports.Add(new Sport { Id = 1, Name = "Men's Tennis", Slug = Slug });
+        _db.Sports.Add(new Sport { Id = 1, Name = "Men's Tennis", Slug = Slug, Family = "tennis" });
         _db.AttributeDefinitions.Add(new AttributeDefinition { Id = 1, SportId = 1, Key = TitlesKey, Label = "Titles", Type = AttributeType.Numeric });
         _db.Players.Add(new Player { Id = MysteryId, SportId = 1, Name = "Mystery Player" });
         _db.PlayerAttributeValues.Add(new PlayerAttributeValue { PlayerId = MysteryId, AttributeDefinitionId = 1, Value = "10" });

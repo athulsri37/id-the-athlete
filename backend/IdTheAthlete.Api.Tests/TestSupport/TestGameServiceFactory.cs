@@ -1,4 +1,5 @@
 using IdTheAthlete.Api.Data;
+using IdTheAthlete.Api.Rules;
 using IdTheAthlete.Api.Services;
 using IdTheAthlete.Api.Tests.Services;
 using Microsoft.Extensions.Logging;
@@ -22,15 +23,20 @@ internal static class TestGameServiceFactory
         time ??= TimeProvider.System;
         var settings = new SettingsService(db, NullLogger<SettingsService>.Instance, new SettingsFailureLogThrottle(time));
 
+        var sportRules = CreateRegistry(settings);
+
         return new GameService(
             db,
             Mock.Of<IAiTriviaService>(),
-            new DifficultyService(),
-            new NumericClosenessEvaluator(settings),
-            new CategoricalClosenessEvaluator(settings),
+            new DifficultyService(sportRules),
+            sportRules,
             sessions,
             new DailyPuzzleService(db, NullLogger<DailyPuzzleService>.Instance, time),
             tokens ?? GameTokenServiceTests.Create(),
             logger ?? NullLogger<GameService>.Instance);
     }
+
+    // The production set of sport rules, as registered in Program.cs.
+    public static SportRulesRegistry CreateRegistry(ISettingsService settings) =>
+        new(new ISportRules[] { new TennisRules(settings), new CricketRules(settings) });
 }
