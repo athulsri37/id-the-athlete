@@ -1,12 +1,17 @@
 using System.Globalization;
 using IdTheAthlete.Api.Models;
 using IdTheAthlete.Api.Services;
+using IdTheAthlete.Api.Tests.TestSupport;
+using Moq;
 
 namespace IdTheAthlete.Api.Tests.Services;
 
 public class DifficultyServiceTests
 {
-    private readonly DifficultyService _service = new();
+    private readonly DifficultyService _service = new(TestGameServiceFactory.CreateRegistry(Mock.Of<ISettingsService>()));
+
+    // A sport row as seeded: its family is its slug's first segment.
+    private static Sport Sport(string slug) => new() { Slug = slug, Family = slug.Split('-')[0] };
 
     private static Player PlayerWith(params (string Key, string Value)[] stats) => new()
     {
@@ -27,8 +32,8 @@ public class DifficultyServiceTests
     {
         var player = PlayerWith(("career_high_ranking", highRank), ("career_titles", titles), ("grand_slam_titles", slams));
 
-        Assert.Equal(expected, _service.ComputeDifficultyTier(player, "tennis-men"));
-        Assert.Equal(expected, _service.ComputeDifficultyTier(player, "tennis-women"));
+        Assert.Equal(expected, _service.ComputeDifficultyTier(player, Sport("tennis-men")));
+        Assert.Equal(expected, _service.ComputeDifficultyTier(player, Sport("tennis-women")));
     }
 
     [Theory]
@@ -42,7 +47,7 @@ public class DifficultyServiceTests
     {
         var player = PlayerWith(("combined_runs", runs), ("combined_wickets", wickets), ("combined_matches", matches));
 
-        Assert.Equal(expected, _service.ComputeDifficultyTier(player, "cricket-men-international"));
+        Assert.Equal(expected, _service.ComputeDifficultyTier(player, Sport("cricket-men-international")));
     }
 
     [Theory]
@@ -55,7 +60,7 @@ public class DifficultyServiceTests
     {
         var player = PlayerWith(("combined_runs", runs), ("combined_wickets", wickets), ("combined_matches", matches));
 
-        Assert.Equal(expected, _service.ComputeDifficultyTier(player, "cricket-women-international"));
+        Assert.Equal(expected, _service.ComputeDifficultyTier(player, Sport("cricket-women-international")));
     }
 
     [Fact]
@@ -65,7 +70,7 @@ public class DifficultyServiceTests
         player.IsOverridden = true;
         player.DifficultyOverride = "Hard";
 
-        Assert.Equal("hard", _service.ComputeDifficultyTier(player, "tennis-men"));
+        Assert.Equal("hard", _service.ComputeDifficultyTier(player, Sport("tennis-men")));
     }
 
     [Theory]
@@ -76,7 +81,7 @@ public class DifficultyServiceTests
     {
         var player = PlayerWith(("career_high_ranking", "10"), ("career_titles", titles));
 
-        Assert.Equal("hard", _service.ComputeDifficultyTier(player, "tennis-men"));
+        Assert.Equal("hard", _service.ComputeDifficultyTier(player, Sport("tennis-men")));
     }
 
     [Fact]
@@ -88,7 +93,7 @@ public class DifficultyServiceTests
             CultureInfo.CurrentCulture = new CultureInfo("de-DE");
             var player = PlayerWith(("combined_runs", " 10000 "));
 
-            Assert.Equal("easy", _service.ComputeDifficultyTier(player, "cricket-men-international"));
+            Assert.Equal("easy", _service.ComputeDifficultyTier(player, Sport("cricket-men-international")));
         }
         finally
         {

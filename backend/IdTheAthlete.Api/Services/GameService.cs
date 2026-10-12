@@ -3,12 +3,13 @@ using Microsoft.EntityFrameworkCore;
 using IdTheAthlete.Api.Data;
 using IdTheAthlete.Api.Dtos;
 using IdTheAthlete.Api.Models;
+using IdTheAthlete.Api.Rules;
 
 namespace IdTheAthlete.Api.Services;
 
 // Orchestration only: resolves sports/players, coordinates with the
 // focused single-responsibility components below for anything that used
-// to be inlined here (difficulty, numeric/categorical closeness, practice
+// to be inlined here (difficulty, the sport's closeness rules, practice
 // sessions, daily-puzzle selection), and assembles the response DTOs.
 // Split out of a single 644-line GameService -- see each component's own
 // file for the logic that used to live here.
@@ -17,8 +18,7 @@ public class GameService : IGameService
     private readonly GameDbContext _db;
     private readonly IAiTriviaService _aiTriviaService;
     private readonly IDifficultyService _difficultyService;
-    private readonly INumericClosenessEvaluator _numericCloseness;
-    private readonly ICategoricalClosenessEvaluator _categoricalCloseness;
+    private readonly ISportRulesRegistry _sportRules;
     private readonly IPracticeSessionService _practiceSessions;
     private readonly IDailyPuzzleService _dailyPuzzleService;
     private readonly IGameTokenService _gameTokens;
@@ -31,8 +31,7 @@ public class GameService : IGameService
         GameDbContext db,
         IAiTriviaService aiTriviaService,
         IDifficultyService difficultyService,
-        INumericClosenessEvaluator numericCloseness,
-        ICategoricalClosenessEvaluator categoricalCloseness,
+        ISportRulesRegistry sportRules,
         IPracticeSessionService practiceSessions,
         IDailyPuzzleService dailyPuzzleService,
         IGameTokenService gameTokens,
@@ -41,8 +40,7 @@ public class GameService : IGameService
         _db = db;
         _aiTriviaService = aiTriviaService;
         _difficultyService = difficultyService;
-        _numericCloseness = numericCloseness;
-        _categoricalCloseness = categoricalCloseness;
+        _sportRules = sportRules;
         _practiceSessions = practiceSessions;
         _dailyPuzzleService = dailyPuzzleService;
         _gameTokens = gameTokens;
@@ -81,7 +79,7 @@ public class GameService : IGameService
             .ToListAsync();
 
         var pool = players
-            .Where(p => tiersAllowed.Contains(_difficultyService.ComputeDifficultyTier(p, sportSlug)))
+            .Where(p => tiersAllowed.Contains(_difficultyService.ComputeDifficultyTier(p, sport)))
             .ToList();
 
         if (pool.Count == 0)
@@ -152,11 +150,10 @@ public class GameService : IGameService
             .OrderBy(a => a.DisplayOrder)
             .ToListAsync();
 
-        // Fetched once per guess (not once per attribute) so closeness
-        // evaluation for all of a sport's attributes costs a fixed number
-        // of DB round-trips regardless of how many attributes it has.
-        var categoricalFlags = await _categoricalCloseness.LoadFlagsAsync();
-        var cricketNumericSettings = await _numericCloseness.LoadCricketSettingsAsync();
+        // The sport's closeness settings are read once per guess (not once
+        // per attribute), so a guess costs a fixed number of DB round-trips
+        // however many attributes the sport has.
+        var closeness = await _sportRules.For(sport).LoadClosenessJudgeAsync();
 
         var clues = attributeDefs.Select(def =>
         {
@@ -187,7 +184,7 @@ public class GameService : IGameService
 
                 if (!clue.IsMatch)
                 {
-                    clue.IsClose = _numericCloseness.IsClose(def.Key, guessedNum, mysteryNum, cricketNumericSettings);
+                    clue.IsClose = closeness.IsNumericClose(def.Key, guessedNum, mysteryNum);
                 }
             }
             else
@@ -196,7 +193,7 @@ public class GameService : IGameService
 
                 if (!clue.IsMatch)
                 {
-                    clue.IsClose = _categoricalCloseness.IsClose(def.Key, sportSlug, guessedValue, mysteryValue, categoricalFlags);
+                    clue.IsClose = closeness.IsCategoricalClose(def.Key, guessedValue, mysteryValue);
                 }
             }
 

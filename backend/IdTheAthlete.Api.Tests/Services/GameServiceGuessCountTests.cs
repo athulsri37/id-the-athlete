@@ -3,9 +3,8 @@ using IdTheAthlete.Api.Dtos;
 using IdTheAthlete.Api.Models;
 using IdTheAthlete.Api.Services;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
-using Moq;
+using IdTheAthlete.Api.Tests.TestSupport;
 
 namespace IdTheAthlete.Api.Tests.Services;
 
@@ -28,8 +27,8 @@ public class GameServiceGuessCountTests
         var db = new GameDbContext(new DbContextOptionsBuilder<GameDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
 
-        db.Sports.Add(new Sport { Id = 1, Name = "Men's Tennis", Slug = Slug });
-        db.Sports.Add(new Sport { Id = 2, Name = "Women's Tennis", Slug = "tennis-women" });
+        db.Sports.Add(new Sport { Id = 1, Name = "Men's Tennis", Slug = Slug, Family = "tennis" });
+        db.Sports.Add(new Sport { Id = 2, Name = "Women's Tennis", Slug = "tennis-women", Family = "tennis" });
         db.AttributeDefinitions.Add(new AttributeDefinition { Id = 1, SportId = 1, Key = "country", Label = "Country", Type = AttributeType.Categorical });
         db.Players.Add(new Player { Id = MysteryId, SportId = 1, Name = "Mystery Player" });
         db.Players.Add(new Player { Id = 2, SportId = 1, Name = "Wrong Guess" });
@@ -39,18 +38,7 @@ public class GameServiceGuessCountTests
         db.SaveChanges();
 
         var time = new FakeTimeProvider(new DateTimeOffset(Today.ToDateTime(new TimeOnly(12, 0)), TimeSpan.Zero));
-        var settings = new SettingsService(db, NullLogger<SettingsService>.Instance, new SettingsFailureLogThrottle(time));
-
-        _service = new GameService(
-            db,
-            Mock.Of<IAiTriviaService>(),
-            new DifficultyService(),
-            new NumericClosenessEvaluator(settings),
-            new CategoricalClosenessEvaluator(settings),
-            _sessions,
-            new DailyPuzzleService(db, NullLogger<DailyPuzzleService>.Instance, time),
-            _tokens,
-            NullLogger<GameService>.Instance);
+        _service = TestGameServiceFactory.Create(db, _sessions, _tokens, time: time);
     }
 
     private Task<GuessResponseDto> DailyWrongGuess(string? token) =>

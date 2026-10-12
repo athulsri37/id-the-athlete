@@ -138,12 +138,11 @@ id-the-athlete/
 │   ├── Data/             # GameDbContext
 │   ├── Migrations/       # EF Core migrations (generated, committed)
 │   ├── Geo/               # CountryProximity (Tennis land-border adjacency)
+│   ├── Rules/             # Per-sport-family scoring: ISportRules, TennisRules, CricketRules, SportRulesRegistry
 │   ├── Middleware/        # AdminAuthMiddleware (protects /api/admin/*)
 │   ├── Services/
 │   │   ├── GameService.cs                  # Orchestration: guess submission, session/daily-puzzle resolution
-│   │   ├── DifficultyService.cs            # Per-sport, per-gender difficulty tier formulas
-│   │   ├── NumericClosenessEvaluator.cs    # Fixed (Tennis) + dynamic percent/floor (Cricket) numeric closeness
-│   │   ├── CategoricalClosenessEvaluator.cs# Country/Role/Bowling-Style closeness
+│   │   ├── DifficultyService.cs            # Curator override, else the sport family's difficulty formula
 │   │   ├── PracticeSessionService.cs       # In-memory practice-mode session storage
 │   │   ├── DailyPuzzleService.cs           # Daily puzzle selection, lookup, persistence
 │   │   ├── DailyPuzzleGenerationService.cs # Background service: 00:00 UTC scheduled generation + startup catch-up
@@ -279,18 +278,20 @@ App will be available at `http://localhost:5174`.
 
 ## Testing
 
-The project has three independent test layers. Right now each one carries a
-single smoke test proving its harness is wired up correctly — real
-business-logic coverage is deferred follow-up work, not yet written.
+The project has three independent test layers. The backend suite covers the
+game rules (clue scoring for every sport, difficulty tiers, guess counting,
+settings fallbacks); the frontend suite covers daily streaks; the end-to-end
+suite is still a single smoke test.
 
 ### Backend unit tests
 
 xUnit project (`backend/IdTheAthlete.Api.Tests`), referencing
 `IdTheAthlete.Api` directly so tests can exercise services like
-`DifficultyService` and the closeness evaluators without going through
-HTTP. Also wired up with `Microsoft.EntityFrameworkCore.InMemory` (for
-future tests needing a `DbContext` without a real Postgres database) and
-`Moq` (for future tests needing to mock dependencies like `HttpClient`).
+`DifficultyService` and each sport family's rules without going through
+HTTP. `ClueClosenessTests` pins down how every clue is judged for each
+sport, end to end through `GameService`. Uses
+`Microsoft.EntityFrameworkCore.InMemory` for a `DbContext` without a real
+Postgres database, and `Moq` to mock dependencies.
 ```bash
 cd backend/IdTheAthlete.Api.Tests
 dotnet test

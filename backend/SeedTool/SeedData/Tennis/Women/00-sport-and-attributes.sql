@@ -9,10 +9,11 @@
 -- Men's Tennis. Player data is deliberately not seeded yet; player-batch
 -- files land in a follow-up once the roster is curated and verified.
 
-INSERT INTO "Sports" ("Name", "Slug")
-VALUES ('Women''s Tennis', 'tennis-women')
+INSERT INTO "Sports" ("Name", "Slug", "Family")
+VALUES ('Women''s Tennis', 'tennis-women', 'tennis')
 ON CONFLICT ("Slug") DO UPDATE SET
-    "Name" = EXCLUDED."Name";
+    "Name" = EXCLUDED."Name",
+    "Family" = EXCLUDED."Family";
 
 INSERT INTO "AttributeDefinitions" ("SportId", "Key", "Label", "Type", "DisplayOrder")
 SELECT s."Id", v."Key", v."Label", v."Type", v."DisplayOrder"

@@ -4,5 +4,5 @@ namespace IdTheAthlete.Api.Services;
 
 public interface IDifficultyService
 {
-    string ComputeDifficultyTier(Player player, string sportSlug);
+    string ComputeDifficultyTier(Player player, Sport sport);
 }
