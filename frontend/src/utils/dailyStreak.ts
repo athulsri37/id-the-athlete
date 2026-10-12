@@ -1,22 +1,47 @@
 // Per-sport Daily Challenge streak tracking, persisted in localStorage under
 // `dailyStreak:${sportSlug}` so each sport's streak is fully independent.
-import { todayLocalDateString } from "./localDate";
+//
+// A streak counts consecutive *puzzle dates*: the UTC yyyy-MM-dd the backend
+// assigns each daily puzzle (see todayUtcDateString). It deliberately never
+// reads the browser's clock or timezone, so a player east of UTC who plays
+// just after local midnight, or west of UTC in the evening, gets exactly the
+// same streak as anyone else.
 
 export interface StreakData {
-  lastWonDate: string; // YYYY-MM-DD, local date of the most recent win
+  lastWonDate: string; // yyyy-MM-dd puzzle date of the most recent win ("" if none)
   currentStreak: number;
   maxStreak: number;
+  // "utc" once lastWonDate is a puzzle date. Streaks saved before this
+  // existed hold a browser-local date instead -- see continuesStreak.
+  dateBasis?: "utc";
 }
+
+const MS_PER_DAY = 86_400_000;
 
 function storageKey(sportSlug: string): string {
   return `dailyStreak:${sportSlug}`;
 }
 
-function isExactlyOneDayBefore(earlier: string, later: string): boolean {
-  const earlierDate = new Date(`${earlier}T00:00:00`);
-  const laterDate = new Date(`${later}T00:00:00`);
-  const diffDays = Math.round((laterDate.getTime() - earlierDate.getTime()) / 86_400_000);
-  return diffDays === 1;
+// Whole days from one yyyy-MM-dd date to another, computed in UTC so
+// daylight-saving changes can't produce fractional days.
+function daysBetween(from: string, to: string): number {
+  const toUtcMs = (date: string) => {
+    const [year, month, day] = date.split("-").map(Number);
+    return Date.UTC(year, month - 1, day);
+  };
+  return Math.round((toUtcMs(to) - toUtcMs(from)) / MS_PER_DAY);
+}
+
+// Whether a win on puzzleDate extends the existing streak. Normally only the
+// very next puzzle date does. A streak saved before dates were UTC holds a
+// browser-local date that can sit a day either side of its puzzle date, so
+// for that one transition a gap of 0-2 days also counts: being generous once
+// is better than breaking a real streak because the date basis changed.
+function continuesStreak(existing: StreakData, puzzleDate: string): boolean {
+  if (!existing.lastWonDate) return false;
+
+  const gap = daysBetween(existing.lastWonDate, puzzleDate);
+  return existing.dateBasis === "utc" ? gap === 1 : gap >= 0 && gap <= 2;
 }
 
 export function getStreak(sportSlug: string): StreakData | null {
@@ -29,32 +54,32 @@ export function getStreak(sportSlug: string): StreakData | null {
   }
 }
 
-// Records the outcome of today's Daily Challenge for a sport and returns the
-// updated streak. Safe to call multiple times for the same win (won't
-// double-count if lastWonDate is already today).
-export function recordDailyResult(sportSlug: string, won: boolean): StreakData {
-  const today = todayLocalDateString();
+// Records the outcome of the Daily Challenge for puzzleDate (yyyy-MM-dd) and
+// returns the updated streak. Safe to call more than once for the same win:
+// a repeat for the same puzzle date isn't counted twice.
+export function recordDailyResult(sportSlug: string, puzzleDate: string, won: boolean): StreakData {
   const existing = getStreak(sportSlug);
 
+  let next: StreakData;
   if (!won) {
-    const next: StreakData = {
+    next = {
       lastWonDate: existing?.lastWonDate ?? "",
       currentStreak: 0,
       maxStreak: existing?.maxStreak ?? 0,
+      dateBasis: existing?.dateBasis,
     };
-    localStorage.setItem(storageKey(sportSlug), JSON.stringify(next));
-    return next;
-  }
-
-  if (existing?.lastWonDate === today) {
+  } else if (existing?.dateBasis === "utc" && existing.lastWonDate === puzzleDate) {
     return existing;
+  } else {
+    const currentStreak = existing && continuesStreak(existing, puzzleDate) ? existing.currentStreak + 1 : 1;
+    next = {
+      lastWonDate: puzzleDate,
+      currentStreak,
+      maxStreak: Math.max(currentStreak, existing?.maxStreak ?? 0),
+      dateBasis: "utc",
+    };
   }
 
-  const continuesStreak = !existing || isExactlyOneDayBefore(existing.lastWonDate, today);
-  const currentStreak = continuesStreak ? (existing?.currentStreak ?? 0) + 1 : 1;
-  const maxStreak = Math.max(currentStreak, existing?.maxStreak ?? 0);
-
-  const next: StreakData = { lastWonDate: today, currentStreak, maxStreak };
   localStorage.setItem(storageKey(sportSlug), JSON.stringify(next));
   return next;
 }
