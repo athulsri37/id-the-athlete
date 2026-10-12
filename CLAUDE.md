@@ -43,6 +43,7 @@ Standing rules for new batches:
 - Lean Medium/Hard tier (avoid adding more Easy-tier legends, most rosters already skew that way)
 - Count the candidate list explicitly before starting research, this project has repeatedly miscounted 30 as 31
 - Present the full candidate list and wait for explicit approval before starting any research or data collection
+- Player names are unique per sport (the `(SportId, Name)` index, which seed upserts match on). If a new player is a different person with the same name as an existing player in that sport, store a disambiguated name: country in parentheses as written in the `country` field, e.g. `John Smith (New Zealand)`, or birth year if they also share a country, e.g. `John Smith (b. 1985)`. The same name in a different sport needs nothing extra
 
 ## Known gotchas
 

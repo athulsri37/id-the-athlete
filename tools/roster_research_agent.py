@@ -313,6 +313,14 @@ Only fall back to another source if a player genuinely has no profile on
 EXISTING ROSTER - DO NOT DUPLICATE ANY OF THESE NAMES:
 {existing_list}
 
+SAME-NAME PLAYERS: player names must be unique within this roster. If a player
+you want to propose is a DIFFERENT person who shares a name with someone in the
+roster above (or with another player you are proposing), give them a
+disambiguated name by appending their country in parentheses, exactly as it
+appears in the country field, e.g. "John Smith (New Zealand)". If they also
+share a country, append their birth year instead, e.g. "John Smith (b. 1985)".
+Never do this for someone who is already in the roster - that is a duplicate.
+
 For each of the {batch_size} players, verify via web search the following fields:
 {profile["field_descriptions"]}
 
