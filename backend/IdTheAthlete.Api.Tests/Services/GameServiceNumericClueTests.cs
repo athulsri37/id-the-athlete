@@ -5,8 +5,6 @@ using IdTheAthlete.Api.Services;
 using IdTheAthlete.Api.Tests.TestSupport;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
-using Moq;
 
 namespace IdTheAthlete.Api.Tests.Services;
 
@@ -34,17 +32,7 @@ public class GameServiceNumericClueTests
         _db.PlayerAttributeValues.Add(new PlayerAttributeValue { PlayerId = MysteryId, AttributeDefinitionId = 1, Value = "10" });
         _db.SaveChanges();
 
-        var settings = new SettingsService(_db, NullLogger<SettingsService>.Instance, new SettingsFailureLogThrottle(TimeProvider.System));
-        _service = new GameService(
-            _db,
-            Mock.Of<IAiTriviaService>(),
-            new DifficultyService(),
-            new NumericClosenessEvaluator(settings),
-            new CategoricalClosenessEvaluator(settings),
-            _sessions,
-            new DailyPuzzleService(_db, NullLogger<DailyPuzzleService>.Instance, TimeProvider.System),
-            GameTokenServiceTests.Create(),
-            _logger);
+        _service = TestGameServiceFactory.Create(_db, _sessions, logger: _logger);
     }
 
     // Adds a guessable player whose titles value is stored as given (null =

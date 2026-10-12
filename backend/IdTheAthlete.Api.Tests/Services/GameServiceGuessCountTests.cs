@@ -3,9 +3,8 @@ using IdTheAthlete.Api.Dtos;
 using IdTheAthlete.Api.Models;
 using IdTheAthlete.Api.Services;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
-using Moq;
+using IdTheAthlete.Api.Tests.TestSupport;
 
 namespace IdTheAthlete.Api.Tests.Services;
 
@@ -39,18 +38,7 @@ public class GameServiceGuessCountTests
         db.SaveChanges();
 
         var time = new FakeTimeProvider(new DateTimeOffset(Today.ToDateTime(new TimeOnly(12, 0)), TimeSpan.Zero));
-        var settings = new SettingsService(db, NullLogger<SettingsService>.Instance, new SettingsFailureLogThrottle(time));
-
-        _service = new GameService(
-            db,
-            Mock.Of<IAiTriviaService>(),
-            new DifficultyService(),
-            new NumericClosenessEvaluator(settings),
-            new CategoricalClosenessEvaluator(settings),
-            _sessions,
-            new DailyPuzzleService(db, NullLogger<DailyPuzzleService>.Instance, time),
-            _tokens,
-            NullLogger<GameService>.Instance);
+        _service = TestGameServiceFactory.Create(db, _sessions, _tokens, time: time);
     }
 
     private Task<GuessResponseDto> DailyWrongGuess(string? token) =>
