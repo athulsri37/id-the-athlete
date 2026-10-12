@@ -16,6 +16,9 @@ frontend/test-results/
 frontend/playwright-report/
 frontend/blob-report/
 
+# Database backups (scripts/db-backup.sh) -- they contain all game data
+backups/
+
 # Env
 .env
 *.env.local
