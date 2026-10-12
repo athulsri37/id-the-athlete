@@ -70,7 +70,8 @@ Everything else (naming, structure, refactors within scope, test design, choices
 
 ### Attribution
 - No `Co-authored-by`, `Claude-Session`, "Generated with Claude Code" or session links in commits or PR bodies.
-- Before every push, run `scripts/check-attribution.sh` (and with `PR_BODY` set to the description before opening a PR); it must pass. CI runs the same check on every PR.
+- PRs are squash-merged with the PR title and description as the commit message (the only merge method enabled), so the description is what reaches `main`. Before opening or editing a PR, run `PR_BODY="<description>" scripts/check-attribution.sh --description`; CI runs the same check whenever a description changes, and the PR can't merge until it passes.
+- Keep commit messages clean too: `scripts/check-attribution.sh` checks the commits in `origin/main..HEAD` before you push.
 
 ### Definition of done (all of these, every PR)
 1. Unit tests: `dotnet test`, `npm test`, `python -m unittest test_roster_validation` (if `tools/` changed); plus `tsc` and `npm run build`.

@@ -163,20 +163,3 @@ jobs:
         run: |
           echo "--- API"; cat "$RUNNER_TEMP/api.log" || true
           echo "--- Vite"; cat "$RUNNER_TEMP/vite.log" || true
-
-  attribution:
-    name: No AI attribution in commits or PR description
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-      # The PR body arrives through an environment variable, never pasted
-      # into the script, so its text can't run as shell code. Editing the
-      # description doesn't rerun this; push a commit or re-run the job.
-      - env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          PR_BODY: ${{ github.event.pull_request.body }}
-        run: bash scripts/check-attribution.sh "$BASE_SHA..$HEAD_SHA"
