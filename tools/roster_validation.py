@@ -27,13 +27,20 @@ _WHOLE_NUMBER = re.compile(r"\d+")
 TIERS = ("easy", "medium", "hard")
 
 
-def parse_tiers(text: str) -> frozenset[str]:
-    """Reads a --tiers value like "medium,hard". Raises ValueError naming any
-    entry that isn't a tier."""
+ANY_TIER = "any"
+
+
+def parse_tiers(text: str) -> frozenset[str] | None:
+    """Reads a --tiers value like "medium,hard", or "any" for no preference
+    (None). Raises ValueError naming any entry that isn't a tier."""
+    if text.strip().lower() == ANY_TIER:
+        return None
     tiers = {part.strip().lower() for part in text.split(",") if part.strip()}
     unknown = sorted(tiers - set(TIERS))
     if unknown or not tiers:
-        raise ValueError(f"tiers must be a comma-separated list of {', '.join(TIERS)}; got '{text}'")
+        raise ValueError(
+            f"tiers must be '{ANY_TIER}' or a comma-separated list of {', '.join(TIERS)}; got '{text}'"
+        )
     return frozenset(tiers)
 
 

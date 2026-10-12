@@ -60,12 +60,15 @@ USAGE
              tennis-men, tennis-women
     count    number of players to research, 1-30 (optional, defaults to 20)
     --tiers  difficulty tiers to aim for, any of easy,medium,hard separated
-             by commas (optional; leave out for no preference). Players
-             whose actual tier turns out different are marked "check".
+             by commas, or "any" for no preference (optional; defaults to
+             medium, see DEFAULT_TIERS). This leans the research rather than
+             enforcing it: players whose actual tier turns out different are
+             marked "check" but can still be written.
 
     Examples:
-    python roster_research_agent.py tennis-men 10
+    python roster_research_agent.py tennis-men 10                     (aims for medium)
     python roster_research_agent.py tennis-men 10 --tiers medium,hard
+    python roster_research_agent.py tennis-men 10 --tiers any
 
     Run with --help to see the valid options. The wording used to describe
     each tier to the model is TIER_DESCRIPTIONS in the CONFIG section.
@@ -253,6 +256,10 @@ DB_URL = os.environ.get(
 API_URL = os.environ.get("ROSTER_API_URL", "http://localhost:5080").rstrip("/")
 ADMIN_KEY = os.environ.get("ROSTER_ADMIN_KEY")
 
+# Tiers aimed for when --tiers isn't given. Like any --tiers value this only
+# leans the research: off-target players are flagged, never blocked.
+DEFAULT_TIERS = frozenset({"medium"})
+
 # How each tier is described to the model when --tiers is used. In words on
 # purpose: the exact thresholds belong to the backend's rules, and every
 # player's real tier is checked against them through the API afterwards.
@@ -376,7 +383,7 @@ def build_tier_guidance(wanted: frozenset[str] | None) -> str | None:
     if not wanted:
         return None
     lines = [TIER_DESCRIPTIONS[tier] for tier in TIERS if tier in wanted]
-    return "Only propose players who fit these difficulty tiers:\n- " + "\n- ".join(lines)
+    return "Aim for players who fit these difficulty tiers:\n- " + "\n- ".join(lines)
 
 
 def build_prompt(profile, batch_size, tier_guidance, existing_names, note=None):
@@ -682,9 +689,10 @@ def build_arg_parser():
     parser.add_argument(
         "--tiers",
         type=tiers_arg,
-        default=None,
-        help="difficulty tiers to aim for, comma-separated, e.g. medium,hard (default: no preference). "
-        "Players whose actual tier differs are flagged in the review table.",
+        default=DEFAULT_TIERS,
+        help=f"difficulty tiers to aim for, comma-separated, e.g. medium,hard, or 'any' for no preference "
+        f"(default: {describe_tiers(DEFAULT_TIERS)}). Players whose actual tier differs are flagged in "
+        "the review table.",
     )
     return parser
 

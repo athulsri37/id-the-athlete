@@ -105,8 +105,12 @@ class TierTests(unittest.TestCase):
         self.assertEqual(parse_tiers("Medium, HARD"), frozenset({"medium", "hard"}))
         self.assertEqual(parse_tiers("easy"), frozenset({"easy"}))
 
+    def test_parse_tiers_any_means_no_preference(self):
+        self.assertIsNone(parse_tiers("any"))
+        self.assertIsNone(parse_tiers(" ANY "))
+
     def test_parse_tiers_rejects_unknown_or_empty(self):
-        for bad in ["expert", "medium,impossible", "", " , "]:
+        for bad in ["expert", "medium,impossible", "", " , ", "any,hard"]:
             with self.subTest(value=bad):
                 with self.assertRaises(ValueError):
                     parse_tiers(bad)
