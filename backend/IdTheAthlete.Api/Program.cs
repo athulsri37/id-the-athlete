@@ -59,6 +59,10 @@ builder.Services.AddScoped<ISportRules, TennisRules>();
 builder.Services.AddScoped<ISportRules, CricketRules>();
 builder.Services.AddScoped<ISportRulesRegistry, SportRulesRegistry>();
 builder.Services.AddSingleton<IPracticeSessionService, PracticeSessionService>();
+builder.Services.AddOptions<PracticeSessionOptions>()
+    .Bind(builder.Configuration.GetSection(PracticeSessionOptions.SectionName))
+    .Validate(o => o.IdleTimeout > TimeSpan.Zero, $"{PracticeSessionOptions.SectionName}:IdleTimeout must be positive.")
+    .ValidateOnStart();
 builder.Services.AddScoped<IDailyPuzzleService, DailyPuzzleService>();
 builder.Services.AddScoped<ISettingsService, SettingsService>();
 builder.Services.AddSingleton<SettingsFailureLogThrottle>();

@@ -18,7 +18,7 @@ public class GameServiceNumericClueTests
     private const int MysteryId = 1;
 
     private readonly GameDbContext _db;
-    private readonly PracticeSessionService _sessions = new();
+    private readonly PracticeSessionService _sessions = PracticeSessionServiceTests.Create();
     private readonly CapturingLogger<GameService> _logger = new();
     private readonly GameService _service;
 
