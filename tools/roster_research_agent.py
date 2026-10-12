@@ -37,25 +37,48 @@ SETUP
 6. Make sure Docker/Postgres is running locally (docker compose up -d postgres
    from the project root).
 
+7. For the difficulty tier column in the review table, have the API running
+   (dotnet run in backend/IdTheAthlete.Api) and set your admin key:
+     export ROSTER_ADMIN_KEY="<a value from your AdminKeys user-secrets>"
+   Without it the agent still works; the tier column just shows "?".
+
+ENVIRONMENT VARIABLES
+---------------------
+    ROSTER_DB_URL      database to read the roster from and write players to,
+                       as a postgres URL. Defaults to the local Docker DB.
+                       The target is always shown, and must be confirmed,
+                       before anything is written.
+    ROSTER_API_URL     the game API used for difficulty tiers
+                       (default http://localhost:5080)
+    ROSTER_ADMIN_KEY   admin key for that API (tiers are skipped without it)
+
 USAGE
 -----
-    python roster_research_agent.py <sport> [count]
+    python roster_research_agent.py <sport> [count] [--tiers TIERS]
 
-    sport  one of: cricket-men-international, cricket-women-international,
-           tennis-men, tennis-women
-    count  number of players to research, 1-30 (optional, defaults to 20)
+    sport    one of: cricket-men-international, cricket-women-international,
+             tennis-men, tennis-women
+    count    number of players to research, 1-30 (optional, defaults to 20)
+    --tiers  difficulty tiers to aim for, any of easy,medium,hard separated
+             by commas, or "any" for no preference (optional; defaults to
+             medium, see DEFAULT_TIERS). This leans the research rather than
+             enforcing it: players whose actual tier turns out different are
+             marked "check" but can still be written.
 
-    Example:
-    python roster_research_agent.py tennis-men 10
+    Examples:
+    python roster_research_agent.py tennis-men 10                     (aims for medium)
+    python roster_research_agent.py tennis-men 10 --tiers medium,hard
+    python roster_research_agent.py tennis-men 10 --tiers any
 
-    Run with --help to see the valid options. TIER_GUIDANCE in the CONFIG
-    section below can still be edited to override a sport's default guidance.
+    Run with --help to see the valid options. The wording used to describe
+    each tier to the model is TIER_DESCRIPTIONS in the CONFIG section.
 
 REVIEW MENU
 -----------
 After research, the proposed players are shown in a numbered table with a
 menu:
-    a  accept and write all of them to the database
+    a  accept: write every player without errors to the database (after
+       confirming the target); players with errors are skipped and listed
     r  remove players by number (e.g. 2,3); that many replacements are
        researched automatically
     s  search for more to reach the requested count (only shown when short)
@@ -65,6 +88,15 @@ to that search's prompt only. Removed players are excluded for the rest of
 the run but nothing is remembered between runs. The CSV log is rewritten
 after every round so it always matches the current list, and nothing is
 written to the database until you choose a.
+
+CHECKS
+------
+Every proposed player is checked against the sport's columns in the
+database (see roster_validation.py): missing values, stats that aren't whole
+numbers, and values the game doesn't recognise (e.g. a role spelled
+differently) are errors; a country new to the game is a warning, since the
+closeness rules may need it added. The table shows each player's difficulty
+tier, computed by the game's own rules through the API.
 """
 
 import argparse
@@ -75,9 +107,26 @@ import csv
 import asyncio
 import re
 import unicodedata
+from contextlib import closing
+import urllib.error
+import urllib.request
 from datetime import datetime
 import psycopg2
+from psycopg2.extensions import parse_dsn
 from claude_agent_sdk import query, ClaudeAgentOptions, AssistantMessage, TextBlock
+
+from roster_validation import (
+    CATEGORICAL,
+    NUMERIC,
+    TIERS,
+    AttributeSpec,
+    ValidationResult,
+    describe_tiers,
+    parse_tiers,
+    schema_mismatch,
+    tier_warning,
+    validate_player,
+)
 
 # ============================================================
 # SAFETY CHECK - catch the silent-override problem before it happens.
@@ -126,11 +175,6 @@ SPORT_PROFILES = {
 - combined_matches/runs/wickets: Test + ODI + T20I added together
 - debut_year: year of international debut
 """,
-        "default_tier_guidance": (
-            "Lean toward Medium/Hard-tier players: current or recent players with "
-            "solid but not legendary careers (well under 10,000 runs, 300 wickets, "
-            "or 300 matches), or genuine role-players/associate-nation cricketers."
-        ),
         "min_appearances_note": "Do not include any player with fewer than 20 combined international appearances.",
     },
     "cricket-women-international": {
@@ -149,10 +193,6 @@ SPORT_PROFILES = {
 - combined_matches/runs/wickets: Test + ODI + T20I added together
 - debut_year: year of international debut
 """,
-        "default_tier_guidance": (
-            "Lean toward Medium/Hard-tier players: current or recent players with "
-            "solid but not legendary careers, or genuine role-players/associate-nation cricketers."
-        ),
         "min_appearances_note": "Do not include any player with fewer than 20 combined international appearances.",
     },
     "tennis-men": {
@@ -172,12 +212,6 @@ SPORT_PROFILES = {
 - turned_pro_year: year turned professional
 - career_titles: total ATP singles titles won
 """,
-        "default_tier_guidance": (
-            "Lean toward Medium/Hard-tier players: current or recent players who "
-            "haven't reached #1 or won 20+ titles or 2+ Grand Slams, but have a "
-            "real, recognizable career - a notable ranking peak, a signature win, "
-            "or genuine current tour relevance."
-        ),
         "min_appearances_note": "Only include players with a genuine, verifiable ATP tour career - not purely juniors or challengers-only players.",
     },
     "tennis-women": {
@@ -197,12 +231,6 @@ SPORT_PROFILES = {
 - turned_pro_year: year turned professional
 - career_titles: total WTA singles titles won
 """,
-        "default_tier_guidance": (
-            "Lean toward Medium/Hard-tier players: current or recent players who "
-            "haven't reached #1 or won 20+ titles or 2+ Grand Slams, but have a "
-            "real, recognizable career - a notable ranking peak, a signature win, "
-            "or genuine current tour relevance."
-        ),
         "min_appearances_note": "Only include players with a genuine, verifiable WTA tour career - not purely juniors or challengers-only players.",
     },
 }
@@ -217,16 +245,30 @@ DISPLAY_ONLY_FIELDS = ["source_url"]
 CHUNK_SIZE = 10  # players requested per individual call
 MAX_BATCH_SIZE = 30  # upper bound for the count argument
 DEFAULT_BATCH_SIZE = 20  # used when count is omitted
-TIER_GUIDANCE = None  # leave as None to use that sport's default, or override with your own text
 
 OUTPUT_FILE = f"proposed_batch_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
 
-DB_CONFIG = {
-    "host": "localhost",
-    "port": 5432,
-    "dbname": "idtheathlete",
-    "user": "idtheathlete",
-    "password": "idtheathlete_dev_pw",
+# The local Docker database's development credentials (the same ones in
+# docker-compose.yml) are only a default; set ROSTER_DB_URL for any other DB.
+DB_URL = os.environ.get(
+    "ROSTER_DB_URL", "postgresql://idtheathlete:idtheathlete_dev_pw@localhost:5432/idtheathlete"
+)
+API_URL = os.environ.get("ROSTER_API_URL", "http://localhost:5080").rstrip("/")
+ADMIN_KEY = os.environ.get("ROSTER_ADMIN_KEY")
+
+# Tiers aimed for when --tiers isn't given. Like any --tiers value this only
+# leans the research: off-target players are flagged, never blocked.
+DEFAULT_TIERS = frozenset({"medium"})
+
+# How each tier is described to the model when --tiers is used. In words on
+# purpose: the exact thresholds belong to the backend's rules, and every
+# player's real tier is checked against them through the API afterwards.
+TIER_DESCRIPTIONS = {
+    "easy": "Easy: famous, widely recognised players - stars and all-time greats.",
+    "medium": "Medium: established players a regular follower of the sport would know, "
+    "with solid but not legendary careers.",
+    "hard": "Hard: lesser-known players with a real, verifiable career - role players, "
+    "journeymen, lower-ranked or associate-nation players.",
 }
 
 # ============================================================
@@ -241,14 +283,67 @@ def load_existing_names(sport_slug):
         ORDER BY p."Name";
     """
     try:
-        with psycopg2.connect(**DB_CONFIG) as conn:
-            with conn.cursor() as cur:
-                cur.execute(query_sql, (sport_slug,))
-                return [row[0] for row in cur.fetchall()]
+        with closing(psycopg2.connect(DB_URL)) as conn, conn.cursor() as cur:
+            cur.execute(query_sql, (sport_slug,))
+            return [row[0] for row in cur.fetchall()]
     except psycopg2.OperationalError as e:
         print(f"ERROR: Could not connect to the database. Is Docker/Postgres running?")
         print(f"Details: {e}")
         raise
+
+
+def load_attribute_specs(sport_slug: str) -> list[AttributeSpec]:
+    """The sport's clue columns from the database, each with the values its
+    players already use (the accepted vocabulary for fixed-value columns)."""
+    query_sql = """
+        SELECT ad."Key", ad."Type", v."Value"
+        FROM "AttributeDefinitions" ad
+        JOIN "Sports" s ON s."Id" = ad."SportId"
+        LEFT JOIN "PlayerAttributeValues" v ON v."AttributeDefinitionId" = ad."Id"
+        WHERE s."Slug" = %s;
+    """
+    kinds: dict[str, str] = {}
+    values: dict[str, set[str]] = {}
+    with closing(psycopg2.connect(DB_URL)) as conn, conn.cursor() as cur:
+        cur.execute(query_sql, (sport_slug,))
+        for key, attribute_type, value in cur.fetchall():
+            # AttributeType enum in the backend: 0 = Categorical, 1 = Numeric.
+            kinds[key] = NUMERIC if attribute_type == 1 else CATEGORICAL
+            if value is not None and attribute_type != 1:
+                values.setdefault(key, set()).add(value)
+
+    return [AttributeSpec(key, kind, frozenset(values.get(key, ()))) for key, kind in sorted(kinds.items())]
+
+
+def describe_db_target() -> str:
+    """The database the agent writes to, without the password."""
+    params = parse_dsn(DB_URL)
+    return f"database '{params.get('dbname', '?')}' on {params.get('host', 'localhost')}:{params.get('port', '5432')}"
+
+
+def fetch_tiers(sport_slug: str, results: list[ValidationResult]) -> list[str] | None:
+    """Difficulty tiers for the players, computed by the game's own rules via
+    the API. None (with the reason printed) when the API can't be used, since
+    the tier is informational and shouldn't stop a review."""
+    if not ADMIN_KEY:
+        print("(Tier column skipped: set ROSTER_ADMIN_KEY and run the API to see tiers.)")
+        return None
+
+    request = urllib.request.Request(
+        f"{API_URL}/api/admin/sports/{sport_slug}/difficulty-preview",
+        data=json.dumps([r.values for r in results]).encode("utf-8"),
+        headers={"Content-Type": "application/json", "X-Admin-Key": ADMIN_KEY},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            return json.load(response)
+    except urllib.error.HTTPError as e:
+        reason = "the admin key was rejected" if e.code == 401 else f"the API answered {e.code}"
+        print(f"(Tier column skipped: {reason}.)")
+    except (urllib.error.URLError, TimeoutError) as e:
+        print(f"(Tier column skipped: couldn't reach the API at {API_URL}: {e}.)")
+    return None
 
 
 REVIEWER_NOTE_MARKER = "REVIEWER NOTE:"
@@ -280,8 +375,20 @@ def extract_reviewer_notes(raw_text):
     return notes
 
 
+def build_tier_guidance(wanted: frozenset[str] | None) -> str | None:
+    """Prompt text steering research towards the tiers asked for with --tiers,
+    or None for no preference. Deliberately describes the tiers in words
+    rather than the formula's thresholds, which live only in the backend;
+    each player's real tier is checked through the API after research."""
+    if not wanted:
+        return None
+    lines = [TIER_DESCRIPTIONS[tier] for tier in TIERS if tier in wanted]
+    return "Aim for players who fit these difficulty tiers:\n- " + "\n- ".join(lines)
+
+
 def build_prompt(profile, batch_size, tier_guidance, existing_names, note=None):
     existing_list = "\n".join(f"- {name}" for name in existing_names)
+    tier_section = f"\nTIER GUIDANCE:\n{tier_guidance}\n" if tier_guidance else ""
     sport = profile["display_name"]
     source_name = profile["source_name"]
     source_domain = profile["source_domain"]
@@ -298,10 +405,7 @@ def build_prompt(profile, batch_size, tier_guidance, existing_names, note=None):
 TASK: Propose exactly {batch_size} real, currently or recently active {sport} players
 who are NOT already in the existing roster below. For each player, research their
 actual career statistics using web search - do not estimate or guess.
-
-TIER GUIDANCE:
-{tier_guidance}
-{note_line}
+{tier_section}{note_line}
 SOURCE REQUIREMENT: This SDK version does not support a hard technical
 restriction to a single domain, so this is an explicit instruction instead -
 treat {source_name} ({source_domain}) as the required source for every
@@ -471,75 +575,87 @@ def filter_duplicates(chunk_players, seen_keys):
     return kept_players, dropped_names
 
 
-def save_players(players, output_path, fields):
+def save_players(
+    players: list[dict], results: list[ValidationResult], tiers: list[str] | None, output_path: str, fields: list[str]
+) -> None:
     """Always writes the CSV, regardless of whether the DB write happens too -
-    this is the permanent log, kept intentionally even in the direct-write flow."""
+    this is the permanent log of what was proposed, with each player's tier
+    and any problems the checks found."""
+    columns = list(fields) + ["tier", "issues"]
     with open(output_path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fields)
+        writer = csv.DictWriter(f, fieldnames=columns)
         writer.writeheader()
-        for player in players:
-            writer.writerow({field: player.get(field, "") for field in fields})
+        for i, (player, result) in enumerate(zip(players, results)):
+            row = {field: player.get(field, "") for field in fields}
+            row["tier"] = tiers[i] if tiers else ""
+            row["issues"] = "; ".join(result.errors + result.warnings)
+            writer.writerow(row)
 
 
-def print_table(players, fields):
-    """Prints a clean, readable table to the terminal for the one-keypress
-    review step, no external table-formatting library needed."""
-    headers = ["#"] + list(fields)
-    rows = [[str(i)] + [str(p.get(f, "")) for f in fields] for i, p in enumerate(players, start=1)]
+def print_table(
+    players: list[dict], results: list[ValidationResult], tiers: list[str] | None, fields: list[str]
+) -> None:
+    """Prints a clean, readable table to the terminal for the review step, no
+    external table-formatting library needed, followed by every problem the
+    checks found. Status is "ERROR" (won't be written), "check" (will be
+    written, but look at the note) or "ok"."""
+    headers = ["#"] + list(fields) + ["tier", "status"]
+    rows = []
+    for i, (player, result) in enumerate(zip(players, results), start=1):
+        tier = tiers[i - 1] if tiers else "?"
+        status = "ERROR" if result.errors else "check" if result.warnings else "ok"
+        # Show the value that will be written (e.g. "india" corrected to the
+        # game's "India"), falling back to what the model returned.
+        cells = [str(result.values.get(f, player.get(f, ""))) for f in fields]
+        rows.append([str(i)] + cells + [tier, status])
     widths = [max([len(h)] + [len(row[c]) for row in rows]) for c, h in enumerate(headers)]
 
     header = " | ".join(h.ljust(widths[c]) for c, h in enumerate(headers))
-    print("\n" + header)
+    print()
+    print(header)
     print("-" * len(header))
     for row in rows:
         print(" | ".join(cell.ljust(widths[c]) for c, cell in enumerate(row)))
+
+    for i, result in enumerate(results, start=1):
+        if result.errors or result.warnings:
+            print(f"  {i}. {result.name or '(no name)'}:")
+            for error in result.errors:
+                print(f"       error: {error}")
+            for warning in result.warnings:
+                print(f"       check: {warning}")
     print()
 
 
-def write_players_to_db(players, sport_slug, fields):
-    """Writes players directly to the database in one transaction. If
-    anything fails partway through, the whole batch is rolled back rather
-    than left half-written."""
-    with psycopg2.connect(**DB_CONFIG) as conn:
-        with conn.cursor() as cur:
+def write_players_to_db(results: list[ValidationResult], sport_slug: str) -> None:
+    """Writes validated players to the database in one transaction, using their
+    cleaned values. If anything fails partway through, the whole batch is
+    rolled back rather than left half-written."""
+    with closing(psycopg2.connect(DB_URL)) as conn:
+        with conn, conn.cursor() as cur:  # commits on success, rolls back on any error
             cur.execute('SELECT "Id" FROM "Sports" WHERE "Slug" = %s', (sport_slug,))
             row = cur.fetchone()
             if row is None:
                 raise ValueError(f"No sport found with slug '{sport_slug}'")
             sport_id = row[0]
 
-            # Look up every AttributeDefinition ID for this sport once,
-            # keyed by its Key column, so each player's inserts can reference
-            # the correct AttributeDefinitionId.
-            cur.execute(
-                'SELECT "Key", "Id" FROM "AttributeDefinitions" WHERE "SportId" = %s',
-                (sport_id,),
-            )
+            cur.execute('SELECT "Key", "Id" FROM "AttributeDefinitions" WHERE "SportId" = %s', (sport_id,))
             attr_ids = dict(cur.fetchall())
 
-            for player in players:
+            for result in results:
                 cur.execute(
                     'INSERT INTO "Players" ("Name", "SportId", "IsOverridden", "DifficultyOverride") '
                     'VALUES (%s, %s, false, NULL) RETURNING "Id"',
-                    (player["name"], sport_id),
+                    (result.name, sport_id),
                 )
                 player_id = cur.fetchone()[0]
-
-                for field in fields:
-                    if field == "name":
-                        continue
-                    if field not in attr_ids:
-                        raise ValueError(
-                            f"No AttributeDefinition found for key '{field}' on this sport - "
-                            f"aborting transaction, nothing will be written."
-                        )
+                for key, value in result.values.items():
                     cur.execute(
                         'INSERT INTO "PlayerAttributeValues" '
-                        '("PlayerId", "AttributeDefinitionId", "Value", "IsManuallyEdited") '
-                        'VALUES (%s, %s, %s, false)',
-                        (player_id, attr_ids[field], str(player.get(field, ""))),
+                        '("PlayerId", "AttributeDefinitionId", "Value") '
+                        'VALUES (%s, %s, %s)',
+                        (player_id, attr_ids[key], value),
                     )
-        conn.commit()
 
 
 def batch_count(value):
@@ -570,7 +686,22 @@ def build_arg_parser():
         default=DEFAULT_BATCH_SIZE,
         help=f"number of players to research (1-{MAX_BATCH_SIZE}, default {DEFAULT_BATCH_SIZE})",
     )
+    parser.add_argument(
+        "--tiers",
+        type=tiers_arg,
+        default=DEFAULT_TIERS,
+        help=f"difficulty tiers to aim for, comma-separated, e.g. medium,hard, or 'any' for no preference "
+        f"(default: {describe_tiers(DEFAULT_TIERS)}). Players whose actual tier differs are flagged in "
+        "the review table.",
+    )
     return parser
+
+
+def tiers_arg(value: str) -> frozenset[str]:
+    try:
+        return parse_tiers(value)
+    except ValueError as e:
+        raise argparse.ArgumentTypeError(str(e))
 
 
 async def research_players(profile, count, tier_guidance, exclusion_names, seen_keys, note=None):
@@ -697,12 +828,24 @@ async def main(args):
     sport_slug = args.sport
     target = args.count
     profile = SPORT_PROFILES[sport_slug]
-    tier_guidance = TIER_GUIDANCE or profile["default_tier_guidance"]
+    wanted_tiers = args.tiers
+    tier_guidance = build_tier_guidance(wanted_tiers)
     fields = profile["fields"] + DISPLAY_ONLY_FIELDS
+    print(f"Aiming for {describe_tiers(wanted_tiers)} players." if wanted_tiers else "No tier preference.")
 
-    print(f"Connecting to local database to load existing {profile['display_name']} roster...")
+    print(f"Connecting to {describe_db_target()} to load the existing {profile['display_name']} roster...")
     existing_names = load_existing_names(sport_slug)
     print(f"Loaded {len(existing_names)} existing names to avoid duplicating.")
+
+    # Checked before any research is paid for: the fields the agent asks for
+    # must be exactly the sport's columns, or players couldn't be written.
+    specs = load_attribute_specs(sport_slug)
+    problems = schema_mismatch(profile["fields"], specs)
+    if problems:
+        sys.exit(
+            "ERROR: this sport's fields in SPORT_PROFILES don't match its columns in the database:\n  "
+            + "\n  ".join(problems)
+        )
 
     # Keys are never removed from seen_keys, so a player the reviewer removes
     # stays excluded for the rest of this run. Nothing persists between runs.
@@ -726,12 +869,24 @@ async def main(args):
     await search(target)
 
     while True:
-        # Rewrite the CSV log every round so it always matches the current list.
-        save_players(players, OUTPUT_FILE, fields)
-        print(f"\n{len(players)} of {target} players in the current list (logged to {OUTPUT_FILE}).")
-        print_table(players, fields)
+        results = [validate_player(p, specs) for p in players]
+        valid = [r for r in results if r.is_valid]
+        tiers = fetch_tiers(sport_slug, results) if players else None
+        if tiers:
+            # A player with errors has unreliable stats, so its tier is too.
+            tiers = [tier if result.is_valid else "-" for tier, result in zip(tiers, results)]
+            for tier, result in zip(tiers, results):
+                warning = tier_warning(tier, wanted_tiers)
+                if warning:
+                    result.warnings.append(warning)
 
-        print(f"  a  accept and write all {len(players)}")
+        # Rewrite the CSV log every round so it always matches the current list.
+        save_players(players, results, tiers, OUTPUT_FILE, fields)
+        print(f"\n{len(players)} of {target} players in the current list (logged to {OUTPUT_FILE}).")
+        print_table(players, results, tiers, fields)
+
+        skipped_note = f", skipping {len(players) - len(valid)} with errors" if len(valid) < len(players) else ""
+        print(f"  a  accept and write {len(valid)}{skipped_note}")
         print("  r  remove players by number, for example 2,3")
         if len(players) < target:
             print(f"  s  search for {target - len(players)} more to reach {target}")
@@ -748,17 +903,25 @@ async def main(args):
             return
 
         if choice == "a":
-            if not players:
-                print("There are no players to write. Choose r, s or q.")
+            if not valid:
+                print("No player can be written (every one has an error). Choose r, s or q.")
                 continue
-            if len(players) < target:
-                print(f"\nWriting {len(players)} of the {target} requested.")
+            confirm = input(f"Write {len(valid)} players to {describe_db_target()}? Type yes to confirm: ")
+            if confirm.strip().lower() != "yes":
+                print("Nothing written. Back to the review menu.")
+                continue
             try:
-                write_players_to_db(players, sport_slug, profile["fields"])
-                print(f"\nSuccess: {len(players)} players written to the database.")
+                write_players_to_db(valid, sport_slug)
+                print(f"\nSuccess: {len(valid)} players written to {describe_db_target()}.")
             except Exception as e:
                 print(f"\nERROR: Database write failed, nothing was committed: {e}")
                 print(f"The CSV log at {OUTPUT_FILE} still has everything - safe to retry.")
+                return
+            skipped = [r for r in results if not r.is_valid]
+            if skipped:
+                print(f"Skipped {len(skipped)} with errors (details in {OUTPUT_FILE}):")
+                for result in skipped:
+                    print(f"  {result.name or '(no name)'}: {result.errors[0]}")
             return
 
         if choice == "r":

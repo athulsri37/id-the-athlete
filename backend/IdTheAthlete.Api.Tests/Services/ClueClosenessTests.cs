@@ -10,7 +10,7 @@ namespace IdTheAthlete.Api.Tests.Services;
 // Pins down how every clue is judged (match, close, direction) for each
 // sport, end to end through GameService.SubmitGuessAsync, so the rules can
 // be reorganised without changing what players see. Settings default to the
-// values seeded in SeedData/00-app-settings.sql.
+// values the AddReferenceData migration creates.
 public class ClueClosenessTests
 {
     private const string TennisMen = "tennis-men";

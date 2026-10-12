@@ -1,6 +1,7 @@
 using IdTheAthlete.Api.Data;
 using IdTheAthlete.Api.Dtos;
 using IdTheAthlete.Api.Models;
+using IdTheAthlete.Api.Errors;
 using IdTheAthlete.Api.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Time.Testing;
@@ -90,7 +91,7 @@ public class GameServiceGuessCountTests
     {
         var token = await DailyTokenAfter(MaxGuesses);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => DailyWrongGuess(token));
+        await Assert.ThrowsAsync<InvalidRequestException>(() => DailyWrongGuess(token));
     }
 
     [Fact]
@@ -99,7 +100,7 @@ public class GameServiceGuessCountTests
         var forged = GameTokenServiceTests.Create(key: "attacker-chosen-key-that-is-long-enough")
             .Issue(new DailyGameState(1, Today, MaxGuesses - 1));
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => DailyWrongGuess(forged));
+        await Assert.ThrowsAsync<InvalidRequestException>(() => DailyWrongGuess(forged));
     }
 
     [Fact]
@@ -107,13 +108,13 @@ public class GameServiceGuessCountTests
     {
         var otherSportToken = _tokens.Issue(new DailyGameState(2, Today, 3));
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => DailyWrongGuess(otherSportToken));
+        await Assert.ThrowsAsync<InvalidRequestException>(() => DailyWrongGuess(otherSportToken));
     }
 
     [Fact]
     public async Task Daily_HintWithoutToken_Throws()
     {
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.GetCountryHintAsync(Slug, "daily", null));
+        await Assert.ThrowsAsync<InvalidRequestException>(() => _service.GetCountryHintAsync(Slug, "daily", null));
     }
 
     [Fact]
@@ -121,7 +122,7 @@ public class GameServiceGuessCountTests
     {
         var token = await DailyTokenAfter(4);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.GetCountryHintAsync(Slug, "daily", null, gameToken: token));
+        await Assert.ThrowsAsync<InvalidRequestException>(() => _service.GetCountryHintAsync(Slug, "daily", null, gameToken: token));
     }
 
     [Fact]
@@ -149,7 +150,7 @@ public class GameServiceGuessCountTests
     {
         var sessionId = _sessions.CreateSession(MysteryId);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.GetCountryHintAsync(Slug, "easy", sessionId));
+        await Assert.ThrowsAsync<InvalidRequestException>(() => _service.GetCountryHintAsync(Slug, "easy", sessionId));
     }
 
     [Fact]
@@ -157,7 +158,7 @@ public class GameServiceGuessCountTests
     {
         var sessionId = _sessions.CreateSession(MysteryId);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        await Assert.ThrowsAsync<InvalidRequestException>(() =>
             _service.SubmitGuessAsync(Slug, new GuessRequestDto { PlayerId = 999, Mode = "easy", SessionId = sessionId }));
 
         Assert.Equal(0, _sessions.GetGuessCount(sessionId));

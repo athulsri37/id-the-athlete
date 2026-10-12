@@ -1,3 +1,4 @@
+using IdTheAthlete.Api.Errors;
 using IdTheAthlete.Api.Services;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -38,7 +39,7 @@ public class GameTokenServiceTests
         var signature = service.Issue(State).Split('.')[1];
         var forgedPayload = service.Issue(State with { GuessCount = 7 }).Split('.')[0];
 
-        Assert.Throws<InvalidOperationException>(() => service.Read($"{forgedPayload}.{signature}"));
+        Assert.Throws<InvalidRequestException>(() => service.Read($"{forgedPayload}.{signature}"));
     }
 
     [Fact]
@@ -46,7 +47,7 @@ public class GameTokenServiceTests
     {
         var other = Create(key: "a-completely-different-signing-key-456");
 
-        Assert.Throws<InvalidOperationException>(() => Create().Read(other.Issue(State)));
+        Assert.Throws<InvalidRequestException>(() => Create().Read(other.Issue(State)));
     }
 
     [Theory]
@@ -56,7 +57,7 @@ public class GameTokenServiceTests
     [InlineData("a.b.c")]
     public void Read_Malformed_Throws(string token)
     {
-        Assert.Throws<InvalidOperationException>(() => Create().Read(token));
+        Assert.Throws<InvalidRequestException>(() => Create().Read(token));
     }
 
     [Fact]
@@ -81,7 +82,7 @@ public class GameTokenServiceTests
     {
         var service = Create();
 
-        Assert.Throws<InvalidOperationException>(() => service.ReadTrivia(service.Issue(State)));
+        Assert.Throws<InvalidRequestException>(() => service.ReadTrivia(service.Issue(State)));
     }
 
     [Fact]
@@ -89,7 +90,7 @@ public class GameTokenServiceTests
     {
         var service = Create();
 
-        Assert.Throws<InvalidOperationException>(() => service.Read(service.IssueTrivia(new TriviaGrant(3, 42))));
+        Assert.Throws<InvalidRequestException>(() => service.Read(service.IssueTrivia(new TriviaGrant(3, 42))));
     }
 
     [Fact]
@@ -97,7 +98,7 @@ public class GameTokenServiceTests
     {
         var other = Create(key: "a-completely-different-signing-key-456");
 
-        Assert.Throws<InvalidOperationException>(() => Create().ReadTrivia(other.IssueTrivia(new TriviaGrant(3, 42))));
+        Assert.Throws<InvalidRequestException>(() => Create().ReadTrivia(other.IssueTrivia(new TriviaGrant(3, 42))));
     }
 
     [Fact]

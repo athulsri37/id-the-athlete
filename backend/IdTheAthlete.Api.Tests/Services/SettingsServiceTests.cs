@@ -5,6 +5,7 @@ using IdTheAthlete.Api.Tests.TestSupport;
 using Microsoft.Extensions.Time.Testing;
 using IdTheAthlete.Api.Data;
 using IdTheAthlete.Api.Models;
+using IdTheAthlete.Api.Errors;
 using IdTheAthlete.Api.Services;
 using Microsoft.EntityFrameworkCore;
 
@@ -28,6 +29,21 @@ public class SettingsServiceTests
         return new SettingsService(NewContext(), NullLogger<SettingsService>.Instance, new SettingsFailureLogThrottle(TimeProvider.System));
     }
 
+    // The keys of a batch that hold a parseable decimal, with their values.
+    private static Dictionary<string, decimal> Decimals(SettingsBatch batch, IEnumerable<string> keys)
+    {
+        var result = new Dictionary<string, decimal>();
+        foreach (var key in keys)
+        {
+            if (batch.TryGetDecimal(key, out var value))
+                result[key] = value;
+        }
+        return result;
+    }
+
+    private static async Task<Dictionary<string, decimal>> ReadDecimals(SettingsService settings, params string[] keys) =>
+        Decimals(await settings.GetBatchAsync(keys), keys);
+
     [Fact]
     public async Task A_flag_is_on_only_when_its_value_is_exactly_true()
     {
@@ -42,13 +58,28 @@ public class SettingsServiceTests
     }
 
     [Fact]
-    public async Task Decimals_skip_missing_and_unparseable_values_in_one_batch()
+    public async Task A_batch_reads_flags_and_decimals_together_skipping_missing_and_unparseable_values()
     {
-        var settings = Seed(("Percent", "15"), ("Floor", "500"), ("Junk", "lots"), ("Empty", ""));
+        var settings = Seed(("Percent", "15"), ("Floor", "500"), ("Junk", "lots"), ("Empty", ""), ("On", "true"), ("Capital", "True"));
 
-        var result = await settings.GetDecimalsAsync(new[] { "Percent", "Floor", "Junk", "Empty", "Missing" });
+        var batch = await settings.GetBatchAsync(new[] { "Percent", "Floor", "Junk", "Empty", "Missing", "On", "Capital" });
 
-        Assert.Equal(new Dictionary<string, decimal> { ["Percent"] = 15m, ["Floor"] = 500m }, result);
+        Assert.Equal(new Dictionary<string, decimal> { ["Percent"] = 15m, ["Floor"] = 500m },
+            Decimals(batch, new[] { "Percent", "Floor", "Junk", "Empty", "Missing" }));
+        Assert.True(batch.IsEnabled("On"));
+        Assert.False(batch.IsEnabled("Capital"));
+        Assert.False(batch.IsEnabled("Missing"));
+    }
+
+    [Fact]
+    public async Task A_batch_only_holds_the_keys_it_asked_for()
+    {
+        var settings = Seed(("Asked", "true"), ("NotAsked", "true"));
+
+        var batch = await settings.GetBatchAsync(new[] { "Asked" });
+
+        Assert.True(batch.IsEnabled("Asked"));
+        Assert.False(batch.IsEnabled("NotAsked"));
     }
 
     [Fact]
@@ -64,7 +95,7 @@ public class SettingsServiceTests
             Assert.True(decimal.TryParse("2.5", out var cultureSensitive));
             Assert.Equal(25m, cultureSensitive);
 
-            var result = await settings.GetDecimalsAsync(new[] { "Fraction", "Percent", "Floor" });
+            var result = await ReadDecimals(settings, "Fraction", "Percent", "Floor");
 
             Assert.Equal(new Dictionary<string, decimal> { ["Fraction"] = 2.5m, ["Percent"] = 15m, ["Floor"] = 500m }, result);
         }
@@ -75,7 +106,7 @@ public class SettingsServiceTests
     }
 
     [Fact]
-    public async Task Decimals_fall_back_to_built_in_values_and_log_when_the_database_is_unreachable()
+    public async Task A_batch_falls_back_to_built_in_values_and_logs_once_when_the_database_is_unreachable()
     {
         var unreachable = new DbContextOptionsBuilder<GameDbContext>()
             .UseNpgsql("Host=127.0.0.1;Port=1;Database=unreachable;Username=x;Password=x;Timeout=3")
@@ -83,25 +114,30 @@ public class SettingsServiceTests
         var logger = new CapturingLogger<SettingsService>();
         var settings = new SettingsService(new GameDbContext(unreachable), logger, new SettingsFailureLogThrottle(TimeProvider.System));
 
-        var result = await settings.GetDecimalsAsync(new[]
+        string[] numericKeys =
         {
             "CricketMatchesClosenessPercent", "CricketMatchesClosenessFloor",
             "CricketRunsClosenessPercent", "CricketRunsClosenessFloor",
             "CricketWicketsClosenessPercent", "CricketWicketsClosenessFloor",
             "SomeFutureSetting",
-        });
+        };
+        var batch = await settings.GetBatchAsync(numericKeys.Concat(new[] { "CricketRoleClosenessEnabled", "AiTriviaEnabled", "SomeFutureFlag" }));
 
         Assert.Equal(new Dictionary<string, decimal>
         {
             ["CricketMatchesClosenessPercent"] = 15m, ["CricketMatchesClosenessFloor"] = 20m,
             ["CricketRunsClosenessPercent"] = 15m, ["CricketRunsClosenessFloor"] = 500m,
             ["CricketWicketsClosenessPercent"] = 15m, ["CricketWicketsClosenessFloor"] = 15m,
-        }, result);
+        }, Decimals(batch, numericKeys));
+        Assert.True(batch.IsEnabled("CricketRoleClosenessEnabled"));
+        Assert.False(batch.IsEnabled("AiTriviaEnabled"));
+        Assert.False(batch.IsEnabled("SomeFutureFlag"));
 
         var entry = Assert.Single(logger.Entries);
         Assert.Equal(LogLevel.Error, entry.Level);
         Assert.NotNull(entry.Exception);
         Assert.Contains("SomeFutureSetting", entry.Message);
+        Assert.Contains("SomeFutureFlag", entry.Message);
     }
 
     [Fact]
@@ -146,11 +182,11 @@ public class SettingsServiceTests
         // Two failures inside the window: both return the fallback, one log line each.
         Assert.True(await settings.IsEnabledAsync("CountryClosenessEnabled"));
         Assert.True(await settings.IsEnabledAsync("CountryClosenessEnabled"));
-        Assert.Equal(expectedNumeric, await settings.GetDecimalsAsync(numericKeys));
-        Assert.Equal(expectedNumeric, await settings.GetDecimalsAsync(numericKeys));
+        Assert.Equal(expectedNumeric, await ReadDecimals(settings, numericKeys));
+        Assert.Equal(expectedNumeric, await ReadDecimals(settings, numericKeys));
         Assert.Equal(2, logger.Entries.Count);
         Assert.Single(logger.Entries, e => e.Message.Contains("setting CountryClosenessEnabled failed"));
-        Assert.Single(logger.Entries, e => e.Message.Contains("numeric settings failed"));
+        Assert.Single(logger.Entries, e => e.Message.Contains("Reading settings failed"));
 
         // Still inside the window: nothing new logged, values unchanged.
         time.Advance(SettingsFailureLogThrottle.Window - TimeSpan.FromSeconds(1));
@@ -160,7 +196,7 @@ public class SettingsServiceTests
         // Window elapsed: the next failure of each logs again.
         time.Advance(TimeSpan.FromSeconds(1));
         Assert.True(await settings.IsEnabledAsync("CountryClosenessEnabled"));
-        Assert.Equal(expectedNumeric, await settings.GetDecimalsAsync(numericKeys));
+        Assert.Equal(expectedNumeric, await ReadDecimals(settings, numericKeys));
         Assert.Equal(4, logger.Entries.Count);
         Assert.Equal(2, logger.Entries.Count(e => e.Message.Contains("setting CountryClosenessEnabled failed")));
 
@@ -169,21 +205,21 @@ public class SettingsServiceTests
         Assert.Equal("Reading setting CountryClosenessEnabled failed; using its built-in fallback value True.", flagLines[0]);
         Assert.Equal("Reading setting CountryClosenessEnabled failed; using its built-in fallback value True" +
                      " (2 failures suppressed since last log).", flagLines[1]);
-        var numericLines = logger.Entries.Select(e => e.Message).Where(m => m.Contains("numeric settings failed")).ToList();
+        var numericLines = logger.Entries.Select(e => e.Message).Where(m => m.Contains("Reading settings failed")).ToList();
         Assert.DoesNotContain("suppressed", numericLines[0]);
-        Assert.Equal("Reading numeric settings failed; using built-in fallback values for" +
+        Assert.Equal("Reading settings failed; using built-in fallback values for" +
                      " CricketRunsClosenessPercent, CricketRunsClosenessFloor (1 failure suppressed since last log).", numericLines[1]);
     }
 
     [Fact]
-    public async Task Numeric_failure_message_only_includes_clauses_that_name_keys()
+    public async Task Batch_failure_message_only_includes_clauses_that_name_keys()
     {
         async Task<string> MessageFor(params string[] keys)
         {
             var broken = NewContext();
             broken.Dispose();
             var logger = new CapturingLogger<SettingsService>();
-            await new SettingsService(broken, logger, new SettingsFailureLogThrottle(TimeProvider.System)).GetDecimalsAsync(keys);
+            await new SettingsService(broken, logger, new SettingsFailureLogThrottle(TimeProvider.System)).GetBatchAsync(keys);
             return Assert.Single(logger.Entries).Message;
         }
 
@@ -191,11 +227,11 @@ public class SettingsServiceTests
         var both = await MessageFor("CricketRunsClosenessPercent", "SomeFutureSetting");
         var unknownOnly = await MessageFor("SomeFutureSetting");
 
-        Assert.Equal("Reading numeric settings failed; using built-in fallback values for" +
+        Assert.Equal("Reading settings failed; using built-in fallback values for" +
                      " CricketRunsClosenessPercent, CricketRunsClosenessFloor.", knownOnly);
-        Assert.Equal("Reading numeric settings failed; using built-in fallback values for CricketRunsClosenessPercent" +
-                     " and treating SomeFutureSetting as not configured.", both);
-        Assert.Equal("Reading numeric settings failed; treating SomeFutureSetting as not configured.", unknownOnly);
+        Assert.Equal("Reading settings failed; using built-in fallback values for CricketRunsClosenessPercent" +
+                     " and treating SomeFutureSetting as not set.", both);
+        Assert.Equal("Reading settings failed; treating SomeFutureSetting as not set.", unknownOnly);
         Assert.All(new[] { knownOnly, both, unknownOnly }, m => Assert.DoesNotContain("  ", m));
     }
 
@@ -211,10 +247,10 @@ public class SettingsServiceTests
     {
         var settings = Seed(("Flag", "true"), ("Theme", "retro"));
 
-        var unknown = await Assert.ThrowsAsync<InvalidOperationException>(() => settings.UpdateAsync("Nope", "x"));
+        var unknown = await Assert.ThrowsAsync<NotFoundException>(() => settings.UpdateAsync("Nope", "x"));
         Assert.Equal("Setting 'Nope' not found.", unknown.Message);
 
-        var notBoolean = await Assert.ThrowsAsync<InvalidOperationException>(() => settings.UpdateAsync("Flag", "maybe"));
+        var notBoolean = await Assert.ThrowsAsync<InvalidRequestException>(() => settings.UpdateAsync("Flag", "maybe"));
         Assert.Equal("Setting 'Flag' is boolean; value must be 'true' or 'false'.", notBoolean.Message);
 
         await settings.UpdateAsync("Flag", "false");
@@ -229,7 +265,7 @@ public class SettingsServiceTests
     {
         var reader = Seed(("CountryClosenessEnabled", "true"), ("CricketRunsClosenessPercent", "15"));
         Assert.True(await reader.IsEnabledAsync("CountryClosenessEnabled"));
-        Assert.Equal(15m, (await reader.GetDecimalsAsync(new[] { "CricketRunsClosenessPercent" }))["CricketRunsClosenessPercent"]);
+        Assert.Equal(15m, (await ReadDecimals(reader, "CricketRunsClosenessPercent"))["CricketRunsClosenessPercent"]);
 
         // An admin request on a different context changes both values.
         using (var adminDb = NewContext())
@@ -241,7 +277,7 @@ public class SettingsServiceTests
 
         // The same reader instance sees the new values immediately.
         Assert.False(await reader.IsEnabledAsync("CountryClosenessEnabled"));
-        Assert.Equal(25m, (await reader.GetDecimalsAsync(new[] { "CricketRunsClosenessPercent" }))["CricketRunsClosenessPercent"]);
+        Assert.Equal(25m, (await ReadDecimals(reader, "CricketRunsClosenessPercent"))["CricketRunsClosenessPercent"]);
     }
 
     private GameDbContext SeedFresh(params (string Key, string Value)[] rows)

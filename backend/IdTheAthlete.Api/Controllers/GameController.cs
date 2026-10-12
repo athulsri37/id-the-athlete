@@ -22,17 +22,9 @@ public class GameController : ControllerBase
     // POST /api/sports/tennis-men/game/start?difficulty=easy
     // Starts a new practice-mode game and returns a sessionId to use for guesses.
     [HttpPost("start")]
-    public async Task<IActionResult> StartGame(string sportSlug, [FromQuery] string difficulty = "easy")
+    public async Task<ActionResult<StartGameResponseDto>> StartGame(string sportSlug, [FromQuery] string difficulty = "easy")
     {
-        try
-        {
-            var result = await _gameService.StartPracticeGameAsync(sportSlug, difficulty);
-            return Ok(result);
-        }
-        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        return await _gameService.StartPracticeGameAsync(sportSlug, difficulty);
     }
 
     // POST /api/sports/tennis-men/game/guess
@@ -40,17 +32,9 @@ public class GameController : ControllerBase
     // gameToken from the previous guess after the first one) or an active
     // practice session (mode=easy|medium|hard, sessionId required).
     [HttpPost("guess")]
-    public async Task<IActionResult> SubmitGuess(string sportSlug, [FromBody] GuessRequestDto request)
+    public async Task<ActionResult<GuessResponseDto>> SubmitGuess(string sportSlug, [FromBody] GuessRequestDto request)
     {
-        try
-        {
-            var result = await _gameService.SubmitGuessAsync(sportSlug, request);
-            return Ok(result);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        return await _gameService.SubmitGuessAsync(sportSlug, request);
     }
 
     // GET /api/sports/tennis-men/game/trivia?triviaToken=...
@@ -80,17 +64,10 @@ public class GameController : ControllerBase
     // is daily-mode only and optional -- omitted means today, otherwise a
     // specific Past Challenge date.
     [HttpGet("hint/country")]
-    public async Task<IActionResult> GetCountryHint(string sportSlug, [FromQuery] string mode = "daily", [FromQuery] string? sessionId = null, [FromQuery] string? date = null, [FromQuery] string? gameToken = null)
+    public async Task<ActionResult<CountryHintDto>> GetCountryHint(string sportSlug, [FromQuery] string mode = "daily", [FromQuery] string? sessionId = null, [FromQuery] string? date = null, [FromQuery] string? gameToken = null)
     {
-        try
-        {
-            var country = await _gameService.GetCountryHintAsync(sportSlug, mode, sessionId, date, gameToken);
-            return Ok(new CountryHintDto { Country = country });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        var country = await _gameService.GetCountryHintAsync(sportSlug, mode, sessionId, date, gameToken);
+        return new CountryHintDto { Country = country };
     }
 
     // GET /api/sports/tennis-men/attributes
@@ -98,17 +75,9 @@ public class GameController : ControllerBase
     // clue-grid column headers, which must reflect whatever attributes this
     // sport actually has rather than assuming Tennis's fixed set.
     [HttpGet("/api/sports/{sportSlug}/attributes")]
-    public async Task<IActionResult> GetAttributeDefinitions(string sportSlug)
+    public async Task<ActionResult<List<AttributeDefinitionDto>>> GetAttributeDefinitions(string sportSlug)
     {
-        try
-        {
-            var attributes = await _gameService.GetAttributeDefinitionsAsync(sportSlug);
-            return Ok(attributes);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
+        return await _gameService.GetAttributeDefinitionsAsync(sportSlug);
     }
 
     // GET /api/sports/tennis-men/daily-puzzles
@@ -116,16 +85,8 @@ public class GameController : ControllerBase
     // sport, most recent first -- powers the Past Challenges list. No
     // completion status here; that's tracked client-side.
     [HttpGet("/api/sports/{sportSlug}/daily-puzzles")]
-    public async Task<IActionResult> GetDailyPuzzleDates(string sportSlug)
+    public async Task<ActionResult<List<string>>> GetDailyPuzzleDates(string sportSlug)
     {
-        try
-        {
-            var dates = await _dailyPuzzleService.GetDailyPuzzleDatesAsync(sportSlug);
-            return Ok(dates);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
+        return await _dailyPuzzleService.GetDailyPuzzleDatesAsync(sportSlug);
     }
 }

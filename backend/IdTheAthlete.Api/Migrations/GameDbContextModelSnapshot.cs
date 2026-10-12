@@ -151,9 +151,6 @@ namespace IdTheAthlete.Api.Migrations
                     b.Property<int>("AttributeDefinitionId")
                         .HasColumnType("integer");
 
-                    b.Property<bool>("IsManuallyEdited")
-                        .HasColumnType("boolean");
-
                     b.Property<int>("PlayerId")
                         .HasColumnType("integer");
 

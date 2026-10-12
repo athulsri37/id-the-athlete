@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
+using IdTheAthlete.Api.Errors;
 
 namespace IdTheAthlete.Api.Services;
 
@@ -65,9 +66,8 @@ public sealed class GameTokenService : IGameTokenService
         return $"{Base64Url.EncodeToString(payload)}.{Base64Url.EncodeToString(signature)}";
     }
 
-    // Throws InvalidOperationException for anything this server didn't sign
-    // exactly as-is with this key, which the controller turns into a 400
-    // like every other bad game request.
+    // Throws InvalidRequestException (a 400) for anything this server didn't
+    // sign exactly as-is with this key, like every other bad game request.
     private static T Verify<T>(byte[] key, string token) where T : class
     {
         var parts = token.Split('.');
@@ -95,6 +95,6 @@ public sealed class GameTokenService : IGameTokenService
         return JsonSerializer.Deserialize<T>(payload) ?? throw InvalidToken();
     }
 
-    private static InvalidOperationException InvalidToken() =>
+    private static InvalidRequestException InvalidToken() =>
         new("This game could not be verified. Start the game again.");
 }

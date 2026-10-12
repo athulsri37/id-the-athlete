@@ -20,81 +20,55 @@ public class AdminController : ControllerBase
     }
 
     [HttpGet("sports")]
-    public async Task<IActionResult> GetSports()
+    public async Task<ActionResult<List<AdminSportDto>>> GetSports()
     {
-        return Ok(await _adminService.GetSportsAsync());
+        return await _adminService.GetSportsAsync();
     }
 
     [HttpGet("sports/{sportSlug}/players")]
-    public async Task<IActionResult> GetPlayers(string sportSlug)
+    public async Task<ActionResult<List<AdminPlayerSummaryDto>>> GetPlayers(string sportSlug)
     {
-        try
-        {
-            return Ok(await _adminService.GetPlayersAsync(sportSlug));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
+        return await _adminService.GetPlayersAsync(sportSlug);
     }
 
     [HttpGet("sports/{sportSlug}/attributes/{attributeKey}/distinct-values")]
-    public async Task<IActionResult> GetDistinctValues(string sportSlug, string attributeKey)
+    public async Task<ActionResult<List<string>>> GetDistinctValues(string sportSlug, string attributeKey)
     {
-        try
-        {
-            return Ok(await _adminService.GetDistinctValuesAsync(sportSlug, attributeKey));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
+        return await _adminService.GetDistinctValuesAsync(sportSlug, attributeKey);
+    }
+
+    // POST /api/admin/sports/{sportSlug}/difficulty-preview
+    // Body: one object per proposed player, attribute key -> value. Returns
+    // their difficulty tiers in the same order. Used by the roster agent.
+    [HttpPost("sports/{sportSlug}/difficulty-preview")]
+    public async Task<ActionResult<List<string>>> PreviewDifficultyTiers(string sportSlug, [FromBody] List<Dictionary<string, string>> players)
+    {
+        return await _adminService.PreviewDifficultyTiersAsync(sportSlug, players);
     }
 
     [HttpGet("players/{playerId}")]
-    public async Task<IActionResult> GetPlayer(int playerId)
+    public async Task<ActionResult<AdminPlayerDetailDto>> GetPlayer(int playerId)
     {
-        try
-        {
-            return Ok(await _adminService.GetPlayerAsync(playerId));
-        }
-        catch (InvalidOperationException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
+        return await _adminService.GetPlayerAsync(playerId);
     }
 
     [HttpPut("players/{playerId}")]
     public async Task<IActionResult> UpdatePlayer(int playerId, [FromBody] AdminPlayerUpdateDto request)
     {
-        try
-        {
-            await _adminService.UpdatePlayerAsync(playerId, request);
-            return Ok(new { message = "Player updated." });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        await _adminService.UpdatePlayerAsync(playerId, request);
+        return Ok(new { message = "Player updated." });
     }
 
     [HttpGet("settings")]
-    public async Task<IActionResult> GetSettings()
+    public async Task<ActionResult<List<AdminSettingDto>>> GetSettings()
     {
-        return Ok(await _adminService.GetSettingsAsync());
+        return await _adminService.GetSettingsAsync();
     }
 
     [HttpPut("settings/{key}")]
     public async Task<IActionResult> UpdateSetting(string key, [FromBody] AdminSettingUpdateDto request)
     {
-        try
-        {
-            await _adminService.UpdateSettingAsync(key, request.Value);
-            return Ok(new { message = "Setting updated." });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        await _adminService.UpdateSettingAsync(key, request.Value);
+        return Ok(new { message = "Setting updated." });
     }
 }

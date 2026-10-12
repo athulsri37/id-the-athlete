@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using IdTheAthlete.Api.Data;
 using IdTheAthlete.Api.Dtos;
 using IdTheAthlete.Api.Models;
+using IdTheAthlete.Api.Errors;
 
 namespace IdTheAthlete.Api.Services;
 
@@ -16,12 +17,40 @@ public class AdminService : IAdminService
     private readonly GameDbContext _db;
     private readonly TimeProvider _timeProvider;
     private readonly ISettingsService _settings;
+    private readonly IDifficultyService _difficulty;
 
-    public AdminService(GameDbContext db, TimeProvider timeProvider, ISettingsService settings)
+    public AdminService(GameDbContext db, TimeProvider timeProvider, ISettingsService settings, IDifficultyService difficulty)
     {
         _db = db;
         _timeProvider = timeProvider;
         _settings = settings;
+        _difficulty = difficulty;
+    }
+
+    // Difficulty tiers for players that aren't in the database yet (the
+    // roster agent's proposals), computed by the same rules the game uses so
+    // the agent never needs its own copy of the formulas. Each item maps
+    // attribute key to value; keys this sport doesn't have are ignored.
+    public async Task<List<string>> PreviewDifficultyTiersAsync(string sportSlug, List<Dictionary<string, string>> players)
+    {
+        var sport = await _db.Sports.FirstOrDefaultAsync(s => s.Slug == sportSlug)
+            ?? throw new NotFoundException($"Sport '{sportSlug}' not found");
+
+        var definitions = await _db.AttributeDefinitions
+            .Where(a => a.SportId == sport.Id)
+            .ToDictionaryAsync(a => a.Key);
+
+        return players
+            .Select(stats => new Player
+            {
+                SportId = sport.Id,
+                AttributeValues = stats
+                    .Where(stat => definitions.ContainsKey(stat.Key))
+                    .Select(stat => new PlayerAttributeValue { Value = stat.Value, AttributeDefinition = definitions[stat.Key] })
+                    .ToList(),
+            })
+            .Select(player => _difficulty.ComputeDifficultyTier(player, sport))
+            .ToList();
     }
 
     public async Task<List<AdminSportDto>> GetSportsAsync()
@@ -35,7 +64,7 @@ public class AdminService : IAdminService
     public async Task<List<AdminPlayerSummaryDto>> GetPlayersAsync(string sportSlug)
     {
         var sport = await _db.Sports.FirstOrDefaultAsync(s => s.Slug == sportSlug)
-            ?? throw new InvalidOperationException($"Sport '{sportSlug}' not found");
+            ?? throw new NotFoundException($"Sport '{sportSlug}' not found");
 
         return await _db.Players
             .Where(p => p.SportId == sport.Id)
@@ -47,11 +76,11 @@ public class AdminService : IAdminService
     public async Task<List<string>> GetDistinctValuesAsync(string sportSlug, string attributeKey)
     {
         var sport = await _db.Sports.FirstOrDefaultAsync(s => s.Slug == sportSlug)
-            ?? throw new InvalidOperationException($"Sport '{sportSlug}' not found");
+            ?? throw new NotFoundException($"Sport '{sportSlug}' not found");
 
         var attributeDef = await _db.AttributeDefinitions
             .FirstOrDefaultAsync(a => a.SportId == sport.Id && a.Key == attributeKey)
-            ?? throw new InvalidOperationException($"Attribute '{attributeKey}' not found for sport '{sportSlug}'");
+            ?? throw new NotFoundException($"Attribute '{attributeKey}' not found for sport '{sportSlug}'");
 
         return await _db.PlayerAttributeValues
             .Where(v => v.AttributeDefinitionId == attributeDef.Id)
@@ -67,7 +96,7 @@ public class AdminService : IAdminService
             .Include(p => p.AttributeValues)
                 .ThenInclude(v => v.AttributeDefinition)
             .FirstOrDefaultAsync(p => p.Id == playerId)
-            ?? throw new InvalidOperationException("Player not found");
+            ?? throw new NotFoundException("Player not found");
 
         return new AdminPlayerDetailDto
         {
@@ -101,26 +130,21 @@ public class AdminService : IAdminService
             .Include(p => p.AttributeValues)
                 .ThenInclude(v => v.AttributeDefinition)
             .FirstOrDefaultAsync(p => p.Id == playerId)
-            ?? throw new InvalidOperationException("Player not found");
+            ?? throw new NotFoundException("Player not found");
 
         foreach (var (key, value) in request.Attributes)
         {
             var attributeValue = player.AttributeValues.FirstOrDefault(v => v.AttributeDefinition?.Key == key)
-                ?? throw new InvalidOperationException($"Attribute '{key}' not found for this player.");
+                ?? throw new InvalidRequestException($"Attribute '{key}' not found for this player.");
 
             // Same rule the game uses to read the value back (see NumericAttributeValue).
             if (attributeValue.AttributeDefinition!.Type == AttributeType.Numeric && !NumericAttributeValue.TryParse(value, out _))
-                throw new InvalidOperationException($"Attribute '{key}' is numeric; '{value}' is not a valid number.");
+                throw new InvalidRequestException($"Attribute '{key}' is numeric; '{value}' is not a valid number.");
 
             attributeValue.Value = value;
-            // Marks this specific value as curator-owned so it survives
-            // every future SeedTool run regardless of which batch file
-            // re-seeds this player -- see PlayerAttributeValue.IsManuallyEdited.
-            attributeValue.IsManuallyEdited = true;
         }
 
-        // Player-level "last touched" timestamp, separate from the
-        // per-attribute IsManuallyEdited flag above -- lets consumers like
+        // Player-level "last touched" timestamp -- lets consumers like
         // AiTriviaService detect that cached derived content (e.g. a trivia
         // blurb) predates this edit and should be regenerated.
         if (request.Attributes.Count > 0)
@@ -137,15 +161,10 @@ public class AdminService : IAdminService
         else
         {
             if (string.IsNullOrEmpty(request.DifficultyOverride) || !ValidDifficultyOverrides.Contains(request.DifficultyOverride))
-                throw new InvalidOperationException("DifficultyOverride must be one of \"Easy\", \"Medium\", or \"Hard\" when IsOverridden is true.");
+                throw new InvalidRequestException("DifficultyOverride must be one of \"Easy\", \"Medium\", or \"Hard\" when IsOverridden is true.");
 
             player.DifficultyOverride = request.DifficultyOverride;
         }
-        // player.IsOverridden = true is itself the "this was manually set"
-        // signal every seed file's Players upsert now checks (see
-        // SeedRunner.cs) -- no separate flag needed, since no seed file
-        // ever bakes in IsOverridden = true except as a deliberate,
-        // permanent curatorial baseline (e.g. Grigor Dimitrov).
 
         await _db.SaveChangesAsync();
     }
@@ -157,8 +176,8 @@ public class AdminService : IAdminService
     }
 
     // Validation (including the boolean-setting rule) lives in
-    // SettingsService.UpdateAsync, which throws InvalidOperationException
-    // with the message AdminController returns as a 400.
+    // SettingsService.UpdateAsync, which throws NotFoundException for an
+    // unknown key and InvalidRequestException for a bad value.
     public Task UpdateSettingAsync(string key, string newValue)
     {
         return _settings.UpdateAsync(key, newValue);

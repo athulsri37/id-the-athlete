@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { problemDetail } from "../api/problemDetails";
 import { AdminSetting, fetchAdminSettings, updateAdminSetting } from "./adminClient";
 
 type RowStatus = "idle" | "saving" | "success" | "error";
@@ -39,8 +40,7 @@ export default function SettingsTab() {
       setSettings((prev) => prev.map((s) => (s.key === key ? { ...s, value: draft[key] } : s)));
     } catch (err) {
       setStatus((prev) => ({ ...prev, [key]: "error" }));
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "Save failed.";
+      const message = problemDetail(err, "Save failed.");
       setError((prev) => ({ ...prev, [key]: message }));
     }
   };

@@ -119,29 +119,26 @@ public sealed class CricketRules : ISportRules
         return "hard";
     }
 
-    // Two flag reads and one batched read of every percent/floor value, so a
-    // guess costs the same number of round-trips however many clues it has.
-    // A missing or unparseable percent/floor means no closeness for that clue.
+    // Both flags and every percent/floor value in one query, so a guess costs
+    // one settings round trip however many clues it has. A missing or
+    // unparseable percent/floor means no closeness for that clue.
     public async Task<IClosenessJudge> LoadClosenessJudgeAsync()
     {
-        var numericKeys = NumericClosenessSettingKeys.Values.SelectMany(k => new[] { k.PercentKey, k.FloorKey });
+        var keys = NumericClosenessSettingKeys.Values
+            .SelectMany(k => new[] { k.PercentKey, k.FloorKey })
+            .Append(RoleClosenessFlag)
+            .Append(BowlingStyleClosenessFlag);
 
-        return new Judge(
-            await _settings.GetDecimalsAsync(numericKeys),
-            await _settings.IsEnabledAsync(RoleClosenessFlag),
-            await _settings.IsEnabledAsync(BowlingStyleClosenessFlag));
+        return new Judge(await _settings.GetBatchAsync(keys));
     }
 
-    private sealed class Judge(
-        Dictionary<string, decimal> numericSettings,
-        bool roleClosenessEnabled,
-        bool bowlingStyleClosenessEnabled) : IClosenessJudge
+    private sealed class Judge(SettingsBatch settings) : IClosenessJudge
     {
         public bool IsNumericClose(string attributeKey, decimal guessed, decimal mystery)
         {
             if (!NumericClosenessSettingKeys.TryGetValue(attributeKey, out var keys) ||
-                !numericSettings.TryGetValue(keys.PercentKey, out var percent) ||
-                !numericSettings.TryGetValue(keys.FloorKey, out var floor))
+                !settings.TryGetDecimal(keys.PercentKey, out var percent) ||
+                !settings.TryGetDecimal(keys.FloorKey, out var floor))
                 return false;
 
             var threshold = Math.Max(mystery * (percent / 100m), floor);
@@ -151,8 +148,8 @@ public sealed class CricketRules : ISportRules
         public bool IsCategoricalClose(string attributeKey, string guessed, string mystery) => attributeKey switch
         {
             "country" => SameGroup(CountryRegion, guessed, mystery),
-            "role" => roleClosenessEnabled && ShareRoleTag(guessed, mystery),
-            "bowling_style" => bowlingStyleClosenessEnabled && SameGroup(BowlingStyleGroup, guessed, mystery),
+            "role" => settings.IsEnabled(RoleClosenessFlag) && ShareRoleTag(guessed, mystery),
+            "bowling_style" => settings.IsEnabled(BowlingStyleClosenessFlag) && SameGroup(BowlingStyleGroup, guessed, mystery),
             _ => false,
         };
 
