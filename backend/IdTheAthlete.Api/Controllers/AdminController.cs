@@ -51,6 +51,22 @@ public class AdminController : ControllerBase
         }
     }
 
+    // POST /api/admin/sports/{sportSlug}/difficulty-preview
+    // Body: one object per proposed player, attribute key -> value. Returns
+    // their difficulty tiers in the same order. Used by the roster agent.
+    [HttpPost("sports/{sportSlug}/difficulty-preview")]
+    public async Task<IActionResult> PreviewDifficultyTiers(string sportSlug, [FromBody] List<Dictionary<string, string>> players)
+    {
+        try
+        {
+            return Ok(await _adminService.PreviewDifficultyTiersAsync(sportSlug, players));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+    }
+
     [HttpGet("players/{playerId}")]
     public async Task<IActionResult> GetPlayer(int playerId)
     {

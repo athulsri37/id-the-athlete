@@ -38,6 +38,10 @@ cd frontend
 npm test
 npm run test:e2e   # requires both dev servers already running
 ```
+```
+cd tools
+python -m unittest test_roster_validation   # roster agent's value checks
+```
 
 ## Adding player data
 
