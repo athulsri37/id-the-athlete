@@ -82,8 +82,9 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Apply pending migrations on startup. Data seeding is handled separately
-// and manually via SeedTool (see backend/SeedTool) — never automatically.
+// Apply pending migrations on startup. They also create the reference data
+// (sports, clue columns, default settings) on an empty database; players are
+// added through the roster agent and the admin tool.
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<GameDbContext>();

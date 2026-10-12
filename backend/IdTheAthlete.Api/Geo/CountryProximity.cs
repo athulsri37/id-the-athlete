@@ -10,10 +10,10 @@ namespace IdTheAthlete.Api.Geo;
 // than the database.
 //
 // Neighbor lists include every real land-border neighbor of each country
-// present in the Players seed data, even neighbors that aren't themselves
+// present in the player data, even neighbors that aren't themselves
 // in the roster, so the data stays correct if the roster grows -- add new
-// entries here if a future player batch introduces a country not yet
-// listed. A few notable non-obvious real borders are kept deliberately:
+// entries here when a new player brings a country not yet listed (the
+// roster agent flags such countries). A few notable non-obvious real borders are kept deliberately:
 // Spain-Morocco (via Ceuta/Melilla), Russia/Lithuania-Poland (via
 // Kaliningrad), and United Kingdom-Ireland (via Northern Ireland) --
 // because United Kingdom-Ireland already resolves correctly through this

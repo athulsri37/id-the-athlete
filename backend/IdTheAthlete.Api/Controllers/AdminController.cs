@@ -37,6 +37,15 @@ public class AdminController : ControllerBase
         return await _adminService.GetDistinctValuesAsync(sportSlug, attributeKey);
     }
 
+    // POST /api/admin/sports/{sportSlug}/difficulty-preview
+    // Body: one object per proposed player, attribute key -> value. Returns
+    // their difficulty tiers in the same order. Used by the roster agent.
+    [HttpPost("sports/{sportSlug}/difficulty-preview")]
+    public async Task<ActionResult<List<string>>> PreviewDifficultyTiers(string sportSlug, [FromBody] List<Dictionary<string, string>> players)
+    {
+        return await _adminService.PreviewDifficultyTiersAsync(sportSlug, players);
+    }
+
     [HttpGet("players/{playerId}")]
     public async Task<ActionResult<AdminPlayerDetailDto>> GetPlayer(int playerId)
     {

@@ -127,16 +127,17 @@ public class GameService : IGameService
         if (guessesSoFar >= MaxGuesses)
             throw new InvalidRequestException("This game is already over.");
 
-        var guessedPlayer = await _db.Players
+        // Both players in one query (one row when the guess is correct).
+        var players = await _db.Players
             .Include(p => p.AttributeValues)
                 .ThenInclude(v => v.AttributeDefinition)
-            .FirstOrDefaultAsync(p => p.Id == request.PlayerId)
+            .Where(p => p.Id == request.PlayerId || p.Id == mysteryPlayerId)
+            .ToListAsync();
+
+        var guessedPlayer = players.FirstOrDefault(p => p.Id == request.PlayerId)
             ?? throw new InvalidRequestException("Guessed player not found");
 
-        var mysteryPlayer = await _db.Players
-            .Include(p => p.AttributeValues)
-                .ThenInclude(v => v.AttributeDefinition)
-            .FirstOrDefaultAsync(p => p.Id == mysteryPlayerId)
+        var mysteryPlayer = players.FirstOrDefault(p => p.Id == mysteryPlayerId)
             ?? throw new InvalidOperationException("Mystery player not found");
 
         // Counted only once the guess is known to be valid, so a bad request
@@ -269,7 +270,7 @@ public class GameService : IGameService
 
         _logger.LogWarning(
             "Player {PlayerName} ({PlayerId}) has a non-numeric value '{Value}' for numeric attribute {AttributeKey}; " +
-            "showing that clue as a plain miss. Correct it in the admin tool or the seed data.",
+            "showing that clue as a plain miss. Correct it in the admin tool.",
             player.Name, player.Id, value, definition.Key);
         return false;
     }
