@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
 using IdTheAthlete.Api.Data;
 using IdTheAthlete.Api.Middleware;
@@ -43,6 +44,10 @@ builder.Services.AddSingleton<IPracticeSessionService, PracticeSessionService>()
 builder.Services.AddScoped<IDailyPuzzleService, DailyPuzzleService>();
 builder.Services.AddScoped<ISettingsService, SettingsService>();
 builder.Services.AddSingleton<SettingsFailureLogThrottle>();
+builder.Services.AddOptions<GameTokenOptions>()
+    .Bind(builder.Configuration.GetSection(GameTokenOptions.SectionName))
+    .ValidateOnStart();
+builder.Services.AddSingleton<IValidateOptions<GameTokenOptions>, GameTokenOptionsValidator>();
 builder.Services.AddSingleton<IGameTokenService, GameTokenService>();
 
 // Comma-separated list of frontend origins allowed to call the API from a
@@ -70,11 +75,6 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<GameDbContext>();
     db.Database.Migrate();
 }
-
-// Resolved once here so a missing or too-short GameTokens:SigningKey stops
-// the app at startup instead of failing the first daily guess.
-app.Services.GetRequiredService<IGameTokenService>();
-
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();

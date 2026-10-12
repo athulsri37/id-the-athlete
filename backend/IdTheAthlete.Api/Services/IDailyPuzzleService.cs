@@ -6,5 +6,3 @@ public interface IDailyPuzzleService
     Task<ResolvedDailyPuzzle> ResolveDailyPuzzleAsync(int sportId, DateOnly? date);
     Task<bool> EnsureDailyPuzzleAsync(int sportId, DateOnly date);
 }
-
-public sealed record ResolvedDailyPuzzle(int PlayerId, DateOnly PuzzleDate);

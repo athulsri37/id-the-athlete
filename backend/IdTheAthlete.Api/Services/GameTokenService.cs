@@ -2,6 +2,7 @@ using System.Buffers.Text;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Options;
 
 namespace IdTheAthlete.Api.Services;
 
@@ -14,43 +15,29 @@ namespace IdTheAthlete.Api.Services;
 // sooner.
 //
 // Format: base64url(JSON payload) + "." + base64url(HMAC-SHA256 of payload).
-// The key comes from GameTokens:SigningKey (user-secrets locally, an
-// environment variable in production). Changing the key invalidates every
-// in-progress daily game, which is harmless: the player just starts over.
-// Registered as a Singleton.
+// The key comes from GameTokenOptions, already checked at startup by
+// GameTokenOptionsValidator. Changing the key invalidates every in-progress
+// daily game, which is harmless: the player just starts over. Registered as
+// a Singleton.
 public sealed class GameTokenService : IGameTokenService
 {
-    public const string SigningKeyConfigKey = "GameTokens:SigningKey";
-    private const int MinimumKeyLength = 32;
-
     private readonly byte[] _key;
 
-    public GameTokenService(IConfiguration configuration, IHostEnvironment environment, ILogger<GameTokenService> logger)
+    public GameTokenService(IOptions<GameTokenOptions> options, ILogger<GameTokenService> logger)
     {
-        var configuredKey = configuration[SigningKeyConfigKey];
+        var configuredKey = options.Value.SigningKey;
 
         if (string.IsNullOrWhiteSpace(configuredKey))
         {
-            // Outside Development a missing key is a deployment mistake, so
-            // fail at startup (Program.cs resolves this service eagerly)
-            // rather than on the first guess. In Development, fall back to a
-            // random key so the app still runs without extra setup; games
-            // in progress just don't survive a restart.
-            if (!environment.IsDevelopment())
-                throw new InvalidOperationException(
-                    $"{SigningKeyConfigKey} is not set. Set it to a random string of at least {MinimumKeyLength} characters " +
-                    "(environment variable GameTokens__SigningKey).");
-
+            // The validator only lets an empty key through in Development.
+            // Use a random key so the app runs without extra setup; games in
+            // progress just don't survive a restart.
             logger.LogWarning(
-                "{ConfigKey} is not set; using a random key for this run. In-progress daily games will not survive a restart.",
-                SigningKeyConfigKey);
-            _key = RandomNumberGenerator.GetBytes(MinimumKeyLength);
+                "{Section}:SigningKey is not set; using a random key for this run. In-progress daily games will not survive a restart.",
+                GameTokenOptions.SectionName);
+            _key = RandomNumberGenerator.GetBytes(GameTokenOptions.MinimumKeyLength);
             return;
         }
-
-        if (configuredKey.Length < MinimumKeyLength)
-            throw new InvalidOperationException(
-                $"{SigningKeyConfigKey} must be at least {MinimumKeyLength} characters long.");
 
         _key = Encoding.UTF8.GetBytes(configuredKey);
     }

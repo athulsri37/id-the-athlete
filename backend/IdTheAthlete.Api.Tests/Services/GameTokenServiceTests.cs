@@ -1,7 +1,7 @@
 using IdTheAthlete.Api.Services;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Moq;
 
 namespace IdTheAthlete.Api.Tests.Services;
@@ -11,15 +11,14 @@ public class GameTokenServiceTests
     private const string Key = "test-signing-key-that-is-long-enough-123";
     private static readonly DailyGameState State = new(SportId: 3, PuzzleDate: new DateOnly(2026, 10, 12), GuessCount: 4);
 
-    internal static GameTokenService Create(string? key = Key, string environment = "Production")
+    internal static GameTokenService Create(string? key = Key) =>
+        new(Options.Create(new GameTokenOptions { SigningKey = key }), NullLogger<GameTokenService>.Instance);
+
+    private static ValidateOptionsResult Validate(string? key, string environment)
     {
-        var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?> { [GameTokenService.SigningKeyConfigKey] = key })
-            .Build();
         var env = new Mock<IHostEnvironment>();
         env.Setup(e => e.EnvironmentName).Returns(environment);
-
-        return new GameTokenService(config, env.Object, NullLogger<GameTokenService>.Instance);
+        return new GameTokenOptionsValidator(env.Object).Validate(null, new GameTokenOptions { SigningKey = key });
     }
 
     [Fact]
@@ -61,22 +60,34 @@ public class GameTokenServiceTests
     }
 
     [Fact]
-    public void Constructor_NoKeyOutsideDevelopment_Throws()
+    public void Create_NoKey_UsesWorkingRandomKey()
     {
-        Assert.Throws<InvalidOperationException>(() => Create(key: null, environment: "Production"));
-    }
-
-    [Fact]
-    public void Constructor_NoKeyInDevelopment_UsesRandomKey()
-    {
-        var service = Create(key: null, environment: "Development");
+        var service = Create(key: null);
 
         Assert.Equal(State, service.Read(service.Issue(State)));
     }
 
     [Fact]
-    public void Constructor_KeyTooShort_Throws()
+    public void Validate_NoKeyOutsideDevelopment_Fails()
     {
-        Assert.Throws<InvalidOperationException>(() => Create(key: "short"));
+        Assert.True(Validate(key: null, environment: "Production").Failed);
+    }
+
+    [Fact]
+    public void Validate_NoKeyInDevelopment_Succeeds()
+    {
+        Assert.True(Validate(key: null, environment: "Development").Succeeded);
+    }
+
+    [Fact]
+    public void Validate_KeyTooShort_Fails()
+    {
+        Assert.True(Validate(key: "short", environment: "Production").Failed);
+    }
+
+    [Fact]
+    public void Validate_LongEnoughKey_Succeeds()
+    {
+        Assert.True(Validate(key: Key, environment: "Production").Succeeded);
     }
 }
