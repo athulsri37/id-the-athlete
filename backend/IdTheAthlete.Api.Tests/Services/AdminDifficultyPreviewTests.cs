@@ -1,4 +1,5 @@
 using IdTheAthlete.Api.Data;
+using IdTheAthlete.Api.Errors;
 using IdTheAthlete.Api.Models;
 using IdTheAthlete.Api.Services;
 using IdTheAthlete.Api.Tests.TestSupport;
@@ -57,7 +58,7 @@ public class AdminDifficultyPreviewTests
     {
         var service = CreateService(out _);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.PreviewDifficultyTiersAsync("no-such-sport", new()));
+        await Assert.ThrowsAsync<NotFoundException>(() => service.PreviewDifficultyTiersAsync("no-such-sport", new()));
     }
 
     [Fact]

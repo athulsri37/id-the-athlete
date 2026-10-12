@@ -8,6 +8,7 @@ Core schema is sport-agnostic by design: `Sport → Player → AttributeDefiniti
 
 - New tour of an existing family (e.g. a domestic Cricket league): a migration inserting its `Sports` row (right `Family`, a `ShortName` for its tour-select button) and `AttributeDefinitions` rows, like `AddReferenceData`, plus anything that family's rules need per tour (Cricket: an entry in `CricketRules.ThresholdsByTour`) and a roster agent profile. No frontend change: the home and tour screens come from `GET /api/sports`.
 - New sport: the same kind of migration, a new `ISportRules` class registered in `Program.cs`, an entry in `frontend/src/config/sportFamilies.ts` (home button, title wording, win emoji, clue legend examples) and a roster agent profile. Without the frontend entry the sport still works, with plain defaults.
+- Errors: services throw `NotFoundException` (resource named in the route is missing → 404) or `InvalidRequestException` (bad body/query value or broken game rule → 400) from `backend/IdTheAthlete.Api/Errors/`, and `ClientErrorExceptionHandler` turns them into problem responses. Controllers never catch exceptions. Anything else, including `InvalidOperationException`, is treated as a server bug: a logged 500 with no details.
 - Never branch on a sport's slug outside its family's rules class. The app refuses to start if any sport's family has no rules or its tour isn't supported, so a gap fails loudly instead of silently scoring with another sport's rules.
 
 ## Data

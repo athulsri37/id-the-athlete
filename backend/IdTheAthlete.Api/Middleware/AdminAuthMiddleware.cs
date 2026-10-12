@@ -19,7 +19,7 @@ public class AdminAuthMiddleware
         _next = next;
     }
 
-    public async Task InvokeAsync(HttpContext context, IConfiguration configuration)
+    public async Task InvokeAsync(HttpContext context, IConfiguration configuration, IProblemDetailsService problemDetails)
     {
         if (!context.Request.Path.StartsWithSegments("/api/admin"))
         {
@@ -38,8 +38,13 @@ public class AdminAuthMiddleware
             return;
         }
 
+        // The same problem response format as every other API error.
         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-        await context.Response.WriteAsJsonAsync(new { message = "Missing or invalid admin key." });
+        await problemDetails.WriteAsync(new ProblemDetailsContext
+        {
+            HttpContext = context,
+            ProblemDetails = { Detail = "Missing or invalid admin key." }
+        });
     }
 
     // A plain == comparison on a secret leaks its length/prefix via timing;

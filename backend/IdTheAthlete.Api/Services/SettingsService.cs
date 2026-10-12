@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using IdTheAthlete.Api.Data;
+using IdTheAthlete.Api.Errors;
 
 namespace IdTheAthlete.Api.Services;
 
@@ -196,11 +197,11 @@ public class SettingsService : ISettingsService
     public async Task UpdateAsync(string key, string newValue)
     {
         var setting = await _db.AppSettings.FirstOrDefaultAsync(s => s.Key == key)
-            ?? throw new InvalidOperationException($"Setting '{key}' not found.");
+            ?? throw new NotFoundException($"Setting '{key}' not found.");
 
         var wasBoolean = setting.Value == "true" || setting.Value == "false";
         if (wasBoolean && newValue != "true" && newValue != "false")
-            throw new InvalidOperationException($"Setting '{key}' is boolean; value must be 'true' or 'false'.");
+            throw new InvalidRequestException($"Setting '{key}' is boolean; value must be 'true' or 'false'.");
 
         setting.Value = newValue;
         await _db.SaveChangesAsync();

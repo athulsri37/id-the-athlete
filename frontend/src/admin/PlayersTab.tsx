@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { problemDetail } from "../api/problemDetails";
 import {
   AdminPlayerDetail,
   AdminPlayerSummary,
@@ -108,9 +109,7 @@ export default function PlayersTab() {
       setSaveStatus("success");
     } catch (err) {
       setSaveStatus("error");
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "Save failed.";
-      setSaveError(message);
+      setSaveError(problemDetail(err, "Save failed."));
     }
   };
 

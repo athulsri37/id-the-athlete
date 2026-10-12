@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using IdTheAthlete.Api.Dtos;
 using IdTheAthlete.Api.Services;
 
 namespace IdTheAthlete.Api.Controllers;
@@ -18,16 +19,8 @@ public class PlayersController : ControllerBase
     // Returns the full player pool for this sport, used to power the
     // guess autocomplete/search box on the frontend.
     [HttpGet]
-    public async Task<IActionResult> GetPlayers(string sportSlug)
+    public async Task<ActionResult<List<PlayerSummaryDto>>> GetPlayers(string sportSlug)
     {
-        try
-        {
-            var players = await _gameService.GetPlayerPoolAsync(sportSlug);
-            return Ok(players);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
+        return await _gameService.GetPlayerPoolAsync(sportSlug);
     }
 }

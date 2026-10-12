@@ -140,6 +140,7 @@ id-the-athlete/
 │   ├── Geo/               # CountryProximity (Tennis land-border adjacency)
 │   ├── Rules/             # Per-sport-family scoring: ISportRules, TennisRules, CricketRules, SportRulesRegistry
 │   ├── Middleware/        # AdminAuthMiddleware (protects /api/admin/*)
+│   ├── Errors/            # NotFoundException / InvalidRequestException + the central handler that turns them into problem responses
 │   ├── Services/
 │   │   ├── GameService.cs                  # Orchestration: guess submission, session/daily-puzzle resolution
 │   │   ├── DifficultyService.cs            # Curator override, else the sport family's difficulty formula
@@ -364,6 +365,12 @@ Every gameplay route is sport-agnostic, parameterized by `{sportSlug}`
 - `POST /api/sports/{sportSlug}/game/guess` — submit a guess, returns per-attribute clue feedback (daily games pass back the `gameToken` from the previous guess)
 - `GET /api/sports/{sportSlug}/game/hint/country?mode=...&sessionId=...&gameToken=...` — free hint after 5 guesses (enforced by the server), reveals only the mystery player's country
 - `GET /api/settings/theme` — the currently active visual theme
+
+Every error is a standard problem response (RFC 9457,
+`application/problem+json`) with a human-readable `detail`: 404 when the
+resource named in the route doesn't exist (e.g. an unknown `{sportSlug}`),
+400 for a bad value in the body or query string or a broken game rule, 401
+for a missing admin key, and 500 with no details for anything unexpected.
 
 ## Theme System
 
