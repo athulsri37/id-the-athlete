@@ -41,31 +41,70 @@ dotnet test
 ```
 cd frontend
 npm test
-npm run test:e2e   # requires both dev servers already running
+npm run test:e2e   # requires both dev servers already running; E2E_BASE_URL=http://localhost:5175 for the test ports
 ```
 ```
 cd tools
 python -m unittest test_roster_validation   # roster agent's value checks
 ```
 
+## Working process
+
+Applies to every agent session, local or cloud.
+
+### When to stop and ask
+Work autonomously. Stop only for decisions that need the owner's product judgement:
+- How the game behaves for players: rules, scoring, what's shown or hidden, difficulty, copy.
+- Anything that costs money (paid API calls, the owner's Claude subscription).
+- Writing to a real database, deploying, force-pushing, deleting branches or data.
+- Security trade-offs, or expanding scope beyond the item being fixed.
+
+Everything else (naming, structure, refactors within scope, test design, choices with a conventional answer) is yours: decide, and record it under "Decisions I made" in the PR with the alternative you rejected. When you must ask, batch all questions in one message, each with your recommendation.
+
+### Branches and PRs
+- One item per branch, named `fix/<item-id>-<kebab-summary>` (e.g. `fix/F9-practice-session-expiry`), from the latest `origin/main`.
+- Before starting, run `gh pr list` and check whether an open PR touches the same files. If it does, say so in your PR and describe how the conflict should be resolved. Merge `origin/main` into your branch again right before opening the PR.
+- Never merge your own PR and never force-push; the owner merges.
+- PR body sections: Problem, Fix, Decisions I made, Behaviour/API changes, Interactions with open PRs, Testing, Not tested.
+
+### Attribution
+- No `Co-authored-by`, `Claude-Session`, "Generated with Claude Code" or session links in commits or PR bodies.
+- Before every push, run `git log origin/main..HEAD --format=%B | grep -iE "co-authored|claude-session|generated with"`; it must print nothing. Fix the messages before pushing.
+
+### Definition of done (all of these, every PR)
+1. Unit tests: `dotnet test`, `npm test`, `python -m unittest test_roster_validation` (if `tools/` changed); plus `tsc` and `npm run build`.
+2. The real API against a throwaway database (restore a backup with `DB_NAME=...`, or migrate an empty one and add minimal rows), in Production mode with `AllowedOrigins` set, covering success and error paths. Drop the database afterwards.
+3. Any change a player or admin can see: Playwright through every affected mode (daily, practice, past-challenge replay, both sport families, admin), including slow, failed and empty responses (use `page.route`).
+4. Paid APIs are never called: use a fake key (rejected free) or mock the response.
+5. Use non-default ports (API 5082, Vite 5175 with `API_PROXY_TARGET`); never stop a process you didn't start.
+6. The PR's Testing section lists what ran with results; "Not tested" says what wasn't and why.
+
+### Code standards
+- C#: an interface for every DI service; `sealed` classes; records for DTOs and value types; one public type per file; options classes with validation instead of `IConfiguration` lookups; `ActionResult<T>` on every action; services throw `NotFoundException`/`InvalidRequestException`; controllers never catch; pass `CancellationToken` through.
+- TypeScript/React: strict types, no `any`; derive state instead of syncing it with effects; side effects in hooks; Vitest tests for new logic.
+- Python: type hints, PEP 8, parameterised SQL, context managers.
+- Match the surrounding code's style and comment density.
+
+### Self-review before opening the PR
+- Read the whole diff top to bottom.
+- If you introduce or change a convention, grep for every existing place it applies and update them all in the same PR, or list the ones left out and why.
+- Update README/CLAUDE.md when you change an endpoint, a command or a convention.
+- If a review of your PR finds an issue that could recur, add the general lesson to this file in a follow-up commit.
+
 ## Adding player data
 
 Players are added with the roster research agent (`tools/roster_research_agent.py`, run by the user since it uses their Claude subscription): it researches candidates, checks every value against the sport's columns and existing values, shows each player's difficulty tier (`--tiers`, default leaning Medium), and writes only the players the user accepts, after confirming the target database. Don't write player rows by hand.
 
-Standing rules when adding players:
-- Count the candidate list explicitly before starting research, this project has repeatedly miscounted 30 as 31
-- Present the full candidate list and wait for explicit approval before starting any research or data collection
-- Player names are unique per sport (the `(SportId, Name)` index). If a new player is a different person with the same name as an existing player in that sport, store a disambiguated name: country in parentheses as written in the `country` field, e.g. `John Smith (New Zealand)`, or birth year if they also share a country, e.g. `John Smith (b. 1985)`. The same name in a different sport needs nothing extra
+Player names are unique per sport (the `(SportId, Name)` index). A different person with the same name as an existing player in that sport gets a disambiguated name: their country as written in the `country` field, e.g. `John Smith (New Zealand)`, or their birth year if they also share a country, e.g. `John Smith (b. 1985)`. The agent's prompt already does this; use the same format when renaming a player in the admin interface.
 
 ## Known gotchas
 
 **When you make a genuinely avoidable error during a task, one that would likely recur for a future session working on something different, add a concise line here before finishing, rather than letting the lesson disappear when the session ends.** Not every mistake qualifies, a one-off environment quirk or something already covered below doesn't need a new line. A wrong assumption about how something actually behaves, confirmed wrong only after real back-and-forth, does.
 
 - `Players.IsOverridden` / `Players.DifficultyOverride` let a player's computed difficulty tier be manually overridden (e.g., a player famous for one moment despite modest stats). New players are always written with `IsOverridden = false, DifficultyOverride = NULL` (the roster agent does this); overrides are set through the admin interface.
-- Difficulty tier formulas differ by sport AND gender for Cricket (Men's and Women's use different thresholds), but are shared across gender for Tennis. Don't assume one formula applies everywhere.
+- Difficulty thresholds differ per tour for Cricket (`CricketRules.ThresholdsByTour`, Men's and Women's differ) but are shared by both Tennis tours (`TennisRules`). Don't assume one formula applies everywhere.
 - Attribute key names must match exactly what's in the `AttributeDefinitions` table, verify rather than assume (e.g., it's `grand_slam_titles` and `turned_pro_year`, not `grand_slams` or `turned_pro`).
 - `tools/` contains standalone Python scripts (a roster research agent), a different language and set of conventions from the rest of the codebase, don't assume it follows the same patterns as the C#/React app.
 - The `claude-agent-sdk` Python package's `ClaudeAgentOptions` has no `allow_dangerously_skip_permissions` parameter (at least as of version 0.2.156), `permission_mode="bypassPermissions"` alone is sufficient for headless tool approval. Verify exact parameters via `inspect.signature()` against the actually installed version rather than trusting external documentation, which may describe a different version or language binding.
 - The same SDK's `allowed_tools` is a plain list of tool name strings with no way to attach extra configuration like `allowed_domains`, unlike the raw Messages API's tool definition format, which does support this directly. If a tool needs domain restriction through this SDK, a prompt-level instruction is the fallback, not a technical guarantee.
-- Never add Co-Authored-By, "Generated with Claude Code", or Claude-Session trailers to commit messages or PR descriptions. The repository owner is the sole author.
 - `db.Database.Migrate()` in `Program.cs` creates the target database if it doesn't exist instead of failing, so a connection string with a mistyped database name starts the app normally against a new, empty database (schema, no players). When pointing at a database that may not exist, check `pg_database` afterwards and drop anything created by accident.
