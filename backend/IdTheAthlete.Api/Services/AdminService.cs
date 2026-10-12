@@ -16,12 +16,40 @@ public class AdminService : IAdminService
     private readonly GameDbContext _db;
     private readonly TimeProvider _timeProvider;
     private readonly ISettingsService _settings;
+    private readonly IDifficultyService _difficulty;
 
-    public AdminService(GameDbContext db, TimeProvider timeProvider, ISettingsService settings)
+    public AdminService(GameDbContext db, TimeProvider timeProvider, ISettingsService settings, IDifficultyService difficulty)
     {
         _db = db;
         _timeProvider = timeProvider;
         _settings = settings;
+        _difficulty = difficulty;
+    }
+
+    // Difficulty tiers for players that aren't in the database yet (the
+    // roster agent's proposals), computed by the same rules the game uses so
+    // the agent never needs its own copy of the formulas. Each item maps
+    // attribute key to value; keys this sport doesn't have are ignored.
+    public async Task<List<string>> PreviewDifficultyTiersAsync(string sportSlug, List<Dictionary<string, string>> players)
+    {
+        var sport = await _db.Sports.FirstOrDefaultAsync(s => s.Slug == sportSlug)
+            ?? throw new InvalidOperationException($"Sport '{sportSlug}' not found");
+
+        var definitions = await _db.AttributeDefinitions
+            .Where(a => a.SportId == sport.Id)
+            .ToDictionaryAsync(a => a.Key);
+
+        return players
+            .Select(stats => new Player
+            {
+                SportId = sport.Id,
+                AttributeValues = stats
+                    .Where(stat => definitions.ContainsKey(stat.Key))
+                    .Select(stat => new PlayerAttributeValue { Value = stat.Value, AttributeDefinition = definitions[stat.Key] })
+                    .ToList(),
+            })
+            .Select(player => _difficulty.ComputeDifficultyTier(player, sport))
+            .ToList();
     }
 
     public async Task<List<AdminSportDto>> GetSportsAsync()
