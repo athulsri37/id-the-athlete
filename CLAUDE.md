@@ -48,6 +48,49 @@ cd tools
 python -m unittest test_roster_validation   # roster agent's value checks
 ```
 
+## Working process
+
+Applies to every agent session, local or cloud.
+
+### When to stop and ask
+Work autonomously. Stop only for decisions that need the owner's product judgement:
+- How the game behaves for players: rules, scoring, what's shown or hidden, difficulty, copy.
+- Anything that costs money (paid API calls, the owner's Claude subscription).
+- Writing to a real database, deploying, force-pushing, deleting branches or data.
+- Security trade-offs, or expanding scope beyond the item being fixed.
+
+Everything else (naming, structure, refactors within scope, test design, choices with a conventional answer) is yours: decide, and record it under "Decisions I made" in the PR with the alternative you rejected. When you must ask, batch all questions in one message, each with your recommendation.
+
+### Branches and PRs
+- One item per branch, named `fix/<item-id>-<kebab-summary>` (e.g. `fix/F9-practice-session-expiry`), from the latest `origin/main`.
+- Before starting, run `gh pr list` and check whether an open PR touches the same files. If it does, say so in your PR and describe how the conflict should be resolved. Merge `origin/main` into your branch again right before opening the PR.
+- Never merge your own PR and never force-push; the owner merges.
+- PR body sections: Problem, Fix, Decisions I made, Behaviour/API changes, Interactions with open PRs, Testing, Not tested.
+
+### Attribution
+- No `Co-authored-by`, `Claude-Session`, "Generated with Claude Code" or session links in commits or PR bodies.
+- Before every push, run `git log origin/main..HEAD --format=%B | grep -iE "co-authored|claude-session|generated with"`; it must print nothing. Fix the messages before pushing.
+
+### Definition of done (all of these, every PR)
+1. Unit tests: `dotnet test`, `npm test`, `python -m unittest test_roster_validation` (if `tools/` changed); plus `tsc` and `npm run build`.
+2. The real API against a throwaway database (restore a backup with `DB_NAME=...`, or migrate an empty one and add minimal rows), in Production mode with `AllowedOrigins` set, covering success and error paths. Drop the database afterwards.
+3. Any change a player or admin can see: Playwright through every affected mode (daily, practice, past-challenge replay, both sport families, admin), including slow, failed and empty responses (use `page.route`).
+4. Paid APIs are never called: use a fake key (rejected free) or mock the response.
+5. Use non-default ports (API 5082, Vite 5175 with `API_PROXY_TARGET`); never stop a process you didn't start.
+6. The PR's Testing section lists what ran with results; "Not tested" says what wasn't and why.
+
+### Code standards
+- C#: an interface for every DI service; `sealed` classes; records for DTOs and value types; one public type per file; options classes with validation instead of `IConfiguration` lookups; `ActionResult<T>` on every action; services throw `NotFoundException`/`InvalidRequestException`; controllers never catch; pass `CancellationToken` through.
+- TypeScript/React: strict types, no `any`; derive state instead of syncing it with effects; side effects in hooks; Vitest tests for new logic.
+- Python: type hints, PEP 8, parameterised SQL, context managers.
+- Match the surrounding code's style and comment density.
+
+### Self-review before opening the PR
+- Read the whole diff top to bottom.
+- If you introduce or change a convention, grep for every existing place it applies and update them all in the same PR, or list the ones left out and why.
+- Update README/CLAUDE.md when you change an endpoint, a command or a convention.
+- If a review of your PR finds an issue that could recur, add the general lesson to this file in a follow-up commit.
+
 ## Adding player data
 
 Players are added with the roster research agent (`tools/roster_research_agent.py`, run by the user since it uses their Claude subscription): it researches candidates, checks every value against the sport's columns and existing values, shows each player's difficulty tier (`--tiers`, default leaning Medium), and writes only the players the user accepts, after confirming the target database. Don't write player rows by hand.
