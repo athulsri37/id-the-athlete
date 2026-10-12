@@ -7,14 +7,16 @@ INSERT INTO "AppSettings" ("Key", "Value")
 VALUES ('CountryClosenessEnabled', 'true')
 ON CONFLICT ("Key") DO NOTHING;
 
+-- AI trivia blurb on game over, off by default. Turned on from the admin
+-- tool's Settings tab, and it also needs an Anthropic API key configured.
 INSERT INTO "AppSettings" ("Key", "Value")
-VALUES ('CricketRoleClueEnabled', 'true')
+VALUES ('AiTriviaEnabled', 'false')
 ON CONFLICT ("Key") DO NOTHING;
 
 -- Cricket numeric-closeness thresholds: percent-of-actual-value plus a
--- floor, per attribute (see GameService.ComputeCricketNumericCloseness).
+-- floor, per attribute (see NumericClosenessEvaluator).
 -- Read fresh from AppSettings on every guess, not cached at startup, so an
--- operator can retune these live via SQL with no redeploy.
+-- operator can retune these live from the admin tool with no redeploy.
 INSERT INTO "AppSettings" ("Key", "Value")
 VALUES ('CricketMatchesClosenessPercent', '15')
 ON CONFLICT ("Key") DO NOTHING;
