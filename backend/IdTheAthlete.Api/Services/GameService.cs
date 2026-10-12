@@ -269,7 +269,7 @@ public class GameService : IGameService
 
         _logger.LogWarning(
             "Player {PlayerName} ({PlayerId}) has a non-numeric value '{Value}' for numeric attribute {AttributeKey}; " +
-            "showing that clue as a plain miss. Correct it in the admin tool or the seed data.",
+            "showing that clue as a plain miss. Correct it in the admin tool.",
             player.Name, player.Id, value, definition.Key);
         return false;
     }

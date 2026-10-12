@@ -25,9 +25,9 @@ public class GameDbContext : DbContext
             .WithMany(s => s.Attributes)
             .HasForeignKey(a => a.SportId);
 
-        // Required for the SeedTool's "ON CONFLICT (SportId, Key)" upsert
-        // pattern against AttributeDefinitions — Postgres needs a matching
-        // unique constraint/index for that clause to be valid.
+        // A sport has each clue column once. Also what the reference-data
+        // migration's ON CONFLICT ("SportId", "Key") relies on: Postgres needs
+        // a matching unique index for that clause to be valid.
         modelBuilder.Entity<AttributeDefinition>()
             .HasIndex(a => new { a.SportId, a.Key })
             .IsUnique();
@@ -42,8 +42,8 @@ public class GameDbContext : DbContext
             .HasDefaultValue(false);
 
         // A player's name is unique within a sport, not across sports, so two
-        // tours can each have a player of the same name. Also the key the
-        // SeedTool's upserts match on (ON CONFLICT ("SportId", "Name")).
+        // tours can each have a player of the same name. Two different people
+        // in the same sport get a disambiguated name (see CLAUDE.md).
         modelBuilder.Entity<Player>()
             .HasIndex(p => new { p.SportId, p.Name })
             .IsUnique();
