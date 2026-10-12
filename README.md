@@ -150,12 +150,8 @@ id-the-athlete/
 │   │   └── AdminService.cs                 # Backs the internal admin tool
 │   ├── Controllers/      # PlayersController, GameController, SettingsController, AdminController
 │   └── Dtos/             # Request/response contracts
-├── backend/SeedTool/      # Standalone console project — seeds player data via versioned SQL files
-│   └── SeedData/
-│       ├── Tennis/Men/            # 8 batch files, 192 players
-│       ├── Tennis/Women/          # 7 batch files, 126 players
-│       ├── Cricket/MenInternational/    # 6 batch files, 180 players
-│       └── Cricket/WomenInternational/  # 4 batch files, 120 players
+├── scripts/               # db-backup.sh / db-restore.sh (the database is the source of truth)
+├── tools/                 # Roster research agent (Python): researches, checks and adds players
 └── frontend/src/
     ├── api/              # Axios client
     ├── components/       # PlayerSearch, ClueGrid, ClueLegend, ShareResult
@@ -193,21 +189,15 @@ dotnet tool install --global dotnet-ef   # if you don't have it already
 dotnet ef database update
 ```
 The app also calls `db.Database.Migrate()` on startup, so the schema stays
-in sync automatically after that — but startup only runs migrations, it
-does **not** seed any player data.
+in sync automatically after that. On an empty database the migrations also
+create the reference data: the four sports, their clue columns and the
+default settings. They don't create any players.
 
-Player data is loaded separately, via the standalone `SeedTool` console
-project (see [Player Data & Seeding](#player-data--seeding) below):
+To get the players, restore a backup of an existing database (see
+[Player Data & Backups](#player-data--backups) below):
 ```bash
-cd backend/SeedTool
-dotnet run --project . --connection "Host=localhost;Database=idtheathlete;Username=idtheathlete;Password=idtheathlete_dev_pw"
+scripts/db-restore.sh backups/<file>.dump
 ```
-Run this once against a fresh database. It's safe to re-run anytime — it's
-idempotent (upserts on player name and attribute), so it inserts new
-players and updates existing ones to match the source files, never
-duplicates. It also preserves any value a curator has since hand-edited
-via the admin tool rather than reverting it back to the seed file's
-original value — see [Player Data & Seeding](#player-data--seeding).
 
 Only run `dotnet ef migrations add <Name>` if you're introducing new
 schema changes going forward — it's not needed for initial setup.
@@ -319,26 +309,46 @@ npx playwright install chromium   # one-time browser install
 npm run test:e2e
 ```
 
-## Player Data & Seeding
+## Player Data & Backups
 
-Player data lives in versioned `.sql` files under
-`backend/SeedTool/SeedData/`, organized per sport/tour, not in
-application code — the app itself never seeds anything on its own (see
-[step 2](#2-set-up-the-database-ef-core-migrations) above).
+The database is the single source of truth for player data. Players,
+curator edits, difficulty overrides, settings and daily puzzles exist
+nowhere else, so back it up.
 
-To add a new player or correct an existing one's stats, edit the
-appropriate `players-batch-NN.sql` file under that sport's folder, or add
-a new batch file if all existing ones are full, then re-run the SeedTool
-against your target database. Each file upserts on player name and
-attribute, so re-running is always safe — and safe even for a player a
-curator has since hand-corrected via the admin tool, since every batch
-file's upsert checks whether that specific value (or, for a difficulty
-override, the player row) has been manually edited before overwriting it,
-leaving manual corrections intact indefinitely rather than reverting them
-on the next unrelated seed run.
+- **Adding players:** run the roster research agent in `tools/`. It
+  researches candidates, checks every value against what the game accepts,
+  shows each player's difficulty tier, and writes the ones you accept. See
+  the instructions at the top of `tools/roster_research_agent.py`, e.g.
+  `python roster_research_agent.py tennis-women 10 --tiers medium,hard`.
+- **Correcting a player** or setting a difficulty override: use the
+  [Admin Tool](#admin-tool).
+- **Backing up:** `scripts/db-backup.sh` writes a timestamped dump to
+  `backups/` (git-ignored). Take one before anything risky and keep copies
+  somewhere other than this PC.
+- **Restoring:** `scripts/db-restore.sh backups/<file>.dump` replaces the
+  target database with the backup, after you type its name to confirm.
 
-This design was chosen specifically so player data changes never require
-a code change or redeploy — just a data file edit and a SeedTool run.
+Both scripts target the local Docker database by default; set `DB_NAME` for
+another local database or `DATABASE_URL` for any other server.
+
+### Filling production for the first time
+
+After the first deploy (the app has started once, so migrations have run):
+```bash
+scripts/db-backup.sh
+DATABASE_URL='postgresql://user:pass@host:5432/db' scripts/db-restore.sh backups/<that file>.dump --skip-puzzle-history
+```
+`--skip-puzzle-history` leaves out your local daily puzzles, so production's
+Past Challenges start on launch day. Restart the API afterwards so it
+creates today's puzzle.
+
+### Adding a new sport
+
+A new sport is one PR: a migration that inserts its `Sports` and
+`AttributeDefinitions` rows (like `AddReferenceData`), an `ISportRules`
+class for its scoring, an entry in `frontend/src/config/sportFamilies.ts`,
+and a profile in the roster agent's `SPORT_PROFILES`. Then add its players
+with the agent.
 
 ## API Endpoints
 
@@ -359,16 +369,16 @@ Every gameplay route is sport-agnostic, parameterized by `{sportSlug}`
 
 The app ships with two visual themes — **retro** and **stadium** —
 controlled by a single row in the `AppSettings` table (`Key` =
-`"ActiveTheme"`; the seeded default is `"retro"`). The frontend reads the
+`"ActiveTheme"`; with no such row the theme is `"retro"`). The frontend reads the
 active theme from `GET /api/settings/theme` on load and applies it via a
 `data-theme` attribute on the document root, which the CSS variables in
 `frontend/src/styles/themes.css` key off of.
 
-To switch themes, update that row directly against the running Postgres
-container:
+To switch themes, set that row directly in the running Postgres container
+(this creates the row if it doesn't exist yet):
 ```bash
-docker exec tennis-guesser-postgres-1 psql -U idtheathlete -d idtheathlete \
-  -c "UPDATE \"AppSettings\" SET \"Value\" = 'stadium' WHERE \"Key\" = 'ActiveTheme';"
+docker compose exec postgres psql -U idtheathlete -d idtheathlete \
+  -c "INSERT INTO \"AppSettings\" (\"Key\", \"Value\") VALUES ('ActiveTheme', 'stadium') ON CONFLICT (\"Key\") DO UPDATE SET \"Value\" = EXCLUDED.\"Value\";"
 ```
 Swap `'stadium'` for `'retro'` to switch back. Refresh the frontend to see
 the change take effect.
@@ -377,39 +387,34 @@ the change take effect.
 
 An internal, key-protected admin interface — not linked from the public
 UI — lets a curator browse any sport's roster, edit a player's raw stats
-or set a difficulty override, and toggle `AppSettings` (closeness
-feature flags, the active theme, AI trivia) directly against the running
-database, without a redeploy. It authenticates via the `X-Admin-Key`
+or set a difficulty override, and edit any existing `AppSettings` row
+(closeness feature flags and thresholds, AI trivia) directly against the
+running database, without a redeploy. It authenticates via the `X-Admin-Key`
 header described in [Getting Started](#getting-started) above and has no
 other session or account system.
 
-Every edit made through the admin tool is protected from being silently
-reverted the next time the SeedTool runs, regardless of which sport's
-data that run happens to touch — see [Player Data & Seeding](#player-data--seeding).
-
 ## Notes on the dataset
 
-The dataset contains **618 real athletes** across two sports, individually
-researched and verified — not placeholder or sample data:
+As of October 2026 the dataset contains **723 real athletes** across two
+sports, individually researched — not placeholder or sample data:
 
 | Tour                          | Players |
 |--------------------------------|---------|
-| Men's Tennis                   | 192     |
-| Women's Tennis                 | 126     |
-| **Tennis total**                | **318** |
-| Men's International Cricket     | 180     |
-| Women's International Cricket   | 120     |
-| **Cricket total**                | **300** |
-| **Grand total**                  | **618** |
+| Men's Tennis                   | 200     |
+| Women's Tennis                 | 134     |
+| **Tennis total**                | **334** |
+| Men's International Cricket     | 259     |
+| Women's International Cricket   | 130     |
+| **Cricket total**                | **389** |
+| **Grand total**                  | **723** |
 
 Tennis spans current tour players, the 2005–2015 golden era, and
 historical legends going back to the pre-Open Era. Cricket spans current
 international players and recent-era greats across both the Men's and
 Women's international game.
 
-Every roster is considered substantially complete for now, with no
-immediate plan to expand further, though the architecture supports it
-easily via the SeedTool workflow described above.
+New players are added with the roster research agent (see
+[Player Data & Backups](#player-data--backups)).
 
 Player stats (Grand Slam counts, titles, career runs/wickets, etc.) are
 accurate as of mid-2026 but will drift for active players over time —

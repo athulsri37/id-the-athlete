@@ -17,7 +17,7 @@ public class SettingsService : ISettingsService
 
     // Used only when the numeric settings query itself fails, so a database
     // problem doesn't fail a live guess. These match the values in the
-    // database and in SeedData/00-app-settings.sql when this was written;
+    // database and in the AddReferenceData migration when this was written;
     // retune them together, or closeness judged during an outage will drift
     // from closeness judged normally.
     private static readonly Dictionary<string, decimal> NumericFallbacks = new()
@@ -32,8 +32,8 @@ public class SettingsService : ISettingsService
 
     // Used only when the query for an on/off flag itself fails, so an outage
     // keeps each flag at its real state instead of switching everything off.
-    // These match the database and SeedData/00-app-settings.sql when this was
-    // written (AiTriviaEnabled is seeded as off); retune them together, or
+    // These match the database and the AddReferenceData migration when this
+    // was written (AiTriviaEnabled defaults to off); retune them together, or
     // features will flip during an outage.
     private static readonly Dictionary<string, bool> FlagFallbacks = new()
     {

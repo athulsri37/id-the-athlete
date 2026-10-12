@@ -169,11 +169,6 @@ public class AdminService : IAdminService
 
             player.DifficultyOverride = request.DifficultyOverride;
         }
-        // player.IsOverridden = true is itself the "this was manually set"
-        // signal every seed file's Players upsert now checks (see
-        // SeedRunner.cs) -- no separate flag needed, since no seed file
-        // ever bakes in IsOverridden = true except as a deliberate,
-        // permanent curatorial baseline (e.g. Grigor Dimitrov).
 
         await _db.SaveChangesAsync();
     }
