@@ -30,6 +30,8 @@ export interface GuessResponse {
   gameOver: boolean;
   answerName: string | null;
   triviaBlurb: string | null;
+  // Daily mode only: send back with the next guess or hint request.
+  gameToken: string | null;
 }
 
 export type Difficulty = "daily" | "easy" | "medium" | "hard";

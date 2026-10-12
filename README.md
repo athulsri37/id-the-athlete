@@ -249,14 +249,30 @@ entry, and adding one is config-only, no code or deploy change needed.
 Without at least one key configured, the admin tool is unusable but every
 other part of the app works normally.
 
-### 5. Run the backend
+### 5. Set a game token signing key
+
+Daily Challenge guesses are counted by the server through a signed token,
+so the answer is only revealed after 8 real guesses. The token is signed
+with `GameTokens:SigningKey`, which must be a random string of at least 32
+characters:
+```bash
+cd backend/IdTheAthlete.Api
+dotnet user-secrets set "GameTokens:SigningKey" "<random string, 32+ characters>"
+```
+In Development the app still starts without it, using a random key for that
+run (in-progress daily games then don't survive a restart). In any other
+environment it refuses to start until the key is set, as the
+`GameTokens__SigningKey` environment variable. Changing the key only
+restarts daily games that are in progress.
+
+### 6. Run the backend
 ```bash
 dotnet run
 ```
 API will be available at `http://localhost:5080`, with interactive OpenAPI
 docs (via Scalar) at `http://localhost:5080/scalar/v1`.
 
-### 6. Run the frontend
+### 7. Run the frontend
 ```bash
 cd frontend
 npm install
@@ -336,8 +352,8 @@ Every gameplay route is sport-agnostic, parameterized by `{sportSlug}`
 - `GET /api/sports/{sportSlug}/attributes` — this sport's ordered clue columns
 - `GET /api/sports/{sportSlug}/daily-puzzles` — every date with an existing Daily Challenge, for Past Challenges
 - `POST /api/sports/{sportSlug}/game/start?difficulty=easy|medium|hard` — start a practice game, returns a `sessionId`
-- `POST /api/sports/{sportSlug}/game/guess?guessNumber=N` — submit a guess, returns per-attribute clue feedback
-- `GET /api/sports/{sportSlug}/game/hint/country?mode=...&sessionId=...` — free hint after 5 guesses, reveals only the mystery player's country
+- `POST /api/sports/{sportSlug}/game/guess` — submit a guess, returns per-attribute clue feedback (daily games pass back the `gameToken` from the previous guess)
+- `GET /api/sports/{sportSlug}/game/hint/country?mode=...&sessionId=...&gameToken=...` — free hint after 5 guesses (enforced by the server), reveals only the mystery player's country
 - `GET /api/settings/theme` — the currently active visual theme
 
 ## Theme System

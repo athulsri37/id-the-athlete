@@ -12,6 +12,7 @@ public class GuessRequestDto
     public string Mode { get; set; } = "daily"; // "daily" | "easy" | "medium" | "hard"
     public string? SessionId { get; set; }       // client-generated id for practice-mode sessions
     public string? Date { get; set; }             // yyyy-MM-dd; daily mode only, omitted = today
+    public string? GameToken { get; set; }        // daily mode only: the token from the previous guess's response; omitted on the first guess
 }
 
 public class ClueResultDto
@@ -33,6 +34,7 @@ public class GuessResponseDto
     public bool GameOver { get; set; }
     public string? AnswerName { get; set; } // populated only when game is over
     public string? TriviaBlurb { get; set; } // populated only when game is over
+    public string? GameToken { get; set; } // daily mode only: send back with the next guess or hint request
 }
 
 public class StartGameResponseDto

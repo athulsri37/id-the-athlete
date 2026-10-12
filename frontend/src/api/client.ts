@@ -26,19 +26,18 @@ export async function startPracticeGame(sportSlug: string, difficulty: Exclude<D
   return res.data as { mode: string; sessionId: string; maxGuesses: number };
 }
 
+// The server counts guesses itself: through sessionId for practice games,
+// and for daily games through gameToken, the token returned by the
+// previous guess (omitted on the first one).
 export async function submitGuess(
   sportSlug: string,
   playerId: number,
   mode: Difficulty,
-  guessNumber: number,
   sessionId?: string,
-  date?: string
+  date?: string,
+  gameToken?: string
 ): Promise<GuessResponse> {
-  const res = await client.post(
-    `/sports/${sportSlug}/game/guess`,
-    { playerId, mode, sessionId, date },
-    { params: { guessNumber } }
-  );
+  const res = await client.post(`/sports/${sportSlug}/game/guess`, { playerId, mode, sessionId, date, gameToken });
   return res.data;
 }
 
@@ -46,10 +45,11 @@ export async function fetchCountryHint(
   sportSlug: string,
   mode: Difficulty,
   sessionId?: string,
-  date?: string
+  date?: string,
+  gameToken?: string
 ): Promise<string> {
   const res = await client.get(`/sports/${sportSlug}/game/hint/country`, {
-    params: { mode, sessionId, date },
+    params: { mode, sessionId, date, gameToken },
   });
   return res.data.country as string;
 }

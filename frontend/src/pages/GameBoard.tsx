@@ -120,6 +120,10 @@ export default function GameBoard({ mode, sportSlug, sportName, dailyDate, onBac
 
   const gameOver = guesses.length > 0 && (guesses[guesses.length - 1].isCorrect || guesses.length >= MAX_GUESSES);
   const won = guesses.length > 0 && guesses[guesses.length - 1].isCorrect;
+  // Daily games only: the server's signed record of this game's guess
+  // count, always taken from the latest guess and sent back with the next
+  // guess or hint request.
+  const gameToken = guesses.length > 0 ? guesses[guesses.length - 1].gameToken ?? undefined : undefined;
 
   // Offer the country hint once, right after the 5th guess, unless the
   // player already matched the country naturally or the game just ended.
@@ -156,7 +160,7 @@ export default function GameBoard({ mode, sportSlug, sportName, dailyDate, onBac
     setError("");
     setLoading(true);
     try {
-      const result = await submitGuess(sportSlug, player.id, mode, guesses.length + 1, sessionId, isPastDate ? effectiveDate : undefined);
+      const result = await submitGuess(sportSlug, player.id, mode, sessionId, isPastDate ? effectiveDate : undefined, gameToken);
       setGuesses((prev) => [...prev, result]);
     } catch {
       setError("Something went wrong submitting that guess.");
@@ -167,7 +171,7 @@ export default function GameBoard({ mode, sportSlug, sportName, dailyDate, onBac
 
   const handleHintYes = async () => {
     try {
-      const country = await fetchCountryHint(sportSlug, mode, sessionId, isPastDate ? effectiveDate : undefined);
+      const country = await fetchCountryHint(sportSlug, mode, sessionId, isPastDate ? effectiveDate : undefined, gameToken);
       setRevealedCountry(country);
       setHintDeclined(false);
     } catch {
