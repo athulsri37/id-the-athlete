@@ -49,7 +49,8 @@ public class GameServiceGuessCountTests
             new CategoricalClosenessEvaluator(settings),
             _sessions,
             new DailyPuzzleService(db, NullLogger<DailyPuzzleService>.Instance, time),
-            _tokens);
+            _tokens,
+            NullLogger<GameService>.Instance);
     }
 
     private Task<GuessResponseDto> DailyWrongGuess(string? token) =>
