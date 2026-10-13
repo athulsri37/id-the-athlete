@@ -8,13 +8,18 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.4">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <!-- Keeps EF Core's runtime packages on one version here and in the tests.
+         Without it the tests get Relational at the provider's older minimum
+         while EF Core itself comes from the newer InMemory package. Bump it
+         with Microsoft.EntityFrameworkCore.Design and .InMemory. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.12" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
-    <PackageReference Include="Scalar.AspNetCore" Version="2.16.11" />
+    <PackageReference Include="Scalar.AspNetCore" Version="2.17.11" />
   </ItemGroup>
 
   <ItemGroup>

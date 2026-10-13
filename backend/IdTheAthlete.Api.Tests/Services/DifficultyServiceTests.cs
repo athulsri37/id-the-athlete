@@ -28,6 +28,9 @@ public class DifficultyServiceTests
     [InlineData("10", "19", "1", "medium")]
     [InlineData("10", "5", "0", "medium")]
     [InlineData("10", "4", "1", "hard")]  // one Slam alone isn't enough
+    [InlineData("2", "4", "0", "hard")]   // #2 isn't #1
+    [InlineData("2", "20", "0", "easy")]  // the 20-title edge
+    [InlineData("0", "0", "0", "hard")]   // no stats at all
     public void Tennis_TierBoundaries(string highRank, string titles, string slams, string expected)
     {
         var player = PlayerWith(("career_high_ranking", highRank), ("career_titles", titles), ("grand_slam_titles", slams));
@@ -42,6 +45,8 @@ public class DifficultyServiceTests
     [InlineData("0", "0", "300", "easy")]
     [InlineData("3000", "0", "0", "medium")]
     [InlineData("9999", "299", "299", "medium")]
+    [InlineData("0", "100", "0", "medium")]   // each Medium edge on its own
+    [InlineData("0", "0", "150", "medium")]
     [InlineData("2999", "99", "149", "hard")]
     public void CricketMen_TierBoundaries(string runs, string wickets, string matches, string expected)
     {
@@ -54,7 +59,10 @@ public class DifficultyServiceTests
     [InlineData("8000", "0", "0", "easy")]
     [InlineData("0", "250", "0", "easy")]
     [InlineData("0", "0", "250", "easy")]
+    [InlineData("7999", "249", "249", "medium")] // just under every Easy edge
     [InlineData("2500", "0", "0", "medium")]
+    [InlineData("0", "90", "0", "medium")]
+    [InlineData("0", "0", "130", "medium")]
     [InlineData("2499", "89", "129", "hard")]
     public void CricketWomen_TierBoundaries(string runs, string wickets, string matches, string expected)
     {
@@ -69,6 +77,31 @@ public class DifficultyServiceTests
         var player = PlayerWith(("career_titles", "40"));
         player.IsOverridden = true;
         player.DifficultyOverride = "Hard";
+
+        Assert.Equal("hard", _service.ComputeDifficultyTier(player, Sport("tennis-men")));
+    }
+
+    [Theory]
+    [InlineData("Easy", "easy")]
+    [InlineData("MEDIUM", "medium")]
+    public void Override_IsCaseInsensitive(string overrideValue, string expected)
+    {
+        var player = PlayerWith(("career_titles", "0"));
+        player.IsOverridden = true;
+        player.DifficultyOverride = overrideValue;
+
+        Assert.Equal(expected, _service.ComputeDifficultyTier(player, Sport("tennis-men")));
+    }
+
+    [Theory]
+    [InlineData(false, "Easy")] // an override value without the flag is ignored
+    [InlineData(true, "")]      // the flag without a value falls back to the stats
+    [InlineData(true, null)]
+    public void IncompleteOverride_UsesTheComputedTier(bool isOverridden, string? overrideValue)
+    {
+        var player = PlayerWith(("career_titles", "0"));
+        player.IsOverridden = isOverridden;
+        player.DifficultyOverride = overrideValue;
 
         Assert.Equal("hard", _service.ComputeDifficultyTier(player, Sport("tennis-men")));
     }

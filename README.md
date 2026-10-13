@@ -307,6 +307,13 @@ HTTP. `ClueClosenessTests` pins down how every clue is judged for each
 sport, end to end through `GameService`. Uses
 `Microsoft.EntityFrameworkCore.InMemory` for a `DbContext` without a real
 Postgres database, and `Moq` to mock dependencies.
+
+The in-memory database doesn't enforce unique indexes or foreign keys, so the
+tests in `Postgres/` run against a real one: Testcontainers starts a
+throwaway `postgres:16-alpine` in Docker for the test run and applies the
+migrations to it. They check the unique player names and daily puzzles, two
+servers creating the same day's puzzle at once, and the game-stats table.
+**Docker must be running** for `dotnet test`.
 ```bash
 cd backend/IdTheAthlete.Api.Tests
 dotnet test
@@ -503,20 +510,17 @@ for a missing admin key, and 500 with no details for anything unexpected.
 ## Theme System
 
 The app ships with two visual themes — **retro** and **stadium** —
-controlled by a single row in the `AppSettings` table (`Key` =
-`"ActiveTheme"`; with no such row the theme is `"retro"`). The frontend reads the
-active theme from `GET /api/settings/theme` on load and applies it via a
-`data-theme` attribute on the document root, which the CSS variables in
+controlled by the `ActiveTheme` setting (`AppSettings` table, created as
+`retro` by the `AddActiveThemeSetting` migration; with no such row the theme is
+also `retro`). The frontend reads the active theme from
+`GET /api/settings/theme` on load and applies it via a `data-theme` attribute
+on the document root, which the CSS variables in
 `frontend/src/styles/themes.css` key off of.
 
-To switch themes, set that row directly in the running Postgres container
-(this creates the row if it doesn't exist yet):
-```bash
-docker compose exec postgres psql -U idtheathlete -d idtheathlete \
-  -c "INSERT INTO \"AppSettings\" (\"Key\", \"Value\") VALUES ('ActiveTheme', 'stadium') ON CONFLICT (\"Key\") DO UPDATE SET \"Value\" = EXCLUDED.\"Value\";"
-```
-Swap `'stadium'` for `'retro'` to switch back. Refresh the frontend to see
-the change take effect.
+To switch themes, edit `ActiveTheme` in the [Admin Tool](#admin-tool)'s
+Settings tab. Only `retro` and `stadium` are accepted, since any other value
+would leave the site unstyled; a new theme needs its CSS and an entry in
+`SettingsService.KnownThemes`. Refresh the frontend to see the change.
 
 ## Admin Tool
 

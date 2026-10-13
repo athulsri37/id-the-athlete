@@ -38,7 +38,7 @@ Requires `dotnet user-secrets` set for `GameTokens:SigningKey` (signs daily-game
 
 ```
 cd backend/IdTheAthlete.Api.Tests
-dotnet test
+dotnet test   # needs Docker running: the Postgres/ tests start a throwaway Postgres with Testcontainers
 ```
 ```
 cd frontend
