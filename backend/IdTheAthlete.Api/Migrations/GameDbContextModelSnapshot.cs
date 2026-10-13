@@ -17,7 +17,7 @@ namespace IdTheAthlete.Api.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.4")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -243,10 +243,18 @@ namespace IdTheAthlete.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("UrlName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Slug")
                         .IsUnique();
+
+                    b.HasIndex("Family", "UrlName")
+                        .IsUnique()
+                        .HasFilter("\"UrlName\" <> ''");
 
                     b.ToTable("Sports");
                 });

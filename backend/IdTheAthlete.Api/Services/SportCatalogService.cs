@@ -28,6 +28,7 @@ public sealed class SportCatalogService : ISportCatalogService
                 Name = s.Name,
                 ShortName = s.ShortName,
                 Family = s.Family,
+                UrlName = s.UrlName,
                 MaxGuesses = GameRules.MaxGuesses,
                 HintAfterGuess = GameRules.HintAfterGuess
             })

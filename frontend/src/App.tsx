@@ -1,29 +1,28 @@
 import { useEffect, useState } from "react";
+import { Route, Routes, useLocation, useNavigate, useParams } from "react-router";
 import HomeScreen from "./pages/HomeScreen";
 import TourSelect from "./pages/TourSelect";
 import SportHome from "./pages/SportHome";
 import PastChallenges from "./pages/PastChallenges";
 import GameBoard from "./pages/GameBoard";
-import { Sport, Difficulty } from "./types";
-import { fetchActiveTheme, fetchSports } from "./api/client";
-import { FamilyGroup, groupByFamily } from "./config/sportFamilies";
+import NotFound from "./pages/NotFound";
+import ErrorBoundary from "./components/ErrorBoundary";
+import { Sport } from "./types";
+import { fetchActiveTheme, fetchDailyPuzzleDates, fetchSports } from "./api/client";
+import { groupByFamily } from "./config/sportFamilies";
+import { findTour, isMode, isPuzzleDate, paths } from "./routes/paths";
 
-type Screen = "home" | "tourSelect" | "sportHome" | "pastChallenges" | "game";
+// Every tour from the API, which every screen's address is resolved
+// against. sports is null until loaded.
+interface SportsData {
+  sports: Sport[] | null;
+  loadFailed: boolean;
+}
 
+// One route per screen; the addresses are described in routes/paths.
 export default function App() {
-  const [screen, setScreen] = useState<Screen>("home");
-  // Which Home card was tapped -- picks which family's tours TourSelect shows.
-  // Null only while on the Home screen itself.
-  const [sportFamily, setSportFamily] = useState<string | null>(null);
-  // Every tour from the API, grouped by family for the home and tour-select
-  // screens. Null until loaded.
-  const [families, setFamilies] = useState<FamilyGroup[] | null>(null);
-  const [sportsLoadFailed, setSportsLoadFailed] = useState(false);
-  const [sport, setSport] = useState<Sport | null>(null);
-  const [mode, setMode] = useState<Difficulty | null>(null);
-  // Set only when playing/replaying a specific past date via Past
-  // Challenges; null means "today" (the normal Daily Challenge flow).
-  const [dailyDate, setDailyDate] = useState<string | null>(null);
+  const [sports, setSports] = useState<Sport[] | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [themeReady, setThemeReady] = useState(false);
 
   useEffect(() => {
@@ -33,104 +32,152 @@ export default function App() {
       .finally(() => setThemeReady(true));
 
     fetchSports()
-      .then((sports) => setFamilies(groupByFamily(sports)))
-      .catch(() => setSportsLoadFailed(true));
+      .then(setSports)
+      .catch(() => setLoadFailed(true));
   }, []);
-
-  const goHome = () => {
-    setScreen("home");
-    setSportFamily(null);
-    setSport(null);
-    setMode(null);
-    setDailyDate(null);
-  };
-
-  const selectFamily = (family: string) => {
-    setSportFamily(family);
-    setScreen("tourSelect");
-  };
-
-  // Back button from SportHome: return to this same family's tour-select
-  // screen (sportFamily is already set from however we first got here, so
-  // it's deliberately left untouched).
-  const goToTourSelect = () => {
-    setSport(null);
-    setMode(null);
-    setDailyDate(null);
-    setScreen("tourSelect");
-  };
-
-  const selectTour = (s: Sport) => {
-    setSport(s);
-    setScreen("sportHome");
-  };
-
-  const selectMode = (m: Difficulty) => {
-    setDailyDate(null);
-    setMode(m);
-    setScreen("game");
-  };
-
-  const openPastChallenges = () => {
-    setScreen("pastChallenges");
-  };
-
-  const backToSportHomeFromPast = () => {
-    setScreen("sportHome");
-  };
-
-  const selectPastDate = (date: string) => {
-    setDailyDate(date);
-    setMode("daily");
-    setScreen("game");
-  };
-
-  // Back button from GameBoard: return to wherever this game session was
-  // launched from -- Past Challenges for a past date, SportHome otherwise.
-  const backToSportHome = () => {
-    setMode(null);
-    if (dailyDate !== null) {
-      setDailyDate(null);
-      setScreen("pastChallenges");
-    } else {
-      setScreen("sportHome");
-    }
-  };
 
   if (!themeReady) {
     return null;
   }
 
-  const familyGroup = families?.find((g) => g.family === sportFamily);
-  if (screen === "tourSelect" && familyGroup) {
-    return <TourSelect group={familyGroup} onSelectTour={selectTour} onBack={goHome} />;
-  }
+  const data: SportsData = { sports, loadFailed };
+  return (
+    <ErrorBoundary>
+      <Routes>
+        <Route path="/" element={<HomePage {...data} />} />
+        <Route path="/:family" element={<FamilyPage {...data} />} />
+        <Route path="/:family/:tour" element={<TourPage {...data} />} />
+        <Route path="/:family/:tour/past" element={<PastPage {...data} />} />
+        <Route path="/:family/:tour/past/:date" element={<PastGamePage {...data} />} />
+        <Route path="/:family/:tour/:mode" element={<GamePage {...data} />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </ErrorBoundary>
+  );
+}
 
-  if (screen === "sportHome" && sport) {
-    return (
-      <SportHome
-        sport={sport}
-        onSelectMode={selectMode}
-        onPastChallenges={openPastChallenges}
-        onBack={goToTourSelect}
-      />
-    );
-  }
+function HomePage({ sports, loadFailed }: SportsData) {
+  const navigate = useNavigate();
+  return (
+    <HomeScreen
+      families={sports && groupByFamily(sports)}
+      loadFailed={loadFailed}
+      onSelectFamily={(family) => navigate(paths.family(family))}
+    />
+  );
+}
 
-  if (screen === "pastChallenges" && sport) {
-    return <PastChallenges sport={sport} onSelectDate={selectPastDate} onBack={backToSportHomeFromPast} />;
-  }
+// Until the tours load, a deep link shows nothing (it's brief); if they
+// can't load, the home screen says so.
+function WaitForSports({ sports, loadFailed, children }: SportsData & { children: (sports: Sport[]) => JSX.Element }) {
+  if (loadFailed) return <HomePage sports={null} loadFailed />;
+  if (!sports) return null;
+  return children(sports);
+}
 
-  if (screen === "game" && sport && mode) {
-    return (
-      <GameBoard
-        mode={mode}
-        sport={sport}
-        dailyDate={dailyDate ?? undefined}
-        onBackToHome={backToSportHome}
-      />
-    );
-  }
+function FamilyPage(data: SportsData) {
+  const { family = "" } = useParams();
+  const navigate = useNavigate();
+  return (
+    <WaitForSports {...data}>
+      {(sports) => {
+        const group = groupByFamily(sports).find((g) => g.family === family);
+        if (!group) return <NotFound />;
+        return <TourSelect group={group} onSelectTour={(s) => navigate(paths.tour(s))} onBack={() => navigate(paths.home())} />;
+      }}
+    </WaitForSports>
+  );
+}
 
-  return <HomeScreen families={families} loadFailed={sportsLoadFailed} onSelectFamily={selectFamily} />;
+// The tour named by /:family/:tour, or NotFound.
+function WithTour({ children, ...data }: SportsData & { children: (sport: Sport) => JSX.Element }) {
+  const { family = "", tour = "" } = useParams();
+  return (
+    <WaitForSports {...data}>
+      {(sports) => {
+        const sport = findTour(sports, family, tour);
+        return sport ? children(sport) : <NotFound />;
+      }}
+    </WaitForSports>
+  );
+}
+
+function TourPage(data: SportsData) {
+  const navigate = useNavigate();
+  return (
+    <WithTour {...data}>
+      {(sport) => (
+        <SportHome
+          sport={sport}
+          onSelectMode={(mode) => navigate(paths.game(sport, mode))}
+          onPastChallenges={() => navigate(paths.past(sport))}
+          onBack={() => navigate(paths.family(sport.family))}
+        />
+      )}
+    </WithTour>
+  );
+}
+
+function PastPage(data: SportsData) {
+  const navigate = useNavigate();
+  return (
+    <WithTour {...data}>
+      {(sport) => (
+        <PastChallenges
+          sport={sport}
+          onSelectDate={(date) => navigate(paths.pastGame(sport, date))}
+          onBack={() => navigate(paths.tour(sport))}
+        />
+      )}
+    </WithTour>
+  );
+}
+
+// Keyed by address so every game is a fresh GameBoard: switching games
+// never carries one game's state into the next.
+function GamePage(data: SportsData) {
+  const { mode = "" } = useParams();
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+  if (!isMode(mode)) return <NotFound />;
+  return (
+    <WithTour {...data}>
+      {(sport) => <GameBoard key={pathname} mode={mode} sport={sport} onBackToHome={() => navigate(paths.tour(sport))} />}
+    </WithTour>
+  );
+}
+
+function PastGamePage(data: SportsData) {
+  const { date = "" } = useParams();
+  return (
+    <WithTour {...data}>
+      {(sport) => (isPuzzleDate(date) ? <PastGame sport={sport} date={date} /> : <NotFound />)}
+    </WithTour>
+  );
+}
+
+// A Past Challenge only exists for a date that has a puzzle, so an old or
+// mistyped date shows NotFound rather than a game that can't be played. If
+// the list itself can't be loaded, the game is shown and the server decides.
+function PastGame({ sport, date }: { sport: Sport; date: string }) {
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const [exists, setExists] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let current = true;
+    setExists(null);
+    fetchDailyPuzzleDates(sport.slug)
+      .then((dates) => current && setExists(dates.includes(date)))
+      .catch(() => current && setExists(true));
+    return () => {
+      current = false;
+    };
+  }, [sport.slug, date]);
+
+  if (exists === null) return null;
+  if (!exists) return <NotFound />;
+  return (
+    <GameBoard key={pathname} mode="daily" sport={sport} dailyDate={date} onBackToHome={() => navigate(paths.past(sport))} />
+  );
 }

@@ -21,6 +21,13 @@ public class GameDbContext : DbContext
             .HasIndex(s => s.Slug)
             .IsUnique();
 
+        // Two tours of one family can't share a web address (/tennis/men).
+        // Empty means "use the slug", so it's left out of the check.
+        modelBuilder.Entity<Sport>()
+            .HasIndex(s => new { s.Family, s.UrlName })
+            .IsUnique()
+            .HasFilter("\"UrlName\" <> ''");
+
         modelBuilder.Entity<AttributeDefinition>()
             .HasOne(a => a.Sport)
             .WithMany(s => s.Attributes)

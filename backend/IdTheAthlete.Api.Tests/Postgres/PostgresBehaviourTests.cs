@@ -59,6 +59,17 @@ public class PostgresBehaviourTests
     }
 
     [Fact]
+    public async Task EveryTour_HasItsWebAddress_UniqueWithinItsFamily()
+    {
+        await using var db = _postgres.CreateContext();
+        var addresses = await db.Sports.OrderBy(s => s.Slug).Select(s => s.Family + "/" + s.UrlName).ToListAsync();
+        Assert.Equal(new[] { "cricket/men", "cricket/women", "tennis/men", "tennis/women" }, addresses);
+
+        db.Sports.Add(new Sport { Name = "Clash", Slug = Unique("tennis-clash"), Family = "tennis", UrlName = "men" });
+        AssertUniqueViolation(await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync()));
+    }
+
+    [Fact]
     public async Task DailyPuzzles_AreOnePerSportPerDate()
     {
         await using var db = _postgres.CreateContext();
