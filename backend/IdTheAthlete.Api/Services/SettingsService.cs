@@ -16,6 +16,10 @@ public class SettingsService : ISettingsService
     private const string ThemeKey = "ActiveTheme";
     private const string DefaultTheme = "retro";
 
+    // The themes frontend/src/styles/themes.css defines. Any other value
+    // would leave the site unstyled, so the admin tool can't set one.
+    private static readonly string[] KnownThemes = { "retro", "stadium" };
+
     // Used only when the numeric settings query itself fails, so a database
     // problem doesn't fail a live guess. These match the values in the
     // database and in the AddReferenceData migration when this was written;
@@ -202,6 +206,9 @@ public class SettingsService : ISettingsService
         var wasBoolean = setting.Value == "true" || setting.Value == "false";
         if (wasBoolean && newValue != "true" && newValue != "false")
             throw new InvalidRequestException($"Setting '{key}' is boolean; value must be 'true' or 'false'.");
+
+        if (key == ThemeKey && !KnownThemes.Contains(newValue))
+            throw new InvalidRequestException($"Setting '{key}' must be one of: {string.Join(", ", KnownThemes)}.");
 
         setting.Value = newValue;
         await _db.SaveChangesAsync();
