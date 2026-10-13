@@ -21,6 +21,15 @@ public class AdminController : ControllerBase
         _stats = stats;
     }
 
+    // GET /api/admin/changes?limit=100
+    // The "Recent changes" tab: who changed which player or setting, when,
+    // and from what to what. Newest first.
+    [HttpGet("changes")]
+    public async Task<ActionResult<List<AdminAuditEntryDto>>> GetRecentChanges([FromQuery] int limit = 100)
+    {
+        return await _adminService.GetRecentChangesAsync(limit);
+    }
+
     // GET /api/admin/stats?sport=tennis-men&from=2026-10-01&to=2026-10-31
     // The Stats tab: anonymous gameplay stats for games started in the
     // range (UTC, inclusive). sport, from and to are all optional.

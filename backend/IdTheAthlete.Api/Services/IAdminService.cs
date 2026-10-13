@@ -12,4 +12,5 @@ public interface IAdminService
     Task UpdatePlayerAsync(int playerId, AdminPlayerUpdateDto request);
     Task<List<AdminSettingDto>> GetSettingsAsync();
     Task UpdateSettingAsync(string key, string newValue);
+    Task<List<AdminAuditEntryDto>> GetRecentChangesAsync(int limit);
 }

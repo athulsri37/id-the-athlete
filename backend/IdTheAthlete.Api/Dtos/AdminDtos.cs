@@ -49,3 +49,13 @@ public class AdminSettingUpdateDto
 {
     public string Value { get; set; } = string.Empty;
 }
+
+// One row of the "Recent changes" tab (see AdminAuditEntry).
+public class AdminAuditEntryDto
+{
+    public DateTime At { get; set; } // UTC
+    public string Admin { get; set; } = string.Empty;
+    public string Action { get; set; } = string.Empty;
+    public string Target { get; set; } = string.Empty;
+    public string Changes { get; set; } = string.Empty;
+}

@@ -560,6 +560,21 @@ anonymous [Game Stats](#game-stats). It authenticates via the `X-Admin-Key`
 header described in [Getting Started](#getting-started) above and has no
 other session or account system.
 
+- **Lockout:** 5 wrong (or missing) admin keys from one address within 15
+  minutes lock that address out of the admin API, the right key included,
+  until the oldest of those attempts is 15 minutes old. The login screen
+  says how long to wait. A right key clears the address's failures.
+- **Audit log:** every player edit and setting change is recorded with the
+  admin key's name (the `<name>` in `AdminKeys:<name>`), the time, and the
+  old and new values, and shown newest first in the **Recent changes** tab.
+  Saving with nothing changed records nothing.
+- **Behind a proxy or load balancer** (most hosts), every request appears
+  to come from the proxy, so one person's wrong keys would lock everyone
+  out. Set `ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` there so the API uses
+  the real client address from `X-Forwarded-For`. Only when the API is
+  reachable solely through that proxy: otherwise a caller could send a
+  made-up `X-Forwarded-For` to dodge the lockout.
+
 ## Notes on the dataset
 
 As of October 2026 the dataset contains **723 real athletes** across two

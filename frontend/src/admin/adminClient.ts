@@ -1,5 +1,6 @@
 import axios from "axios";
 import { API_ROOT } from "../api/client";
+import { problemDetail } from "../api/problemDetails";
 
 // sessionStorage (not localStorage) so the key survives a reload within
 // the tab -- reasonable for "session duration" -- but doesn't linger
@@ -106,6 +107,20 @@ export interface AdminStats {
   }[];
 }
 
+// One row of the "Recent changes" tab: who changed what, and when.
+export interface AdminChange {
+  at: string; // ISO date-time, UTC
+  admin: string; // the admin key's name
+  action: string; // e.g. "Player edited", "Setting changed"
+  target: string; // e.g. "Men's Tennis: Roger Federer", "ActiveTheme"
+  changes: string; // e.g. "Country: Spain → France"
+}
+
+export async function fetchAdminChanges(limit = 100): Promise<AdminChange[]> {
+  const res = await adminClient.get("/changes", { params: { limit } });
+  return res.data;
+}
+
 export interface AdminStatsFilter {
   sport: string; // a sport slug, or "" for every tour
   from: string; // yyyy-MM-dd, UTC, inclusive
@@ -159,13 +174,15 @@ export async function updateAdminSetting(key: string, value: string): Promise<vo
 // real admin call, so the login screen uses it as the verification probe.
 // Stores the key first so the interceptor picks it up on this same
 // request, then rolls back if the server rejects it.
-export async function verifyAndStoreAdminKey(key: string): Promise<boolean> {
+// Resolves to null when the key works, or the reason it didn't: a wrong
+// key, or the lockout after too many wrong ones (which says how long to wait).
+export async function verifyAndStoreAdminKey(key: string): Promise<string | null> {
   sessionStorage.setItem(ADMIN_KEY_STORAGE_KEY, key);
   try {
     await adminClient.get("/sports");
-    return true;
-  } catch {
+    return null;
+  } catch (err) {
     clearStoredAdminKey();
-    return false;
+    return problemDetail(err, "Couldn't check the key. Try again.");
   }
 }
