@@ -17,6 +17,12 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
   </ItemGroup>
 
+  <!-- Tests that need a real Postgres (Postgres/): Testcontainers starts a
+       throwaway postgres:16-alpine in Docker for the test run. -->
+  <ItemGroup>
+    <PackageReference Include="Testcontainers.PostgreSql" Version="4.15.0" />
+  </ItemGroup>
+
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>

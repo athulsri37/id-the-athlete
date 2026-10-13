@@ -307,6 +307,13 @@ HTTP. `ClueClosenessTests` pins down how every clue is judged for each
 sport, end to end through `GameService`. Uses
 `Microsoft.EntityFrameworkCore.InMemory` for a `DbContext` without a real
 Postgres database, and `Moq` to mock dependencies.
+
+The in-memory database doesn't enforce unique indexes or foreign keys, so the
+tests in `Postgres/` run against a real one: Testcontainers starts a
+throwaway `postgres:16-alpine` in Docker for the test run and applies the
+migrations to it. They check the unique player names and daily puzzles, two
+servers creating the same day's puzzle at once, and the game-stats table.
+**Docker must be running** for `dotnet test`.
 ```bash
 cd backend/IdTheAthlete.Api.Tests
 dotnet test
