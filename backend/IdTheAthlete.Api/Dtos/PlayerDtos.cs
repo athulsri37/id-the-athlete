@@ -28,6 +28,7 @@ public class ClueResultDto
 
 public class GuessResponseDto
 {
+    public int GuessedPlayerId { get; set; }
     public string GuessedPlayerName { get; set; } = string.Empty;
     public bool IsCorrect { get; set; }
     public List<ClueResultDto> Clues { get; set; } = new();

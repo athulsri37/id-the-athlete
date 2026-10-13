@@ -23,5 +23,7 @@ public class SportCatalogServiceTests
         Assert.Equal(new[] { "cricket-men-international", "tennis-men", "tennis-women" }, sports.Select(s => s.Slug));
         var menTennis = sports[1];
         Assert.Equal(("Men's Tennis", "Men's", "tennis"), (menTennis.Name, menTennis.ShortName, menTennis.Family));
+        // The frontend takes the game's numbers from here, never its own copy.
+        Assert.All(sports, s => Assert.Equal((8, 5), (s.MaxGuesses, s.HintAfterGuess)));
     }
 }

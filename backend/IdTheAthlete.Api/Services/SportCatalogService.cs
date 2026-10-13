@@ -22,7 +22,15 @@ public sealed class SportCatalogService : ISportCatalogService
     {
         return await _db.Sports
             .OrderBy(s => s.Name)
-            .Select(s => new SportDto { Slug = s.Slug, Name = s.Name, ShortName = s.ShortName, Family = s.Family })
+            .Select(s => new SportDto
+            {
+                Slug = s.Slug,
+                Name = s.Name,
+                ShortName = s.ShortName,
+                Family = s.Family,
+                MaxGuesses = GameRules.MaxGuesses,
+                HintAfterGuess = GameRules.HintAfterGuess
+            })
             .ToListAsync();
     }
 }

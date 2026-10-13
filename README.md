@@ -491,7 +491,7 @@ Every gameplay route is sport-agnostic, parameterized by `{sportSlug}`
 (one of `tennis-men`, `tennis-women`, `cricket-men-international`,
 `cricket-women-international`):
 
-- `GET /api/sports` — every playable tour with its family and short label (builds the home and tour-select screens)
+- `GET /api/sports` — every playable tour with its family, short label, and the game's numbers (`maxGuesses`, `hintAfterGuess`, from `GameRules`) (builds the home and tour-select screens)
 - `GET /api/sports/{sportSlug}/players` — full player pool (for guess autocomplete)
 - `GET /api/sports/{sportSlug}/attributes` — this sport's ordered clue columns
 - `GET /api/sports/{sportSlug}/daily-puzzles` — every date with an existing Daily Challenge, for Past Challenges
