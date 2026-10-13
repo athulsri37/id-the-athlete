@@ -8,6 +8,7 @@ export interface Sport {
   name: string; // e.g. "Men's Tennis"
   shortName: string; // e.g. "Men's"; empty means use name
   family: string; // e.g. "tennis"; picks the sport's rules and display (see config/sportFamilies)
+  urlName: string; // e.g. "men" in /tennis/men (see routes/paths); empty means use slug
   // The game's numbers, as the server enforces them (GameRules), so the
   // page never keeps its own copy.
   maxGuesses: number;

@@ -287,7 +287,31 @@ docker build --build-arg VITE_API_BASE_URL=https://<api host> -t idtheathlete-fr
 ```
 The API must list the site's origin in `AllowedOrigins`. Hashed assets are
 cached for a year; the page itself is revalidated on every visit, so a new
-deploy shows up straight away.
+deploy shows up straight away. Every other address is answered with the app
+itself, so a link like `/tennis/men/daily` works when opened directly; a host
+serving the static files without this image (e.g. a Render static site)
+needs a rewrite rule sending every path to `/index.html`.
+
+### Page addresses
+
+Each screen has its own address, so the browser's Back button, a refresh
+and shared links all work (`frontend/src/routes/paths.ts`):
+
+| Address | Screen |
+|---|---|
+| `/` | Pick a sport |
+| `/tennis` | Pick a tour |
+| `/tennis/men` | A tour's home: pick a mode |
+| `/tennis/men/daily` | Today's Daily Challenge |
+| `/tennis/men/easy` (`medium`, `hard`) | Practice |
+| `/tennis/men/past` | Past Challenges |
+| `/tennis/men/past/2026-10-12` | One Past Challenge |
+
+The sport part is the tour's `Family` and the tour part its `UrlName`
+(`men`, `women`), both from `GET /api/sports`. Any address that doesn't
+name a screen, including a Past Challenge date with no puzzle, shows "Page
+not found"; an unexpected error shows a "Something went wrong" screen
+instead of a blank page.
 
 ## Testing
 
@@ -494,7 +518,7 @@ Every gameplay route is sport-agnostic, parameterized by `{sportSlug}`
 (one of `tennis-men`, `tennis-women`, `cricket-men-international`,
 `cricket-women-international`):
 
-- `GET /api/sports` — every playable tour with its family, short label, and the game's numbers (`maxGuesses`, `hintAfterGuess`, from `GameRules`) (builds the home and tour-select screens)
+- `GET /api/sports` — every playable tour with its family, short label, address part (`urlName`), and the game's numbers (`maxGuesses`, `hintAfterGuess`, from `GameRules`) (builds the home and tour-select screens)
 - `GET /api/sports/{sportSlug}/players` — full player pool (for guess autocomplete)
 - `GET /api/sports/{sportSlug}/attributes` — this sport's ordered clue columns
 - `GET /api/sports/{sportSlug}/daily-puzzles` — every date with an existing Daily Challenge, for Past Challenges
