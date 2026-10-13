@@ -228,7 +228,8 @@ public class GameService : IGameService
             // Trivia is fetched separately with this token (see
             // GameTriviaService), so the final guess never waits on the AI call.
             TriviaToken = gameOver ? _gameTokens.IssueTrivia(new TriviaGrant(sport.Id, mysteryPlayer.Id)) : null,
-            GameToken = isDaily ? _gameTokens.Issue(new DailyGameState(sport.Id, dailyPuzzleDate, guessNumber, gameId)) : null
+            GameToken = isDaily ? _gameTokens.Issue(new DailyGameState(sport.Id, dailyPuzzleDate, guessNumber, gameId)) : null,
+            PuzzleDate = isDaily ? dailyPuzzleDate : null
         };
     }
 

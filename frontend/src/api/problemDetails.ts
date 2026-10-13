@@ -16,3 +16,9 @@ export function problemDetail(error: unknown, fallback: string): string {
   if (!axios.isAxiosError<ProblemDetails>(error)) return fallback;
   return error.response?.data?.detail ?? fallback;
 }
+
+// The HTTP status of a failed request, or undefined when there was no
+// response (a network error) or it wasn't a request error at all.
+export function problemStatus(error: unknown): number | undefined {
+  return axios.isAxiosError(error) ? error.response?.status : undefined;
+}

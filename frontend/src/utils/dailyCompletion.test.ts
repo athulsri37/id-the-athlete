@@ -13,6 +13,7 @@ const finalGuess: GuessResponse = {
   answerName: "Mystery Player",
   triviaToken: "token",
   gameToken: null,
+  puzzleDate: DATE,
 };
 
 afterEach(() => {

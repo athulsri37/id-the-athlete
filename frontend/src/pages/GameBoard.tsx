@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { fetchPlayerPool, startPracticeGame, submitGuess, fetchCountryHint, fetchAttributeDefinitions } from "../api/client";
-import { problemDetail } from "../api/problemDetails";
+import { problemDetail, problemStatus } from "../api/problemDetails";
 import { PlayerSummary, GuessResponse, Difficulty, AttributeDefinition, GameRef, Sport } from "../types";
 import { familyDisplay } from "../config/sportFamilies";
 import PlayerSearch from "../components/PlayerSearch";
@@ -9,6 +9,7 @@ import ClueLegend from "../components/ClueLegend";
 import ShareResult from "../components/ShareResult";
 import { recordDailyResult, getStreak, StreakData } from "../utils/dailyStreak";
 import { getCompletionForDate, recordDailyCompletion, recordDailyTrivia } from "../utils/dailyCompletion";
+import { getInProgress, saveInProgress, clearInProgress } from "../utils/dailyInProgress";
 import { todayUtcDateString } from "../utils/localDate";
 import { useGameTrivia } from "../hooks/useGameTrivia";
 
@@ -97,6 +98,17 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
         streakRecordedRef.current = true;
         return;
       }
+
+      // Resume a game left part-way, e.g. by a refresh: same guesses, same
+      // server-side game (its token is on the last guess).
+      const saved = getInProgress(sportSlug, effectiveDate);
+      if (saved) {
+        setGuesses(saved.guesses);
+        setRevealedCountry(saved.revealedCountry);
+        setHintOffered(saved.hintOffered);
+        setHintDeclined(saved.hintDeclined);
+        return;
+      }
     }
 
     setGuesses([]);
@@ -146,6 +158,17 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
     setHintOffered(true);
   }, [guesses, hintOffered, gameOver]);
 
+  // Save a live daily game after every change, so a refresh resumes it.
+  // Once it's over it's filed as a completion instead (below). Saved under
+  // the puzzle the server says this game is for, not today's date: a game
+  // still going after midnight UTC is yesterday's puzzle, so a refresh then
+  // starts today's, and Past Challenges resumes yesterday's.
+  const gameDate = guesses[0]?.puzzleDate ?? effectiveDate;
+  useEffect(() => {
+    if (mode !== "daily" || isDailyReplay || guesses.length === 0 || gameOver) return;
+    saveInProgress(sportSlug, { date: gameDate, guesses, revealedCountry, hintOffered, hintDeclined });
+  }, [mode, isDailyReplay, guesses, gameOver, sportSlug, gameDate, revealedCountry, hintOffered, hintDeclined]);
+
   // Mark this date's puzzle as completed exactly once per finished game,
   // and -- only for genuine "today" plays -- update the streak. Guarded by
   // a ref (not just state) so a re-render after gameOver is already true
@@ -156,6 +179,7 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
     streakRecordedRef.current = true;
 
     recordDailyCompletion(sportSlug, effectiveDate, won, guesses, revealedCountry);
+    clearInProgress(sportSlug);
 
     // CRITICAL: streak logic must only ever fire for today. Catching up on
     // a past day via Past Challenges must never affect it. effectiveDate is
@@ -186,6 +210,11 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
       // The server's message when it refused the guess, e.g. an expired
       // practice game; the generic one for a network error or a 500.
       setError(problemDetail(err, "Something went wrong submitting that guess."));
+      // A refused daily guess usually means the saved game can't continue
+      // (its token no longer verifies, e.g. after the signing key changed).
+      // Forget it, so a refresh starts a fresh game instead of resuming
+      // this one again.
+      if (mode === "daily" && problemStatus(err) === 400) clearInProgress(sportSlug);
     } finally {
       setLoading(false);
     }
