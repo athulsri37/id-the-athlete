@@ -35,6 +35,7 @@ public class GuessResponseDto
     public string? AnswerName { get; set; } // populated only when game is over
     public string? TriviaToken { get; set; } // populated only when game is over: pass to the trivia endpoint
     public string? GameToken { get; set; } // daily mode only: send back with the next guess or hint request
+    public DateOnly? PuzzleDate { get; set; } // daily mode only: the puzzle this game is for, which can be yesterday's after midnight UTC
 }
 
 public class StartGameResponseDto

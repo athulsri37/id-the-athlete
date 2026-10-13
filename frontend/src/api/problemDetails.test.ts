@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AxiosError, AxiosHeaders } from "axios";
-import { problemDetail } from "./problemDetails";
+import { problemDetail, problemStatus } from "./problemDetails";
 
 function failedRequest(status: number, data: unknown): AxiosError {
   const config = { headers: new AxiosHeaders() };
@@ -32,5 +32,16 @@ describe("problemDetail", () => {
 
   it("falls back for anything that isn't a request error", () => {
     expect(problemDetail(new Error("boom"), "Save failed.")).toBe("Save failed.");
+  });
+});
+
+describe("problemStatus", () => {
+  it("returns a failed request's status", () => {
+    expect(problemStatus(failedRequest(400, { status: 400 }))).toBe(400);
+  });
+
+  it("is undefined when there was no response, or no request at all", () => {
+    expect(problemStatus(new AxiosError("Network Error", "ERR_NETWORK"))).toBeUndefined();
+    expect(problemStatus(new Error("not a request"))).toBeUndefined();
   });
 });

@@ -36,6 +36,9 @@ export interface GuessResponse {
   triviaToken: string | null;
   // Daily mode only: send back with the next guess or hint request.
   gameToken: string | null;
+  // Daily mode only (yyyy-MM-dd): the puzzle this game is for. A game
+  // still being played after midnight UTC keeps its original puzzle.
+  puzzleDate: string | null;
 }
 
 export type Difficulty = "daily" | "easy" | "medium" | "hard";

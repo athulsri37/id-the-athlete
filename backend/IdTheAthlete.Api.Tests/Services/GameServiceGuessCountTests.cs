@@ -22,6 +22,7 @@ public class GameServiceGuessCountTests
     private readonly GameService _service;
     private readonly GameTokenService _tokens = GameTokenServiceTests.Create();
     private readonly PracticeSessionService _sessions = PracticeSessionServiceTests.Create();
+    private readonly FakeTimeProvider _time = new(new DateTimeOffset(Today.ToDateTime(new TimeOnly(12, 0)), TimeSpan.Zero));
 
     public GameServiceGuessCountTests()
     {
@@ -38,8 +39,7 @@ public class GameServiceGuessCountTests
         db.DailyPuzzles.Add(new DailyPuzzle { SportId = 1, PlayerId = MysteryId, PuzzleDate = Today });
         db.SaveChanges();
 
-        var time = new FakeTimeProvider(new DateTimeOffset(Today.ToDateTime(new TimeOnly(12, 0)), TimeSpan.Zero));
-        _service = TestGameServiceFactory.Create(db, _sessions, _tokens, time: time);
+        _service = TestGameServiceFactory.Create(db, _sessions, _tokens, time: _time);
     }
 
     private Task<GuessResponseDto> DailyWrongGuess(string? token) =>
@@ -63,6 +63,35 @@ public class GameServiceGuessCountTests
         var state = _tokens.Read(result.GameToken!);
         Assert.Equal((1, Today, 1), (state.SportId, state.PuzzleDate, state.GuessCount));
         Assert.NotEqual(Guid.Empty, state.GameId);
+    }
+
+    [Fact]
+    public async Task Daily_ResponseNamesThePuzzlesDate()
+    {
+        var result = await DailyWrongGuess(null);
+
+        Assert.Equal(Today, result.PuzzleDate);
+    }
+
+    [Fact]
+    public async Task Daily_GameStillGoingAfterMidnight_KeepsItsPuzzleDate()
+    {
+        var token = await DailyTokenAfter(2);
+        _time.Advance(TimeSpan.FromHours(13)); // 01:00 UTC the next day
+
+        var result = await DailyWrongGuess(token);
+
+        Assert.Equal(Today, result.PuzzleDate);
+    }
+
+    [Fact]
+    public async Task Practice_ResponseHasNoPuzzleDate()
+    {
+        var sessionId = _sessions.CreateSession(MysteryId, "easy");
+
+        var result = await _service.SubmitGuessAsync(Slug, new GuessRequestDto { PlayerId = 2, Mode = "easy", SessionId = sessionId });
+
+        Assert.Null(result.PuzzleDate);
     }
 
     [Fact]
