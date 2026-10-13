@@ -37,6 +37,7 @@ builder.Services.AddSingleton(TimeProvider.System);
 
 builder.Services.AddScoped<IGameService, GameService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
+builder.Services.AddScoped<IAdminStatsService, AdminStatsService>();
 builder.Services.AddScoped<ISportCatalogService, SportCatalogService>();
 builder.Services.AddOptions<AnthropicOptions>()
     .Bind(builder.Configuration.GetSection(AnthropicOptions.SectionName));

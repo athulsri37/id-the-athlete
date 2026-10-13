@@ -431,7 +431,10 @@ footer says so.
   carries on.
 - Daily games already in progress when stats were deployed aren't recorded.
 
-To run a query, open a database shell and paste it in:
+The [Admin Tool](#admin-tool)'s **Stats** tab shows the same four views as
+tables, for one tour or all of them over a date range (default: the last 30
+days, UTC). To run the queries yourself instead, open a database shell and
+paste one in:
 ```bash
 docker compose exec postgres psql -U idtheathlete -d idtheathlete
 ```
@@ -527,8 +530,9 @@ would leave the site unstyled; a new theme needs its CSS and an entry in
 An internal, key-protected admin interface — not linked from the public
 UI — lets a curator browse any sport's roster, edit a player's raw stats
 or set a difficulty override, and edit any existing `AppSettings` row
-(closeness feature flags and thresholds, AI trivia) directly against the
-running database, without a redeploy. It authenticates via the `X-Admin-Key`
+(closeness feature flags and thresholds, AI trivia, the theme) directly
+against the running database, without a redeploy. Its Stats tab shows the
+anonymous [Game Stats](#game-stats). It authenticates via the `X-Admin-Key`
 header described in [Getting Started](#getting-started) above and has no
 other session or account system.
 
