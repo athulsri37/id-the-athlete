@@ -13,10 +13,21 @@ namespace IdTheAthlete.Api.Controllers;
 public class AdminController : ControllerBase
 {
     private readonly IAdminService _adminService;
+    private readonly IAdminStatsService _stats;
 
-    public AdminController(IAdminService adminService)
+    public AdminController(IAdminService adminService, IAdminStatsService stats)
     {
         _adminService = adminService;
+        _stats = stats;
+    }
+
+    // GET /api/admin/stats?sport=tennis-men&from=2026-10-01&to=2026-10-31
+    // The Stats tab: anonymous gameplay stats for games started in the
+    // range (UTC, inclusive). sport, from and to are all optional.
+    [HttpGet("stats")]
+    public async Task<ActionResult<AdminStatsDto>> GetStats([FromQuery] string? sport, [FromQuery] string? from, [FromQuery] string? to)
+    {
+        return await _stats.GetStatsAsync(sport, from, to);
     }
 
     [HttpGet("sports")]

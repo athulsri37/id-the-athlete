@@ -10,3 +10,10 @@ export function todayUtcDateString(): string {
   const day = String(now.getUTCDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
+
+// A yyyy-MM-dd date moved by whole days (negative for earlier), computed in
+// UTC so a daylight-saving change can't shift it.
+export function addDays(date: string, days: number): string {
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+}

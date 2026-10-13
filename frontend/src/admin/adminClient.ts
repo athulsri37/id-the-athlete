@@ -76,6 +76,42 @@ export interface AdminSetting {
   value: string;
 }
 
+// The Stats tab: anonymous gameplay stats (see AdminStatsService).
+export interface AdminStats {
+  outcomes: {
+    tour: string;
+    mode: string; // daily | past challenge | easy | medium | hard
+    games: number;
+    won: number;
+    lost: number;
+    abandoned: number;
+    inProgress: number;
+    finishedPercent: number;
+  }[];
+  winningGuesses: { tour: string; guess: number; games: number }[];
+  hints: {
+    tour: string;
+    reachedHint: number;
+    tookHint: number;
+    winPercentWithHint: number | null;
+    winPercentWithoutHint: number | null;
+  }[];
+  puzzles: {
+    puzzleDate: string; // yyyy-MM-dd
+    tour: string;
+    athlete: string;
+    games: number;
+    winPercent: number;
+    averageWinningGuess: number | null;
+  }[];
+}
+
+export interface AdminStatsFilter {
+  sport: string; // a sport slug, or "" for every tour
+  from: string; // yyyy-MM-dd, UTC, inclusive
+  to: string;
+}
+
 export async function fetchAdminSports(): Promise<AdminSport[]> {
   const res = await adminClient.get("/sports");
   return res.data;
@@ -103,6 +139,11 @@ export async function updateAdminPlayer(
   difficultyOverride: DifficultyOverride | null
 ): Promise<void> {
   await adminClient.put(`/players/${playerId}`, { attributes, isOverridden, difficultyOverride });
+}
+
+export async function fetchAdminStats({ sport, from, to }: AdminStatsFilter): Promise<AdminStats> {
+  const res = await adminClient.get("/stats", { params: { sport: sport || undefined, from, to } });
+  return res.data;
 }
 
 export async function fetchAdminSettings(): Promise<AdminSetting[]> {

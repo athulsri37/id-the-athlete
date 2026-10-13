@@ -3,8 +3,9 @@ import { clearStoredAdminKey, getStoredAdminKey, setUnauthorizedHandler } from "
 import AdminLogin from "./AdminLogin";
 import PlayersTab from "./PlayersTab";
 import SettingsTab from "./SettingsTab";
+import StatsTab from "./StatsTab";
 
-type Tab = "players" | "settings";
+type Tab = "players" | "settings" | "stats";
 
 export default function ControlRoom() {
   useEffect(() => {
@@ -58,9 +59,19 @@ export default function ControlRoom() {
         >
           Settings
         </button>
+        <button
+          onClick={() => setTab("stats")}
+          className={`px-4 py-2 text-sm font-semibold border-b-2 ${
+            tab === "stats" ? "border-slate-100 text-slate-100" : "border-transparent text-slate-500"
+          }`}
+        >
+          Stats
+        </button>
       </div>
 
-      {tab === "players" ? <PlayersTab /> : <SettingsTab />}
+      {tab === "players" && <PlayersTab />}
+      {tab === "settings" && <SettingsTab />}
+      {tab === "stats" && <StatsTab />}
     </div>
   );
 }
