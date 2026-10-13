@@ -170,7 +170,7 @@ id-the-athlete/
 ### Prerequisites
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
-- Node.js 18+
+- Node.js 24 (the version in `frontend/.nvmrc`; CI uses the same)
 - PostgreSQL (via Docker or a local install)
 
 ### 1. Start PostgreSQL
@@ -269,6 +269,25 @@ npm run dev
 ```
 App will be available at `http://localhost:5174`.
 
+### Running it all in Docker
+
+`docker compose up --build` runs Postgres, the API and the production
+frontend together, with the site at `http://localhost:5174`. Set
+`GAME_TOKEN_SIGNING_KEY` (32+ characters) in your shell first: the API
+container runs in Production mode and won't start without it. A fresh
+database has no players; restore a backup to get them.
+
+The frontend image (`frontend/Dockerfile`) builds the static site with
+Node 24 and serves it with nginx, as a non-root user, on `$PORT` (default
+8080), so any host that assigns a port works. The API address is baked in
+at build time:
+```bash
+docker build --build-arg VITE_API_BASE_URL=https://<api host> -t idtheathlete-frontend frontend
+```
+The API must list the site's origin in `AllowedOrigins`. Hashed assets are
+cached for a year; the page itself is revalidated on every visit, so a new
+deploy shows up straight away.
+
 ## Testing
 
 The project has three independent test layers, all run by CI on every pull
@@ -322,6 +341,9 @@ push to it, in parallel jobs:
 - **Backend tests:** `dotnet test`.
 - **Frontend tests, type check and build:** `npm test`, `npm run build`.
 - **Roster agent checks:** the Python unit tests in `tools/`.
+- **Docker images build:** builds the backend and frontend images, then
+  checks that the frontend image serves the site on an assigned port, with
+  the API address baked in and no Node in the image.
 - **Migrations and app smoke test:** against an empty Postgres, checks that
   every model change has a migration, applies the migrations, checks the
   reference data, starts the API in Production mode and the frontend, and

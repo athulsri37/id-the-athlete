@@ -1,0 +1,8 @@
+# The image installs its own packages for Linux; a local node_modules
+# (Windows binaries included) must never be copied in.
+node_modules
+dist
+test-results
+playwright-report
+*.tsbuildinfo
+.env*
