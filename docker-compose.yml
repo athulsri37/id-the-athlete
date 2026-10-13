@@ -5,6 +5,12 @@ services:
       POSTGRES_USER: idtheathlete
       POSTGRES_PASSWORD: idtheathlete_dev_pw
       POSTGRES_DB: idtheathlete
+    # The API migrates the database as it starts, so it waits for this.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U idtheathlete -d idtheathlete"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
     ports:
       - "5432:5432"
     volumes:
@@ -21,13 +27,21 @@ services:
       # committed; the empty default keeps `docker compose up -d postgres`
       # working when it isn't set.
       GameTokens__SigningKey: "${GAME_TOKEN_SIGNING_KEY:-}"
+      # The frontend container below calls the API from the browser.
+      AllowedOrigins: "http://localhost:5174"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
   frontend:
-    build: ./frontend
+    # The production image: a static build served by nginx. The API address
+    # is baked in at build time, so rebuild after changing it.
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: "http://localhost:5080"
     ports:
-      - "5174:5174"
+      - "5174:8080"
     depends_on:
       - backend
 
