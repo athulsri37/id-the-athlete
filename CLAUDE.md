@@ -15,6 +15,8 @@ Core schema is sport-agnostic by design: `Sport → Player → AttributeDefiniti
 
 The database is the single source of truth: players, curator edits, overrides, settings and daily puzzles exist nowhere else (there are no seed files). Migrations create only the reference data (sports, clue columns, default settings) on an empty database. Back up with `scripts/db-backup.sh`, restore with `scripts/db-restore.sh` (Git Bash; see the README's "Player Data & Backups"). Never test destructive changes against the real dev database: restore a backup into a throwaway database (`DB_NAME=...`) instead.
 
+Game stats (`GameRecords`, one row per game, see the README's "Game Stats") are anonymous by design: a random ID per game and nothing that identifies a person. Adding an IP address, device or cookie ID, or any account link makes them personal data, so it's the owner's decision, not an implementation detail. Recording stats must never fail a guess or hint.
+
 ## Setup
 
 ```
