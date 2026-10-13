@@ -157,6 +157,8 @@ public class ClueClosenessTests
     [Theory]
     [InlineData("India", "Pakistan", true)]        // same region, no shared border needed
     [InlineData("Pakistan", "Bangladesh", true)]
+    [InlineData("UAE", "Pakistan", true)]
+    [InlineData("UAE", "England", false)]
     [InlineData("England", "Netherlands", true)]
     [InlineData("Australia", "New Zealand", true)]
     [InlineData("India", "China", false)]          // land border, but China has no cricket region
