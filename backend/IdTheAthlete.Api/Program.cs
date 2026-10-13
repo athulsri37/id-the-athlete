@@ -64,6 +64,7 @@ builder.Services.AddOptions<PracticeSessionOptions>()
     .Validate(o => o.IdleTimeout > TimeSpan.Zero, $"{PracticeSessionOptions.SectionName}:IdleTimeout must be positive.")
     .ValidateOnStart();
 builder.Services.AddScoped<IDailyPuzzleService, DailyPuzzleService>();
+builder.Services.AddScoped<IGameStatsService, GameStatsService>();
 builder.Services.AddScoped<ISettingsService, SettingsService>();
 builder.Services.AddSingleton<SettingsFailureLogThrottle>();
 builder.Services.AddOptions<GameTokenOptions>()

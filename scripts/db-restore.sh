@@ -5,22 +5,23 @@
 #
 # Usage (Git Bash, from anywhere in the repo):
 #   scripts/db-restore.sh backups/<file>.dump                   # into the local Docker database
-#   scripts/db-restore.sh backups/<file>.dump --skip-puzzle-history
+#   scripts/db-restore.sh backups/<file>.dump --skip-play-history
 #   DB_NAME=other scripts/db-restore.sh backups/<file>.dump     # another local database (must exist)
 #   DATABASE_URL='postgresql://user:pass@host:5432/db' scripts/db-restore.sh backups/<file>.dump
 #                                                               # any other server, e.g. production
 #
-# --skip-puzzle-history removes the restored daily puzzles afterwards, so the
-# target's Past Challenges start fresh. Use it when copying the dev database
-# into production for the first time; the API creates today's puzzle on start.
+# --skip-play-history removes the restored daily puzzles and game stats
+# afterwards, so the target's Past Challenges and stats start fresh. Use it
+# when copying the dev database into production for the first time; the API
+# creates today's puzzle on start.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-usage="Usage: scripts/db-restore.sh <backup-file> [--skip-puzzle-history]"
+usage="Usage: scripts/db-restore.sh <backup-file> [--skip-play-history]"
 file="${1:?$usage}"
-skip_puzzles=false
-if [[ "${2:-}" == "--skip-puzzle-history" ]]; then
-  skip_puzzles=true
+skip_history=false
+if [[ "${2:-}" == "--skip-play-history" ]]; then
+  skip_history=true
 elif [[ -n "${2:-}" ]]; then
   echo "$usage" >&2
   exit 1
@@ -39,7 +40,7 @@ else
 fi
 
 echo "This REPLACES ALL DATA in database '$label' with the contents of $file."
-$skip_puzzles && echo "Daily puzzle history from the backup will then be removed."
+$skip_history && echo "Daily puzzles and game stats from the backup will then be removed."
 read -r -p "Type the database name ($label) to continue: " answer
 if [[ "$answer" != "$label" ]]; then
   echo "Cancelled; nothing was changed."
@@ -50,7 +51,12 @@ fi
 docker compose exec -T postgres pg_restore --clean --if-exists --no-owner --no-privileges \
   --single-transaction "${target[@]}" < "$file"
 
-if $skip_puzzles; then
-  docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -q "${target[@]}" -c 'DELETE FROM "DailyPuzzles";'
+if $skip_history; then
+  # Backups taken before game stats existed have no GameRecords table.
+  docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -q "${target[@]}" -c '
+    DELETE FROM "DailyPuzzles";
+    DO $$ BEGIN
+      IF to_regclass($r$"GameRecords"$r$) IS NOT NULL THEN DELETE FROM "GameRecords"; END IF;
+    END $$;'
 fi
 echo "Restored $file into '$label'."

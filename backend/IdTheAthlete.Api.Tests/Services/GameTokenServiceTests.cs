@@ -10,7 +10,8 @@ namespace IdTheAthlete.Api.Tests.Services;
 public class GameTokenServiceTests
 {
     private const string Key = "test-signing-key-that-is-long-enough-123";
-    private static readonly DailyGameState State = new(SportId: 3, PuzzleDate: new DateOnly(2026, 10, 12), GuessCount: 4);
+    private static readonly DailyGameState State = new(SportId: 3, PuzzleDate: new DateOnly(2026, 10, 12), GuessCount: 4,
+        GameId: new Guid("3f2b8c4e-1d6a-4f0e-9b7c-5a2d8e6f1c3b"));
 
     internal static GameTokenService Create(string? key = Key) =>
         new(Options.Create(new GameTokenOptions { SigningKey = key }), NullLogger<GameTokenService>.Instance);

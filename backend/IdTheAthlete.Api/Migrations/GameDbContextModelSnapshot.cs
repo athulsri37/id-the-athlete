@@ -106,6 +106,57 @@ namespace IdTheAthlete.Api.Migrations
                     b.ToTable("DailyPuzzles");
                 });
 
+            modelBuilder.Entity("IdTheAthlete.Api.Models.GameRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("EndedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("GuessCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("HintTakenAtGuess")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsPastChallenge")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("LastActivityAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<int?>("MysteryPlayerId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly?>("PuzzleDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Result")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<int>("SportId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MysteryPlayerId");
+
+                    b.HasIndex("SportId", "StartedAt");
+
+                    b.ToTable("GameRecords");
+                });
+
             modelBuilder.Entity("IdTheAthlete.Api.Models.Player", b =>
                 {
                     b.Property<int>("Id")
@@ -220,6 +271,24 @@ namespace IdTheAthlete.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Player");
+                });
+
+            modelBuilder.Entity("IdTheAthlete.Api.Models.GameRecord", b =>
+                {
+                    b.HasOne("IdTheAthlete.Api.Models.Player", "MysteryPlayer")
+                        .WithMany()
+                        .HasForeignKey("MysteryPlayerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("IdTheAthlete.Api.Models.Sport", "Sport")
+                        .WithMany()
+                        .HasForeignKey("SportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("MysteryPlayer");
+
+                    b.Navigation("Sport");
                 });
 
             modelBuilder.Entity("IdTheAthlete.Api.Models.Player", b =>

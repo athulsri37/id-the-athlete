@@ -31,6 +31,7 @@ internal static class TestGameServiceFactory
             sessions,
             new DailyPuzzleService(db, NullLogger<DailyPuzzleService>.Instance, time),
             tokens ?? GameTokenServiceTests.Create(),
+            new GameStatsService(db, time, NullLogger<GameStatsService>.Instance),
             logger ?? NullLogger<GameService>.Instance);
     }
 

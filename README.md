@@ -149,6 +149,7 @@ id-the-athlete/
 │   │   ├── DailyPuzzleGenerationService.cs # Background service: 00:00 UTC scheduled generation + startup catch-up
 │   │   ├── AiTriviaService.cs              # AI trivia blurb generation
 │   │   ├── GameTriviaService.cs            # Unlocks a finished game's trivia from its trivia token
+│   │   ├── GameStatsService.cs             # Anonymous per-game stats (GameRecords), never fails a guess
 │   │   └── AdminService.cs                 # Backs the internal admin tool
 │   ├── Controllers/      # PlayersController, GameController, SettingsController, AdminController
 │   └── Dtos/             # Request/response contracts
@@ -389,10 +390,10 @@ another local database or `DATABASE_URL` for any other server.
 After the first deploy (the app has started once, so migrations have run):
 ```bash
 scripts/db-backup.sh
-DATABASE_URL='postgresql://user:pass@host:5432/db' scripts/db-restore.sh backups/<that file>.dump --skip-puzzle-history
+DATABASE_URL='postgresql://user:pass@host:5432/db' scripts/db-restore.sh backups/<that file>.dump --skip-play-history
 ```
-`--skip-puzzle-history` leaves out your local daily puzzles, so production's
-Past Challenges start on launch day. Restart the API afterwards so it
+`--skip-play-history` leaves out your local daily puzzles and game stats, so
+production's Past Challenges and stats start on launch day. Restart the API afterwards so it
 creates today's puzzle.
 
 ### Adding a new sport
@@ -402,6 +403,80 @@ A new sport is one PR: a migration that inserts its `Sports` and
 class for its scoring, an entry in `frontend/src/config/sportFamilies.ts`,
 and a profile in the roster agent's `SPORT_PROFILES`. Then add its players
 with the agent.
+
+## Game Stats
+
+The server records one anonymous row per game in `GameRecords`, so you can
+see how games actually go. Nothing in it identifies a player: there's no IP
+address, device ID or cookie, only a random ID per game. The home page
+footer says so.
+
+- **A game starts at its first guess.** Opening a mode without guessing
+  isn't recorded.
+- **Each row holds:** the tour, the mode (`daily`, or the practice
+  difficulty the server started the game with), the puzzle date and
+  whether it was a Past Challenge, the mystery athlete, guesses used, the
+  guess the hint was taken at (if any), the result, and when the game
+  started, was last played and ended.
+- **Abandoned** isn't stored: an unfinished game counts as abandoned once 90
+  minutes pass without a guess. The queries below apply that rule.
+- **Stats never break a game.** If a stats write fails, it's logged and play
+  carries on.
+- Daily games already in progress when stats were deployed aren't recorded.
+
+To run a query, open a database shell and paste it in:
+```bash
+docker compose exec postgres psql -U idtheathlete -d idtheathlete
+```
+
+**How games end, per tour and mode:**
+```sql
+SELECT s."Name" AS tour,
+       CASE WHEN g."IsPastChallenge" THEN 'past challenge' ELSE g."Mode" END AS mode,
+       count(*) AS games,
+       count(*) FILTER (WHERE g."Result" = 'Won') AS won,
+       count(*) FILTER (WHERE g."Result" = 'Lost') AS lost,
+       count(*) FILTER (WHERE g."Result" IS NULL AND g."LastActivityAt" < now() - interval '90 minutes') AS abandoned,
+       count(*) FILTER (WHERE g."Result" IS NULL AND g."LastActivityAt" >= now() - interval '90 minutes') AS in_progress,
+       round(100.0 * count(*) FILTER (WHERE g."Result" IS NOT NULL) / count(*), 1) AS finished_pct
+FROM "GameRecords" g JOIN "Sports" s ON s."Id" = g."SportId"
+GROUP BY 1, 2 ORDER BY 1, 2;
+```
+
+**Which guess people win on:**
+```sql
+SELECT s."Name" AS tour, g."GuessCount" AS won_on_guess, count(*) AS games
+FROM "GameRecords" g JOIN "Sports" s ON s."Id" = g."SportId"
+WHERE g."Result" = 'Won'
+GROUP BY 1, 2 ORDER BY 1, 2;
+```
+
+**The hint: how often it's taken, and how players do with and without it**
+(only games that reached 5 guesses, when the hint is offered):
+```sql
+SELECT s."Name" AS tour,
+       count(*) AS reached_hint,
+       count(*) FILTER (WHERE g."HintTakenAtGuess" IS NOT NULL) AS took_hint,
+       round(100.0 * count(*) FILTER (WHERE g."HintTakenAtGuess" IS NOT NULL AND g."Result" = 'Won')
+             / NULLIF(count(*) FILTER (WHERE g."HintTakenAtGuess" IS NOT NULL), 0), 1) AS win_pct_with_hint,
+       round(100.0 * count(*) FILTER (WHERE g."HintTakenAtGuess" IS NULL AND g."Result" = 'Won')
+             / NULLIF(count(*) FILTER (WHERE g."HintTakenAtGuess" IS NULL), 0), 1) AS win_pct_without
+FROM "GameRecords" g JOIN "Sports" s ON s."Id" = g."SportId"
+WHERE g."GuessCount" >= 5 AND g."Result" IS NOT NULL
+GROUP BY 1 ORDER BY 1;
+```
+
+**How hard each daily puzzle was:**
+```sql
+SELECT g."PuzzleDate", s."Name" AS tour, p."Name" AS athlete, count(*) AS games,
+       round(100.0 * count(*) FILTER (WHERE g."Result" = 'Won') / count(*), 1) AS win_pct,
+       round(avg(g."GuessCount") FILTER (WHERE g."Result" = 'Won'), 1) AS avg_winning_guess
+FROM "GameRecords" g
+JOIN "Sports" s ON s."Id" = g."SportId"
+LEFT JOIN "Players" p ON p."Id" = g."MysteryPlayerId"
+WHERE g."Mode" = 'daily'
+GROUP BY 1, 2, 3 ORDER BY 1 DESC, 2;
+```
 
 ## API Endpoints
 

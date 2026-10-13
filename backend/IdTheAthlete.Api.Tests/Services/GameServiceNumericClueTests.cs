@@ -45,7 +45,7 @@ public class GameServiceNumericClueTests
             _db.PlayerAttributeValues.Add(new PlayerAttributeValue { PlayerId = player.Id, AttributeDefinitionId = 1, Value = titles });
         await _db.SaveChangesAsync();
 
-        var sessionId = _sessions.CreateSession(MysteryId);
+        var sessionId = _sessions.CreateSession(MysteryId, "easy");
         var result = await _service.SubmitGuessAsync(Slug, new GuessRequestDto { PlayerId = player.Id, Mode = "easy", SessionId = sessionId });
         return Assert.Single(result.Clues);
     }

@@ -41,22 +41,28 @@ export default function HomeScreen({ families, loadFailed, onSelectFamily }: Pro
         ))}
       </div>
 
-      <footer className="mt-auto pt-10 flex items-center justify-center gap-3">
-        <a
-          href="mailto:athulsri@outlook.com?subject=ID%20the%20Athlete%20Feedback"
-          className="text-xs text-[var(--text-muted)] underline hover:text-[var(--accent)] transition-colors"
-        >
-          Tell me what you think
-        </a>
-        <span className="w-px h-3 bg-[var(--border)]" aria-hidden="true" />
-        <a
-          href="https://github.com/athulsri37/id-the-athlete/issues"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs text-[var(--text-muted)] underline hover:text-[var(--accent)] transition-colors"
-        >
-          Found a bug? Report it on GitHub
-        </a>
+      <footer className="mt-auto pt-10 flex flex-col items-center gap-2">
+        <div className="flex items-center justify-center gap-3">
+          <a
+            href="mailto:athulsri@outlook.com?subject=ID%20the%20Athlete%20Feedback"
+            className="text-xs text-[var(--text-muted)] underline hover:text-[var(--accent)] transition-colors"
+          >
+            Tell me what you think
+          </a>
+          <span className="w-px h-3 bg-[var(--border)]" aria-hidden="true" />
+          <a
+            href="https://github.com/athulsri37/id-the-athlete/issues"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-[var(--text-muted)] underline hover:text-[var(--accent)] transition-colors"
+          >
+            Found a bug? Report it on GitHub
+          </a>
+        </div>
+        {/* Matches what the server records: see GameRecord. */}
+        <p className="text-xs text-[var(--text-muted)] text-center">
+          We record anonymous game stats (no personal data) to improve the game.
+        </p>
       </footer>
     </div>
   );

@@ -60,7 +60,9 @@ public class GameServiceGuessCountTests
 
         Assert.False(result.GameOver);
         Assert.Null(result.AnswerName);
-        Assert.Equal(new DailyGameState(1, Today, 1), _tokens.Read(result.GameToken!));
+        var state = _tokens.Read(result.GameToken!);
+        Assert.Equal((1, Today, 1), (state.SportId, state.PuzzleDate, state.GuessCount));
+        Assert.NotEqual(Guid.Empty, state.GameId);
     }
 
     [Fact]
@@ -98,7 +100,7 @@ public class GameServiceGuessCountTests
     public async Task Daily_ForgedToken_Throws()
     {
         var forged = GameTokenServiceTests.Create(key: "attacker-chosen-key-that-is-long-enough")
-            .Issue(new DailyGameState(1, Today, MaxGuesses - 1));
+            .Issue(new DailyGameState(1, Today, MaxGuesses - 1, Guid.NewGuid()));
 
         await Assert.ThrowsAsync<InvalidRequestException>(() => DailyWrongGuess(forged));
     }
@@ -106,7 +108,7 @@ public class GameServiceGuessCountTests
     [Fact]
     public async Task Daily_TokenFromAnotherSport_Throws()
     {
-        var otherSportToken = _tokens.Issue(new DailyGameState(2, Today, 3));
+        var otherSportToken = _tokens.Issue(new DailyGameState(2, Today, 3, Guid.NewGuid()));
 
         await Assert.ThrowsAsync<InvalidRequestException>(() => DailyWrongGuess(otherSportToken));
     }
@@ -136,7 +138,7 @@ public class GameServiceGuessCountTests
     [Fact]
     public async Task Practice_AnswerOnlyRevealedOnEighthGuess()
     {
-        var sessionId = _sessions.CreateSession(MysteryId);
+        var sessionId = _sessions.CreateSession(MysteryId, "easy");
         var request = new GuessRequestDto { PlayerId = 2, Mode = "easy", SessionId = sessionId };
 
         for (var i = 1; i < MaxGuesses; i++)
@@ -148,7 +150,7 @@ public class GameServiceGuessCountTests
     [Fact]
     public async Task Practice_HintBeforeFiveGuesses_Throws()
     {
-        var sessionId = _sessions.CreateSession(MysteryId);
+        var sessionId = _sessions.CreateSession(MysteryId, "easy");
 
         await Assert.ThrowsAsync<InvalidRequestException>(() => _service.GetCountryHintAsync(Slug, "easy", sessionId));
     }
@@ -156,7 +158,7 @@ public class GameServiceGuessCountTests
     [Fact]
     public async Task Practice_InvalidGuess_DoesNotUseUpAGuess()
     {
-        var sessionId = _sessions.CreateSession(MysteryId);
+        var sessionId = _sessions.CreateSession(MysteryId, "easy");
 
         await Assert.ThrowsAsync<InvalidRequestException>(() =>
             _service.SubmitGuessAsync(Slug, new GuessRequestDto { PlayerId = 999, Mode = "easy", SessionId = sessionId }));
@@ -167,7 +169,7 @@ public class GameServiceGuessCountTests
     [Fact]
     public async Task Practice_OnlyTheGameOverGuessCarriesATriviaToken()
     {
-        var sessionId = _sessions.CreateSession(MysteryId);
+        var sessionId = _sessions.CreateSession(MysteryId, "easy");
 
         var wrong = await _service.SubmitGuessAsync(Slug, new GuessRequestDto { PlayerId = 2, Mode = "easy", SessionId = sessionId });
         var correct = await _service.SubmitGuessAsync(Slug, new GuessRequestDto { PlayerId = MysteryId, Mode = "easy", SessionId = sessionId });

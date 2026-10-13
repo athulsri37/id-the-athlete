@@ -60,7 +60,7 @@ public class GameTriviaServiceTests
     [Fact]
     public async Task DailyGameToken_Throws()
     {
-        var token = _tokens.Issue(new DailyGameState(1, new DateOnly(2026, 10, 12), 8));
+        var token = _tokens.Issue(new DailyGameState(1, new DateOnly(2026, 10, 12), 8, Guid.NewGuid()));
 
         await Assert.ThrowsAsync<InvalidRequestException>(() => _service.GetTriviaAsync(Slug, token));
     }

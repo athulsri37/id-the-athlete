@@ -13,6 +13,7 @@ public class GameDbContext : DbContext
     public DbSet<PlayerAttributeValue> PlayerAttributeValues => Set<PlayerAttributeValue>();
     public DbSet<DailyPuzzle> DailyPuzzles => Set<DailyPuzzle>();
     public DbSet<AppSetting> AppSettings => Set<AppSetting>();
+    public DbSet<GameRecord> GameRecords => Set<GameRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -69,5 +70,21 @@ public class GameDbContext : DbContext
         modelBuilder.Entity<AppSetting>()
             .HasIndex(s => s.Key)
             .IsUnique();
+
+        // Anonymous gameplay stats (see GameRecord).
+        modelBuilder.Entity<GameRecord>(record =>
+        {
+            record.Property(r => r.Mode).HasMaxLength(10);
+            record.Property(r => r.Result).HasConversion<string>().HasMaxLength(10);
+
+            // Deleting an athlete keeps the stats of games played on them.
+            record.HasOne(r => r.MysteryPlayer)
+                .WithMany()
+                .HasForeignKey(r => r.MysteryPlayerId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Stats are read per sport over a date range.
+            record.HasIndex(r => new { r.SportId, r.StartedAt });
+        });
     }
 }
