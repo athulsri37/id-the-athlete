@@ -13,9 +13,6 @@ import { getInProgress, saveInProgress, clearInProgress } from "../utils/dailyIn
 import { todayUtcDateString } from "../utils/localDate";
 import { useGameTrivia } from "../hooks/useGameTrivia";
 
-const MAX_GUESSES = 8;
-const HINT_AFTER_GUESS = 5;
-
 interface Props {
   mode: Difficulty;
   sport: Sport;
@@ -27,7 +24,7 @@ interface Props {
 }
 
 export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Props) {
-  const { slug: sportSlug, name: sportName, family } = sport;
+  const { slug: sportSlug, name: sportName, family, maxGuesses, hintAfterGuess } = sport;
   const { winEmoji } = familyDisplay(family);
   const [players, setPlayers] = useState<PlayerSummary[]>([]);
   const [attributes, setAttributes] = useState<AttributeDefinition[]>([]);
@@ -138,7 +135,7 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
     document.title = `ID the ${sportName} Player: ${modeLabel}${dateSuffix} | ID the Athlete`;
   }, [modeLabel, sportName, isPastDate, effectiveDate]);
 
-  const gameOver = guesses.length > 0 && (guesses[guesses.length - 1].isCorrect || guesses.length >= MAX_GUESSES);
+  const gameOver = guesses.length > 0 && (guesses[guesses.length - 1].isCorrect || guesses.length >= maxGuesses);
   const won = guesses.length > 0 && guesses[guesses.length - 1].isCorrect;
   // Daily games only: the server's signed record of this game's guess
   // count, always taken from the latest guess and sent back with the next
@@ -149,14 +146,14 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
   // Offer the country hint once, right after the 5th guess, unless the
   // player already matched the country naturally or the game just ended.
   useEffect(() => {
-    if (guesses.length !== HINT_AFTER_GUESS || hintOffered || gameOver) return;
+    if (guesses.length !== hintAfterGuess || hintOffered || gameOver) return;
 
     const countryAlreadyMatched = guesses.some((g) => g.clues.some((c) => c.attributeKey === "country" && c.isMatch));
     if (!countryAlreadyMatched) {
       setShowHintModal(true);
     }
     setHintOffered(true);
-  }, [guesses, hintOffered, gameOver]);
+  }, [guesses, hintOffered, gameOver, hintAfterGuess]);
 
   // The puzzle this game is for, as the server says once the first guess
   // is in; effectiveDate until then. They differ only for a game still
@@ -245,8 +242,14 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
     setHintDeclined(true);
   };
 
+  // Players already guessed, left out of the search. By ID, so it doesn't
+  // depend on names staying unique and unchanged (e.g. a curator correcting
+  // a name in the database mid-game); guesses saved before responses
+  // carried the ID fall back to the name.
   const guessedIds = new Set(
-    guesses.map((g) => players.find((p) => p.name === g.guessedPlayerName)?.id).filter((id): id is number => id !== undefined)
+    guesses
+      .map((g) => g.guessedPlayerId ?? players.find((p) => p.name === g.guessedPlayerName)?.id)
+      .filter((id): id is number => id !== undefined)
   );
 
   return (
@@ -298,7 +301,7 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
 
         <div className="flex items-center gap-2 mt-2">
           <p className="text-[var(--text-muted)] text-xs">
-            {guesses.length} / {MAX_GUESSES} guesses
+            {guesses.length} / {maxGuesses} guesses
           </p>
           <button
             onClick={() => setShowLegend((v) => !v)}

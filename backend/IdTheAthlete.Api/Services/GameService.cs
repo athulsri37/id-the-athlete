@@ -25,8 +25,8 @@ public class GameService : IGameService
     private readonly IGameStatsService _gameStats;
     private readonly ILogger<GameService> _logger;
 
-    private const int MaxGuesses = 8;
-    private const int HintAfterGuess = 5;
+    private const int MaxGuesses = GameRules.MaxGuesses;
+    private const int HintAfterGuess = GameRules.HintAfterGuess;
 
     public GameService(
         GameDbContext db,
@@ -220,6 +220,7 @@ public class GameService : IGameService
 
         return new GuessResponseDto
         {
+            GuessedPlayerId = guessedPlayer.Id,
             GuessedPlayerName = guessedPlayer.Name,
             IsCorrect = isCorrect,
             Clues = clues,

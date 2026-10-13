@@ -6,9 +6,9 @@ import { groupByFamily } from "../config/sportFamilies";
 import { Sport } from "../types";
 
 const SPORTS: Sport[] = [
-  { slug: "cricket-men-international", name: "Men's International Cricket", shortName: "Men's International", family: "cricket" },
-  { slug: "tennis-men", name: "Men's Tennis", shortName: "Men's", family: "tennis" },
-  { slug: "tennis-women", name: "Women's Tennis", shortName: "Women's", family: "tennis" },
+  { slug: "cricket-men-international", name: "Men's International Cricket", shortName: "Men's International", family: "cricket", maxGuesses: 8, hintAfterGuess: 5 },
+  { slug: "tennis-men", name: "Men's Tennis", shortName: "Men's", family: "tennis", maxGuesses: 8, hintAfterGuess: 5 },
+  { slug: "tennis-women", name: "Women's Tennis", shortName: "Women's", family: "tennis", maxGuesses: 8, hintAfterGuess: 5 },
 ];
 
 describe("HomeScreen", () => {
@@ -43,7 +43,7 @@ describe("TourSelect", () => {
   });
 
   it("works for a new sport with no display entry or short names", () => {
-    const football = groupByFamily([{ slug: "football-epl", name: "Premier League", shortName: "", family: "football" }])[0];
+    const football = groupByFamily([{ slug: "football-epl", name: "Premier League", shortName: "", family: "football", maxGuesses: 8, hintAfterGuess: 5 }])[0];
     render(<TourSelect group={football} onSelectTour={() => {}} onBack={() => {}} />);
 
     expect(screen.getByRole("heading")).toHaveTextContent("ID the Football Player");

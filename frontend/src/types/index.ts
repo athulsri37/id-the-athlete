@@ -8,6 +8,10 @@ export interface Sport {
   name: string; // e.g. "Men's Tennis"
   shortName: string; // e.g. "Men's"; empty means use name
   family: string; // e.g. "tennis"; picks the sport's rules and display (see config/sportFamilies)
+  // The game's numbers, as the server enforces them (GameRules), so the
+  // page never keeps its own copy.
+  maxGuesses: number;
+  hintAfterGuess: number;
 }
 
 export interface AttributeDefinition {
@@ -26,6 +30,8 @@ export interface ClueResult {
 }
 
 export interface GuessResponse {
+  // Missing on guesses saved before it was added; match those by name.
+  guessedPlayerId?: number;
   guessedPlayerName: string;
   isCorrect: boolean;
   clues: ClueResult[];

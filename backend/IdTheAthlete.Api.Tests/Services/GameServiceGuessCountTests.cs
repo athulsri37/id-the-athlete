@@ -66,6 +66,14 @@ public class GameServiceGuessCountTests
     }
 
     [Fact]
+    public async Task Response_NamesTheGuessedPlayersId()
+    {
+        var result = await DailyWrongGuess(null);
+
+        Assert.Equal((2, "Wrong Guess"), (result.GuessedPlayerId, result.GuessedPlayerName));
+    }
+
+    [Fact]
     public async Task Daily_ResponseNamesThePuzzlesDate()
     {
         var result = await DailyWrongGuess(null);

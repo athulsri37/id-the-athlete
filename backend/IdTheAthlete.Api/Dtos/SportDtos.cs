@@ -6,4 +6,6 @@ public class SportDto
     public string Name { get; set; } = string.Empty;      // e.g. "Men's Tennis"
     public string ShortName { get; set; } = string.Empty; // e.g. "Men's"; empty means use Name
     public string Family { get; set; } = string.Empty;    // e.g. "tennis"
+    public int MaxGuesses { get; set; }                   // see GameRules
+    public int HintAfterGuess { get; set; }
 }

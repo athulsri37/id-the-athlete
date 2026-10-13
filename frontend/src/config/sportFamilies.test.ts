@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { familyDisplay, groupByFamily, tourLabel } from "./sportFamilies";
 import { Sport } from "../types";
 
-const sport = (slug: string, family: string, shortName = ""): Sport => ({ slug, name: `Name of ${slug}`, shortName, family });
+const sport = (slug: string, family: string, shortName = ""): Sport => ({ slug, name: `Name of ${slug}`, shortName, family, maxGuesses: 8, hintAfterGuess: 5 });
 
 describe("groupByFamily", () => {
   it("puts Tennis then Cricket first and any other family after, alphabetically", () => {
