@@ -158,12 +158,18 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
     setHintOffered(true);
   }, [guesses, hintOffered, gameOver]);
 
-  // Save a live daily game after every change, so a refresh resumes it.
-  // Once it's over it's filed as a completion instead (below). Saved under
-  // the puzzle the server says this game is for, not today's date: a game
-  // still going after midnight UTC is yesterday's puzzle, so a refresh then
-  // starts today's, and Past Challenges resumes yesterday's.
+  // The puzzle this game is for, as the server says once the first guess
+  // is in; effectiveDate until then. They differ only for a game still
+  // going after midnight UTC: that's still the earlier day's puzzle (its
+  // token pins it), so everything about the game -- the save, the
+  // completion, the streak, the trivia -- is filed under gameDate, never
+  // under the page's "today".
   const gameDate = guesses[0]?.puzzleDate ?? effectiveDate;
+
+  // Save a live daily game after every change, so a refresh resumes it.
+  // Once it's over it's filed as a completion instead (below). Under
+  // gameDate, a game still going after midnight UTC isn't resumed as
+  // today's: a refresh starts today's, and Past Challenges resumes it.
   useEffect(() => {
     if (mode !== "daily" || isDailyReplay || guesses.length === 0 || gameOver) return;
     saveInProgress(sportSlug, { date: gameDate, guesses, revealedCountry, hintOffered, hintDeclined });
@@ -178,16 +184,18 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
     if (mode !== "daily" || !gameOver || streakRecordedRef.current) return;
     streakRecordedRef.current = true;
 
-    recordDailyCompletion(sportSlug, effectiveDate, won, guesses, revealedCountry);
+    recordDailyCompletion(sportSlug, gameDate, won, guesses, revealedCountry);
     clearInProgress(sportSlug);
 
-    // CRITICAL: streak logic must only ever fire for today. Catching up on
-    // a past day via Past Challenges must never affect it. effectiveDate is
-    // today's puzzle date here, the same UTC date the completion is filed under.
+    // CRITICAL: streak logic must only ever fire for today's Daily
+    // Challenge. Catching up on a past day via Past Challenges must never
+    // affect it: isPastDate is true for those. A game opened as today's and
+    // finished after midnight UTC still counts, for its own puzzle date
+    // (gameDate), so it extends the streak instead of skipping a day.
     if (!isPastDate) {
-      setStreak(recordDailyResult(sportSlug, effectiveDate, won));
+      setStreak(recordDailyResult(sportSlug, gameDate, won));
     }
-  }, [mode, gameOver, won, sportSlug, guesses, revealedCountry, isPastDate, effectiveDate]);
+  }, [mode, gameOver, won, sportSlug, guesses, revealedCountry, isPastDate, gameDate]);
 
   // A live game's trivia arrives after the result is showing; a daily one
   // is saved with its completion so a replay shows it without refetching.
@@ -195,7 +203,7 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
   const liveTriviaBlurb = useGameTrivia(
     sportSlug,
     triviaToken,
-    mode === "daily" ? (blurb) => recordDailyTrivia(sportSlug, effectiveDate, blurb) : undefined
+    mode === "daily" ? (blurb) => recordDailyTrivia(sportSlug, gameDate, blurb) : undefined
   );
   const triviaBlurb = isDailyReplay ? replayTriviaBlurb : liveTriviaBlurb;
 
