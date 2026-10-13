@@ -243,6 +243,19 @@ public class SettingsServiceTests
     }
 
     [Fact]
+    public async Task Theme_can_only_be_set_to_a_theme_the_site_has()
+    {
+        var settings = Seed(("ActiveTheme", "retro"));
+
+        var unknown = await Assert.ThrowsAsync<InvalidRequestException>(() => settings.UpdateAsync("ActiveTheme", "stadum"));
+        Assert.Equal("Setting 'ActiveTheme' must be one of: retro, stadium.", unknown.Message);
+        Assert.Equal("retro", await settings.GetThemeAsync());
+
+        await settings.UpdateAsync("ActiveTheme", "stadium");
+        Assert.Equal("stadium", await settings.GetThemeAsync());
+    }
+
+    [Fact]
     public async Task Update_rejects_unknown_keys_and_non_boolean_values_for_boolean_settings()
     {
         var settings = Seed(("Flag", "true"), ("Theme", "retro"));
