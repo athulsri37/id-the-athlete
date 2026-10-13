@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using IdTheAthlete.Api.Services;
 
 namespace IdTheAthlete.Api.Middleware;
 
@@ -10,7 +12,12 @@ namespace IdTheAthlete.Api.Middleware;
 // store, never committed to the repo), keyed by name (e.g.
 // "AdminKeys:Athul") purely for human bookkeeping -- adding another admin
 // is just another user-secrets entry, no code or deploy change needed.
-public class AdminAuthMiddleware
+//
+// The matching key's name is recorded for the request (AdminActor) so the
+// audit log says who changed what, and wrong keys are counted per client
+// address: too many and the address is locked out for a while
+// (AdminLoginThrottle), right key or not.
+public sealed class AdminAuthMiddleware
 {
     private readonly RequestDelegate _next;
 
@@ -19,7 +26,8 @@ public class AdminAuthMiddleware
         _next = next;
     }
 
-    public async Task InvokeAsync(HttpContext context, IConfiguration configuration, IProblemDetailsService problemDetails)
+    public async Task InvokeAsync(HttpContext context, IConfiguration configuration, IProblemDetailsService problemDetails,
+        IAdminLoginThrottle throttle, AdminActor actor)
     {
         if (!context.Request.Path.StartsWithSegments("/api/admin"))
         {
@@ -27,23 +35,42 @@ public class AdminAuthMiddleware
             return;
         }
 
-        var providedKey = context.Request.Headers["X-Admin-Key"].FirstOrDefault();
-        var validKeys = configuration.GetSection("AdminKeys").GetChildren()
-            .Select(c => c.Value)
-            .Where(v => !string.IsNullOrEmpty(v));
-
-        if (!string.IsNullOrEmpty(providedKey) && validKeys.Any(validKey => FixedTimeEquals(providedKey!, validKey!)))
+        var client = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        if (throttle.LockedOutFor(client) is { } wait)
         {
+            var minutes = (int)Math.Ceiling(wait.TotalMinutes);
+            context.Response.Headers.RetryAfter = ((int)Math.Ceiling(wait.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
+            await RefuseAsync(context, problemDetails, StatusCodes.Status429TooManyRequests,
+                $"Too many wrong admin keys. Try again in {minutes} minute{(minutes == 1 ? "" : "s")}.");
+            return;
+        }
+
+        var providedKey = context.Request.Headers["X-Admin-Key"].FirstOrDefault();
+        var matched = string.IsNullOrEmpty(providedKey)
+            ? null
+            : configuration.GetSection("AdminKeys").GetChildren()
+                .FirstOrDefault(c => !string.IsNullOrEmpty(c.Value) && FixedTimeEquals(providedKey, c.Value));
+
+        if (matched != null)
+        {
+            throttle.RecordSuccess(client);
+            actor.Name = matched.Key;
             await _next(context);
             return;
         }
 
-        // The same problem response format as every other API error.
-        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        throttle.RecordFailure(client);
+        await RefuseAsync(context, problemDetails, StatusCodes.Status401Unauthorized, "Missing or invalid admin key.");
+    }
+
+    // The same problem response format as every other API error.
+    private static async Task RefuseAsync(HttpContext context, IProblemDetailsService problemDetails, int status, string detail)
+    {
+        context.Response.StatusCode = status;
         await problemDetails.WriteAsync(new ProblemDetailsContext
         {
             HttpContext = context,
-            ProblemDetails = { Detail = "Missing or invalid admin key." }
+            ProblemDetails = { Detail = detail }
         });
     }
 

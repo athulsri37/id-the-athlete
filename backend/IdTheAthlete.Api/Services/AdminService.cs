@@ -12,19 +12,26 @@ namespace IdTheAthlete.Api.Services;
 // this is curator/editing logic, not gameplay logic, and keeping them
 // apart means a bug here can't accidentally change how a real game is
 // scored or a mystery player is picked.
+//
+// Every change it saves is also written to the audit log (AdminAuditEntry)
+// with the admin key's name (AdminActor) and the old and new values.
 public class AdminService : IAdminService
 {
     private readonly GameDbContext _db;
     private readonly TimeProvider _timeProvider;
     private readonly ISettingsService _settings;
     private readonly IDifficultyService _difficulty;
+    private readonly AdminActor _actor;
 
-    public AdminService(GameDbContext db, TimeProvider timeProvider, ISettingsService settings, IDifficultyService difficulty)
+    public const int MaxRecentChanges = 500;
+
+    public AdminService(GameDbContext db, TimeProvider timeProvider, ISettingsService settings, IDifficultyService difficulty, AdminActor actor)
     {
         _db = db;
         _timeProvider = timeProvider;
         _settings = settings;
         _difficulty = difficulty;
+        _actor = actor;
     }
 
     // Difficulty tiers for players that aren't in the database yet (the
@@ -132,6 +139,7 @@ public class AdminService : IAdminService
             .FirstOrDefaultAsync(p => p.Id == playerId)
             ?? throw new NotFoundException("Player not found");
 
+        var changes = new List<string>();
         foreach (var (key, value) in request.Attributes)
         {
             var attributeValue = player.AttributeValues.FirstOrDefault(v => v.AttributeDefinition?.Key == key)
@@ -141,8 +149,11 @@ public class AdminService : IAdminService
             if (attributeValue.AttributeDefinition!.Type == AttributeType.Numeric && !NumericAttributeValue.TryParse(value, out _))
                 throw new InvalidRequestException($"Attribute '{key}' is numeric; '{value}' is not a valid number.");
 
+            if (attributeValue.Value != value)
+                changes.Add(Change(attributeValue.AttributeDefinition.Label, attributeValue.Value, value));
             attributeValue.Value = value;
         }
+        var overrideBefore = player.IsOverridden ? player.DifficultyOverride : null;
 
         // Player-level "last touched" timestamp -- lets consumers like
         // AiTriviaService detect that cached derived content (e.g. a trivia
@@ -166,6 +177,17 @@ public class AdminService : IAdminService
             player.DifficultyOverride = request.DifficultyOverride;
         }
 
+        var overrideAfter = player.IsOverridden ? player.DifficultyOverride : null;
+        if (overrideBefore != overrideAfter)
+            changes.Add(Change("Difficulty override", overrideBefore ?? "none", overrideAfter ?? "none"));
+
+        // Saving a player with nothing changed isn't a change worth logging.
+        if (changes.Count > 0)
+        {
+            var sportName = await _db.Sports.Where(s => s.Id == player.SportId).Select(s => s.Name).FirstAsync();
+            Audit("Player edited", $"{sportName}: {player.Name}", changes);
+        }
+
         await _db.SaveChangesAsync();
     }
 
@@ -178,8 +200,47 @@ public class AdminService : IAdminService
     // Validation (including the boolean-setting rule) lives in
     // SettingsService.UpdateAsync, which throws NotFoundException for an
     // unknown key and InvalidRequestException for a bad value.
-    public Task UpdateSettingAsync(string key, string newValue)
+    public async Task UpdateSettingAsync(string key, string newValue)
     {
-        return _settings.UpdateAsync(key, newValue);
+        var before = await _db.AppSettings.AsNoTracking().Where(s => s.Key == key).Select(s => s.Value).FirstOrDefaultAsync();
+
+        await _settings.UpdateAsync(key, newValue);
+
+        // Logged once the change is saved; a refused value isn't a change.
+        if (before != null && before != newValue)
+        {
+            Audit("Setting changed", key, new[] { Change(key, before, newValue) });
+            await _db.SaveChangesAsync();
+        }
     }
+
+    // Newest first, for the admin tool's "Recent changes" tab.
+    public async Task<List<AdminAuditEntryDto>> GetRecentChangesAsync(int limit)
+    {
+        if (limit < 1 || limit > MaxRecentChanges)
+            throw new InvalidRequestException($"limit must be between 1 and {MaxRecentChanges}.");
+
+        return await _db.AdminAuditEntries.AsNoTracking()
+            .OrderByDescending(e => e.At).ThenByDescending(e => e.Id)
+            .Take(limit)
+            .Select(e => new AdminAuditEntryDto { At = e.At, Admin = e.AdminName, Action = e.Action, Target = e.Target, Changes = e.Changes })
+            .ToListAsync();
+    }
+
+    private void Audit(string action, string target, IEnumerable<string> changes)
+    {
+        _db.AdminAuditEntries.Add(new AdminAuditEntry
+        {
+            At = _timeProvider.GetUtcNow().UtcDateTime,
+            AdminName = _actor.Name,
+            Action = action,
+            Target = target,
+            Changes = string.Join("; ", changes),
+        });
+    }
+
+    private static string Change(string what, string before, string after) =>
+        $"{what}: {Shown(before)} → {Shown(after)}";
+
+    private static string Shown(string value) => value.Length == 0 ? "(empty)" : value;
 }

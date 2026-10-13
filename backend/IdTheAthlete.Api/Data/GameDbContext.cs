@@ -14,6 +14,7 @@ public class GameDbContext : DbContext
     public DbSet<DailyPuzzle> DailyPuzzles => Set<DailyPuzzle>();
     public DbSet<AppSetting> AppSettings => Set<AppSetting>();
     public DbSet<GameRecord> GameRecords => Set<GameRecord>();
+    public DbSet<AdminAuditEntry> AdminAuditEntries => Set<AdminAuditEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -92,6 +93,14 @@ public class GameDbContext : DbContext
 
             // Stats are read per sport over a date range.
             record.HasIndex(r => new { r.SportId, r.StartedAt });
+        });
+
+        // The admin audit log is read newest first.
+        modelBuilder.Entity<AdminAuditEntry>(entry =>
+        {
+            entry.Property(e => e.AdminName).HasMaxLength(100);
+            entry.Property(e => e.Action).HasMaxLength(50);
+            entry.HasIndex(e => e.At);
         });
     }
 }

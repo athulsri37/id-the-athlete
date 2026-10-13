@@ -15,12 +15,12 @@ export default function AdminLogin({ onSuccess }: Props) {
     if (!key.trim()) return;
     setError("");
     setLoading(true);
-    const ok = await verifyAndStoreAdminKey(key.trim());
+    const failure = await verifyAndStoreAdminKey(key.trim());
     setLoading(false);
-    if (ok) {
+    if (failure === null) {
       onSuccess();
     } else {
-      setError("Invalid admin key.");
+      setError(failure);
     }
   };
 

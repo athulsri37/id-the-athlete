@@ -4,8 +4,9 @@ import AdminLogin from "./AdminLogin";
 import PlayersTab from "./PlayersTab";
 import SettingsTab from "./SettingsTab";
 import StatsTab from "./StatsTab";
+import ChangesTab from "./ChangesTab";
 
-type Tab = "players" | "settings" | "stats";
+type Tab = "players" | "settings" | "stats" | "changes";
 
 export default function ControlRoom() {
   useEffect(() => {
@@ -67,11 +68,20 @@ export default function ControlRoom() {
         >
           Stats
         </button>
+        <button
+          onClick={() => setTab("changes")}
+          className={`px-4 py-2 text-sm font-semibold border-b-2 ${
+            tab === "changes" ? "border-slate-100 text-slate-100" : "border-transparent text-slate-500"
+          }`}
+        >
+          Recent changes
+        </button>
       </div>
 
       {tab === "players" && <PlayersTab />}
       {tab === "settings" && <SettingsTab />}
       {tab === "stats" && <StatsTab />}
+      {tab === "changes" && <ChangesTab />}
     </div>
   );
 }

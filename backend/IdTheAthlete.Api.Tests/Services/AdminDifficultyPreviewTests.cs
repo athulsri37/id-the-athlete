@@ -22,7 +22,7 @@ public class AdminDifficultyPreviewTests
         db.SaveChanges();
 
         var registry = TestGameServiceFactory.CreateRegistry(Mock.Of<ISettingsService>());
-        return new AdminService(db, TimeProvider.System, Mock.Of<ISettingsService>(), new DifficultyService(registry));
+        return new AdminService(db, TimeProvider.System, Mock.Of<ISettingsService>(), new DifficultyService(registry), new AdminActor());
     }
 
     [Fact]
