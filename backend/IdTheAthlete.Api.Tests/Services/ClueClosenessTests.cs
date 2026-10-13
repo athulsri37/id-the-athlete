@@ -55,7 +55,7 @@ public class ClueClosenessTests
 
         var sessions = PracticeSessionServiceTests.Create();
         var service = TestGameServiceFactory.Create(db, sessions);
-        var sessionId = sessions.CreateSession(1);
+        var sessionId = sessions.CreateSession(1, "easy");
 
         var result = await service.SubmitGuessAsync(sportSlug, new GuessRequestDto { PlayerId = 2, Mode = "easy", SessionId = sessionId });
         return Assert.Single(result.Clues);

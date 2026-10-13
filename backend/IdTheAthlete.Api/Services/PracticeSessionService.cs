@@ -4,7 +4,7 @@ using IdTheAthlete.Api.Errors;
 
 namespace IdTheAthlete.Api.Services;
 
-// In-memory store for practice-mode sessions (sessionId -> playerId and
+// In-memory store for practice-mode sessions (sessionId -> the game and
 // guesses made so far). Sessions don't survive a restart and aren't shared
 // between servers, so a deploy ends practice games in progress; the player
 // is then told to start a new game, as when one expires.
@@ -28,7 +28,7 @@ public sealed class PracticeSessionService : IPracticeSessionService
 
     private sealed class PracticeSession
     {
-        public required int PlayerId { get; init; }
+        public required PracticeGame Game { get; init; }
         public int GuessCount;
         // UTC ticks, read and written with Interlocked so concurrent
         // requests for the same session never see a torn value.
@@ -47,19 +47,23 @@ public sealed class PracticeSessionService : IPracticeSessionService
         _nextSweepTicks = NowTicks() + SweepInterval.Ticks;
     }
 
-    public string CreateSession(int playerId)
+    public string CreateSession(int playerId, string difficulty)
     {
         var now = NowTicks();
         SweepIfDue(now);
 
         var sessionId = Guid.NewGuid().ToString("N");
-        _sessions[sessionId] = new PracticeSession { PlayerId = playerId, LastActiveTicks = now };
+        _sessions[sessionId] = new PracticeSession
+        {
+            Game = new PracticeGame(playerId, difficulty, Guid.NewGuid()),
+            LastActiveTicks = now
+        };
         return sessionId;
     }
 
-    public int ResolveSessionPlayerId(string? sessionId)
+    public PracticeGame ResolveSession(string? sessionId)
     {
-        return GetSession(sessionId).PlayerId;
+        return GetSession(sessionId).Game;
     }
 
     // Counts one more guess against this session and returns the new total.
