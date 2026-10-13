@@ -55,6 +55,7 @@ public sealed class CricketRules : ISportRules
         ["Sri Lanka"] = "Asia",
         ["Afghanistan"] = "Asia",
         ["Nepal"] = "Asia",
+        ["UAE"] = "Asia", // an Asian Cricket Council member
         ["Australia"] = "Oceania",
         ["New Zealand"] = "Oceania",
         ["England"] = "British Isles",
