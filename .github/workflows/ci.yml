@@ -51,6 +51,32 @@ jobs:
       # "build" runs tsc before vite build.
       - run: npm run build
 
+  docker:
+    name: Docker images build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build the backend image
+        run: docker build -t idtheathlete-backend backend/IdTheAthlete.Api
+      - name: Build the frontend image
+        run: docker build --build-arg VITE_API_BASE_URL=https://api.example.invalid -t idtheathlete-frontend frontend
+      # The image must serve the built site on the port the host assigns,
+      # with the API address baked in, and run without Node.
+      - name: The frontend image serves the site
+        run: |
+          docker run -d --name frontend -e PORT=9090 -p 9090:9090 idtheathlete-frontend
+          for i in $(seq 1 15); do curl -sf http://localhost:9090/ > index.html && break; sleep 1; done
+          grep -q '<div id="root">' index.html
+          asset=$(grep -oE '/assets/[^"]+\.js' index.html | head -1)
+          curl -sf "http://localhost:9090$asset" | grep -q "https://api.example.invalid"
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:9090/assets/missing.js)" = 404
+          # bash -e ignores a failing "!" command, so test it explicitly.
+          if docker exec frontend sh -c 'command -v node'; then echo "Node is in the image"; exit 1; fi
+          echo "Serves the site on PORT 9090 with the API address baked in, and has no Node."
+      - name: Frontend container log
+        if: failure()
+        run: docker logs frontend || true
+
   roster-agent:
     name: Roster agent checks
     runs-on: ubuntu-latest
