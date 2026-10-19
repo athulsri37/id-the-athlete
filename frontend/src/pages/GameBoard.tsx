@@ -14,6 +14,7 @@ import { getInProgress, saveInProgress, clearInProgress } from "../utils/dailyIn
 import { todayUtcDateString } from "../utils/localDate";
 import { useGameTrivia } from "../hooks/useGameTrivia";
 import { paths } from "../routes/paths";
+import Scenery from "../components/scenery/Scenery";
 
 interface Props {
   mode: Difficulty;
@@ -255,7 +256,8 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
   );
 
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)] flex flex-col items-center px-4 py-10">
+    <div className="isolate min-h-screen bg-[var(--bg-primary)] flex flex-col items-center px-4 py-10">
+      <Scenery kind="page" family={sport.family} />
       <h1 className="font-heading text-5xl tracking-wide mb-1">
         <span className="text-[var(--text-primary)]">ID the </span>
         <span className="text-[var(--accent-alt)]">{sportName}</span>

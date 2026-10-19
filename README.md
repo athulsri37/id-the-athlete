@@ -65,7 +65,8 @@ live, without a redeploy. `dotnet build` (backend) and `npm run build`
   (see [Getting Started](#getting-started)) and a separate enable/disable
   toggle in `AppSettings`
 - **Retro and Stadium themes** — two full visual themes switchable via a
-  single `AppSettings` row (see [Theme System](#theme-system))
+  single `AppSettings` row, each with its own sport scenery behind the
+  screens (see [Theme System](#theme-system))
 - **Shareable results** — Wordle-style emoji grid via the Web Share API /
   clipboard, no social media API integration required
 - **Internal admin tool** — a key-protected interface, not linked from
@@ -157,7 +158,7 @@ id-the-athlete/
 ├── tools/                 # Roster research agent (Python): researches, checks and adds players
 └── frontend/src/
     ├── api/              # Axios client
-    ├── components/       # PlayerSearch, ClueGrid, ClueLegend, ShareResult
+    ├── components/       # PlayerSearch, ClueGrid, ClueLegend, ShareResult; scenery/ (each theme's background artwork)
     ├── hooks/             # useGameTrivia (fetches a finished game's trivia blurb)
     ├── pages/             # HomeScreen, TourSelect, SportHome, GameBoard, PastChallenges (home → tour → sport → game flow)
     ├── admin/             # Login gate, tab shell, player editor, settings editor — the internal admin tool
@@ -546,10 +547,19 @@ also `retro`). The frontend reads the active theme from
 on the document root, which the CSS variables in
 `frontend/src/styles/themes.css` key off of.
 
+Each theme also draws sport scenery behind the screens
+(`frontend/src/components/scenery/`): Retro's illustrated kit (racquet, bat,
+net, stumps), Stadium's floodlit court and pitch. `scenes.ts` says which
+screen gets what: the home screen and a sport's own screens get a full scene
+on screens 1024px wide and up, while games, Past Challenges, How to Play and
+phones get a faint version kept to the edges, so it never sits behind
+anything to read. A sport or theme without scenery of its own gets the
+theme's general scenery, or none.
+
 To switch themes, edit `ActiveTheme` in the [Admin Tool](#admin-tool)'s
 Settings tab. Only `retro` and `stadium` are accepted, since any other value
 would leave the site unstyled; a new theme needs its CSS and an entry in
-`SettingsService.KnownThemes`. Refresh the frontend to see the change.
+`SettingsService.KnownThemes` (and, optionally, scenery in `scenes.ts`). Refresh the frontend to see the change.
 
 ## Admin Tool
 

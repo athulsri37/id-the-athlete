@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { FamilyGroup } from "../config/sportFamilies";
+import Scenery from "../components/scenery/Scenery";
 
 interface Props {
   // One button per family, in display order. Null while still loading.
@@ -15,7 +16,8 @@ export default function HomeScreen({ families, loadFailed, onSelectFamily, onHow
   }, []);
 
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)] flex flex-col items-center px-4 py-10">
+    <div className="isolate min-h-screen bg-[var(--bg-primary)] flex flex-col items-center px-4 py-10">
+      <Scenery kind="home" />
       <h1 className="font-heading text-5xl tracking-wide mb-1">
         <span className="text-[var(--text-primary)]">ID the </span>
         <span className="text-[var(--accent-alt)]">Athlete</span>

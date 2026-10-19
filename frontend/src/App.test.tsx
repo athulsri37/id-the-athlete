@@ -66,6 +66,32 @@ describe("routes", () => {
     expect(screen.getByRole("link", { name: "Go to the home page" })).toHaveAttribute("href", "/");
   });
 
+  it("draws the active theme's scenery for the screen's sport", async () => {
+    vi.mocked(client.fetchActiveTheme).mockResolvedValue("stadium");
+    const { container } = render(
+      <MemoryRouter initialEntries={["/cricket/men"]}>
+        <App />
+      </MemoryRouter>
+    );
+
+    await screen.findByRole("button", { name: "Daily Challenge" });
+    expect(container.querySelector('[data-scene="stadium-cricket-tour"]')).toBeInTheDocument();
+    expect(container.querySelector('[data-scene^="retro"]')).not.toBeInTheDocument();
+  });
+
+  it("falls back to the Retro theme and its scenery when the theme can't load", async () => {
+    vi.mocked(client.fetchActiveTheme).mockRejectedValue(new Error("offline"));
+    const { container } = render(
+      <MemoryRouter initialEntries={["/"]}>
+        <App />
+      </MemoryRouter>
+    );
+
+    await screen.findByRole("button", { name: "Tennis" });
+    expect(document.documentElement).toHaveAttribute("data-theme", "retro");
+    expect(container.querySelector('[data-scene="retro-home"]')).toBeInTheDocument();
+  });
+
   it("a deep link says so when the sports can't load", async () => {
     vi.mocked(client.fetchSports).mockRejectedValue(new Error("offline"));
     renderAt("/tennis/men");

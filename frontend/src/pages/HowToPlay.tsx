@@ -4,6 +4,7 @@ import { Sport } from "../types";
 import { FamilyGroup, groupByFamily } from "../config/sportFamilies";
 import ClueLegend from "../components/ClueLegend";
 import CluePill from "../components/CluePill";
+import Scenery from "../components/scenery/Scenery";
 
 interface Props {
   sports: Sport[]; // at least one
@@ -51,7 +52,8 @@ export default function HowToPlay({ sports, onBack }: Props) {
   }, [hash]);
 
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)] flex flex-col items-center px-4 py-10">
+    <div className="isolate min-h-screen bg-[var(--bg-primary)] flex flex-col items-center px-4 py-10">
+      <Scenery kind="page" />
       <button
         onClick={onBack}
         className="self-start text-sm text-[var(--text-secondary)] underline hover:text-[var(--text-primary)] mb-6"

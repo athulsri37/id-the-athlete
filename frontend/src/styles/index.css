@@ -40,6 +40,50 @@ body {
   cursor: default;
 }
 
+/* Close and miss clues. Their theme colours are translucent, tuned over the
+   page background; laying them on a solid layer of that background keeps
+   the colour and makes the clue opaque, so the scenery never shows through
+   the grid, and a legend's sample clues (on a card) match the grid's. */
+.clue-close {
+  background: linear-gradient(var(--close-bg), var(--close-bg)), var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.clue-miss {
+  background: linear-gradient(var(--miss-bg), var(--miss-bg)), var(--bg-primary);
+  color: var(--text-primary);
+}
+
+/* Scenery (components/scenery): the Retro tennis net's mesh, and the
+   Stadium floodlights' glow in the top corners. */
+.scenery-net {
+  background-image:
+    linear-gradient(rgba(43, 33, 24, 0.55) 2px, transparent 2px),
+    linear-gradient(90deg, rgba(43, 33, 24, 0.55) 2px, transparent 2px);
+  background-size: 16px 16px;
+}
+
+.scenery-floodlights {
+  background:
+    radial-gradient(circle at 6% 0, rgba(244, 255, 248, 0.2), transparent 220px),
+    radial-gradient(circle at 94% 0, rgba(244, 255, 248, 0.2), transparent 220px);
+}
+
+/* A sport's tour screens. Stadium's tour scenery puts the court or pitch on
+   the right, so on screens 1024px wide and up (where that scenery shows)
+   its menu moves to the left. */
+@media (min-width: 1024px) {
+  :root[data-theme="stadium"] .tour-layout {
+    align-items: flex-start;
+    padding-left: clamp(2rem, 7.5vw, 6rem);
+  }
+
+  :root[data-theme="stadium"] .tour-layout h1 {
+    max-width: 28rem;
+    line-height: 1.15;
+  }
+}
+
 /* Breathing scale pulse for the persistent hint button. Pure transform, no
    color, so it reads correctly under any theme's .btn-card styling. */
 @keyframes hint-pulse {

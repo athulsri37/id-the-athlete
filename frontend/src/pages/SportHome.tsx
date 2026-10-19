@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Sport, Difficulty } from "../types";
+import Scenery from "../components/scenery/Scenery";
 
 interface Props {
   sport: Sport;
@@ -23,7 +24,8 @@ export default function SportHome({ sport, onSelectMode, onPastChallenges, onHow
   }, [sport]);
 
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)] flex flex-col items-center px-4 py-10">
+    <div className="tour-layout isolate min-h-screen bg-[var(--bg-primary)] flex flex-col items-center px-4 py-10">
+      <Scenery kind="tour" family={sport.family} />
       <button
         onClick={onBack}
         className="self-start text-sm text-[var(--text-secondary)] underline hover:text-[var(--text-primary)] mb-6"

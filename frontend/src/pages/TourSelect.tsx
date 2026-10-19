@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Sport } from "../types";
 import { FamilyGroup, tourLabel } from "../config/sportFamilies";
+import Scenery from "../components/scenery/Scenery";
 
 interface Props {
   group: FamilyGroup;
@@ -19,7 +20,8 @@ export default function TourSelect({ group, onSelectTour, onBack }: Props) {
   }, [titleAccent, titleSuffix]);
 
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)] flex flex-col items-center px-4 py-10">
+    <div className="tour-layout isolate min-h-screen bg-[var(--bg-primary)] flex flex-col items-center px-4 py-10">
+      <Scenery kind="tour" family={group.family} />
       <button
         onClick={onBack}
         className="self-start text-sm text-[var(--text-secondary)] underline hover:text-[var(--text-primary)] mb-6"

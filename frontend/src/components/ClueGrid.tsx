@@ -96,8 +96,8 @@ export default function ClueGrid({ guesses, revealedCountry, attributes }: Props
                       isMatch
                         ? "bg-[var(--accent)] text-[var(--on-accent)]"
                         : isClose
-                        ? "bg-[var(--close-bg)] text-[var(--text-primary)]"
-                        : "bg-[var(--miss-bg)] text-[var(--text-primary)]"
+                        ? "clue-close"
+                        : "clue-miss"
                     }`}
                     title={c.label}
                   >
