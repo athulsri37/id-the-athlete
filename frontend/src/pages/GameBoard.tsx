@@ -371,7 +371,16 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
                 )}
               </p>
             )}
-            <ShareResult guesses={guesses} won={won} mode={mode} sportName={sportName} maxGuesses={maxGuesses} />
+            <ShareResult
+              guesses={guesses}
+              won={won}
+              sport={sport}
+              mode={mode}
+              puzzleDate={mode === "daily" ? gameDate : undefined}
+              isPastDate={isPastDate}
+              winEmoji={winEmoji}
+              revealedCountry={revealedCountry}
+            />
             <div className="flex items-center justify-center gap-4 mt-3">
               {mode !== "daily" && (
                 <button
