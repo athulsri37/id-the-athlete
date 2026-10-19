@@ -68,7 +68,7 @@ Everything else (naming, structure, refactors within scope, test design, choices
 - One item per branch, named `fix/<item-id>-<kebab-summary>` (e.g. `fix/F9-practice-session-expiry`), from the latest `origin/main`.
 - Before starting, run `gh pr list` and check whether an open PR touches the same files. If it does, say so in your PR and describe how the conflict should be resolved. Merge `origin/main` into your branch again right before opening the PR.
 - Never merge your own PR and never force-push; the owner merges.
-- `main` is protected: a PR can only merge when every CI job passes on a branch that's up to date with `main` (GitHub's "Update branch" button, or merge `origin/main` and push). The required checks are the job names in `.github/workflows/ci.yml`; changing a job's name means updating the branch protection in the same PR, or PRs wait on a check that never runs.
+- `main` is protected, for admins too: changes reach it only through a PR (no direct pushes, force-pushes or deletion), and a PR can only merge when every review conversation is resolved and every CI job passes on a branch that's up to date with `main` (GitHub's "Update branch" button, or merge `origin/main` and push). Answer or fix each review comment, then resolve it. The required checks are the job names in `.github/workflows/ci.yml`; changing a job's name means updating the branch protection in the same PR, or PRs wait on a check that never runs.
 - PR body sections: Problem, Fix, Decisions I made, Behaviour/API changes, Interactions with open PRs, Testing, Not tested.
 
 ### Attribution
