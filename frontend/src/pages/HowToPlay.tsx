@@ -61,7 +61,7 @@ export default function HowToPlay({ sports, onBack }: Props) {
         ← Back
       </button>
 
-      <h1 className="font-heading text-5xl tracking-wide text-[var(--text-primary)] mb-8">How to play</h1>
+      <h1 className="font-heading text-3xl sm:text-4xl lg:text-5xl text-center text-balance tracking-wide text-[var(--text-primary)] mb-8">How to play</h1>
 
       <div className="w-full max-w-2xl flex flex-col gap-5">
         <Section title="The goal">

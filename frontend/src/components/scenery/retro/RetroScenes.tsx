@@ -61,16 +61,40 @@ export function RetroCricketTour() {
   );
 }
 
-// The quieter versions, for screens with more to read (a game, Past
-// Challenges, How to Play) and for phones: faint, and kept to the edges.
+// The quieter versions, for screens with more to read (Past Challenges, How
+// to Play), for phones, and for a game on a bigger screen: faint, and kept
+// to the edges. The bottom bands go on short screens (a phone held
+// sideways), where they'd fill a third of the height. A game on a phone gets
+// only its corner ball (RetroTennisCorner, RetroCricketCorner).
+
+// The corner balls sit top right, clear of the Back link at top left, and
+// shrink on phones to stay clear of the title.
+const CORNER = "absolute right-4 top-4 w-12 md:right-6 md:top-6 md:w-20";
+const SHORT_HIDDEN = "[@media(max-height:500px)]:hidden";
+
+function TennisCornerBall() {
+  return (
+    <svg viewBox="-60 -60 125 125" className={CORNER}>
+      <TennisBall x={0} y={0} r={40} />
+    </svg>
+  );
+}
+
+function CricketCornerBall() {
+  return (
+    <svg viewBox="-56 -56 115 115" className={CORNER}>
+      <CricketBall x={0} y={0} r={36} />
+    </svg>
+  );
+}
 
 export function RetroTennisPage() {
   return (
     <div className="absolute inset-0 opacity-40" data-scene="retro-tennis-page">
-      <NetBand scale={0.6} />
-      <svg viewBox="-60 -60 125 125" className="absolute right-6 top-6 w-16 md:w-20">
-        <TennisBall x={0} y={0} r={40} />
-      </svg>
+      <div className={SHORT_HIDDEN}>
+        <NetBand scale={0.6} />
+      </div>
+      <TennisCornerBall />
     </div>
   );
 }
@@ -78,28 +102,41 @@ export function RetroTennisPage() {
 export function RetroCricketPage() {
   return (
     <div className="absolute inset-0 opacity-40" data-scene="retro-cricket-page">
-      <div className="absolute inset-x-0 bottom-0 h-[min(60px,7.5vw)]" style={{ background: GRASS }} />
-      <svg viewBox="960 620 320 180" className="absolute bottom-0 right-0 w-[min(320px,40vw)]">
-        <polygon points="1000,740 1280,740 1280,800 968,800" fill={PITCH} />
-        <path d="M960 742 H1280" stroke={INK} strokeWidth="4" />
-        <Stumps x={1130} y={640} scale={0.33} />
-      </svg>
-      <svg viewBox="-56 -56 115 115" className="absolute right-6 top-6 w-16 md:w-20">
-        <CricketBall x={0} y={0} r={36} />
-      </svg>
+      <div className={SHORT_HIDDEN}>
+        <div className="absolute inset-x-0 bottom-0 h-[min(60px,7.5vw)]" style={{ background: GRASS }} />
+        <svg viewBox="960 620 320 180" className="absolute bottom-0 right-0 w-[min(320px,40vw)]">
+          <polygon points="1000,740 1280,740 1280,800 968,800" fill={PITCH} />
+          <path d="M960 742 H1280" stroke={INK} strokeWidth="4" />
+          <Stumps x={1130} y={640} scale={0.33} />
+        </svg>
+      </div>
+      <CricketCornerBall />
     </div>
   );
 }
 
-// Any other screen: a ball from each sport. The corner balls all sit top
-// right, clear of the Back link at top left.
+export function RetroTennisCorner() {
+  return (
+    <div className="absolute inset-0 opacity-40" data-scene="retro-tennis-corner">
+      <TennisCornerBall />
+    </div>
+  );
+}
+
+export function RetroCricketCorner() {
+  return (
+    <div className="absolute inset-0 opacity-40" data-scene="retro-cricket-corner">
+      <CricketCornerBall />
+    </div>
+  );
+}
+
+// Any other screen: a ball from each sport.
 export function RetroPage() {
   return (
     <div className="absolute inset-0 opacity-40" data-scene="retro-page">
-      <svg viewBox="-60 -60 125 125" className="absolute right-6 top-6 w-16 md:w-20">
-        <TennisBall x={0} y={0} r={40} />
-      </svg>
-      <svg viewBox="-56 -56 115 115" className="absolute right-20 top-20 w-12 md:right-24 md:top-24 md:w-16">
+      <TennisCornerBall />
+      <svg viewBox="-56 -56 115 115" className="absolute right-14 top-14 w-9 md:right-24 md:top-24 md:w-16">
         <CricketBall x={0} y={0} r={36} />
       </svg>
     </div>

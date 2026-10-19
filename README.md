@@ -553,8 +553,9 @@ net, stumps), Stadium's floodlit court and pitch. `scenes.ts` says which
 screen gets what: the home screen and a sport's own screens get a full scene
 on screens 1024px wide and up, while games, Past Challenges, How to Play and
 phones get a faint version kept to the edges, so it never sits behind
-anything to read. A sport or theme without scenery of its own gets the
-theme's general scenery, or none.
+anything to read. A game on a phone gets only a corner piece, and on a short
+screen (a phone held sideways) the bottom bands are left out. A sport or
+theme without scenery of its own gets the theme's general scenery, or none.
 
 To switch themes, edit `ActiveTheme` in the [Admin Tool](#admin-tool)'s
 Settings tab. Only `retro` and `stadium` are accepted, since any other value

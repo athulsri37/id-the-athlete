@@ -29,7 +29,7 @@ export default function TourSelect({ group, onSelectTour, onBack }: Props) {
         ← Back
       </button>
 
-      <h1 className="font-heading text-5xl tracking-wide mb-1">
+      <h1 className="font-heading text-3xl sm:text-4xl lg:text-5xl text-center text-balance tracking-wide mb-1">
         <span className="text-[var(--text-primary)]">ID the </span>
         <span className="text-[var(--accent-alt)]">{titleAccent}</span>
         {titleSuffix && <span className="text-[var(--text-primary)]">{titleSuffix}</span>}

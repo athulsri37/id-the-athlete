@@ -29,10 +29,18 @@ body {
   transition: color 0.15s ease, border-color 0.15s ease;
 }
 
-.btn-card:hover,
+/* Hover only where there's a pointer that hovers: on a touchscreen, a tapped
+   button would otherwise keep its hover look until the next tap. */
+@media (hover: hover) {
+  .btn-card:hover {
+    border-color: var(--accent);
+    color: var(--btn-hover-text, var(--accent));
+  }
+}
+
 .btn-card:focus-visible {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--btn-hover-text, var(--accent));
 }
 
 .btn-card:disabled {
@@ -52,6 +60,31 @@ body {
 .clue-miss {
   background: linear-gradient(var(--miss-bg), var(--miss-bg)), var(--bg-primary);
   color: var(--text-primary);
+}
+
+/* The clue grid's pinned number and player cells (ClueGrid): opaque, so the
+   clues scrolling sideways pass beneath them, and covering the row's padding
+   before them and the gap after them too. Alternate rows keep their tint;
+   the header's cells match its dark bar. */
+.grid-sticky {
+  --sticky-bg: var(--bg-primary);
+}
+
+/* --row-alt-bg is --text-primary at 5% in both themes; mixed solid here so
+   the strips beside the cell match the row too. */
+.grid-sticky-alt {
+  --sticky-bg: color-mix(in srgb, var(--text-primary) 5%, var(--bg-primary));
+}
+
+.grid-sticky-head {
+  --sticky-bg: var(--text-primary);
+}
+
+.grid-sticky,
+.grid-sticky-alt,
+.grid-sticky-head {
+  background: var(--sticky-bg);
+  box-shadow: -0.5rem 0 0 var(--sticky-bg), 0.375rem 0 0 var(--sticky-bg);
 }
 
 /* Scenery (components/scenery): the Retro tennis net's mesh, and the
@@ -81,6 +114,7 @@ body {
   :root[data-theme="stadium"] .tour-layout h1 {
     max-width: 28rem;
     line-height: 1.15;
+    text-align: left;
   }
 }
 
