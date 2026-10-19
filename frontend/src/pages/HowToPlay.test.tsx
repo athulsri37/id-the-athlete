@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { beforeAll, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import HowToPlay from "./HowToPlay";
 import { Sport } from "../types";
@@ -14,9 +14,9 @@ const sport = (slug: string, family: string, maxGuesses = 8, hintAfterGuess = 5)
   hintAfterGuess,
 });
 
-function renderWith(sports: Sport[]) {
+function renderWith(sports: Sport[], path = "/how-to-play") {
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[path]}>
       <HowToPlay sports={sports} onBack={() => {}} />
     </MemoryRouter>
   );
@@ -24,7 +24,14 @@ function renderWith(sports: Sport[]) {
 
 // The practice list item about Easy, Medium and Hard, which is built from
 // several pieces of text.
+const sportDetails = (family: string) => document.querySelector(`section#${family} > details`)!;
+
 const practiceLevels = () => screen.getByText(/picks only the best-known players/).closest("li")!;
+
+// jsdom has no layout, so no scrollIntoView; real browsers all do.
+beforeAll(() => {
+  Element.prototype.scrollIntoView = vi.fn();
+});
 
 describe("HowToPlay", () => {
   it("takes the guess limit and hint threshold from the server", () => {
@@ -45,6 +52,35 @@ describe("HowToPlay", () => {
     const cricket = screen.getByRole("heading", { name: "Cricket clues" }).closest("section")!;
     expect(cricket).toHaveAttribute("id", "cricket");
     expect(within(cricket).getByText(/Within 15% of the answer, or 500 runs/)).toBeInTheDocument();
+  });
+
+  it("starts with every sport's section closed", () => {
+    renderWith([sport("tennis-men", "tennis"), sport("cricket-men-international", "cricket")]);
+
+    expect(sportDetails("tennis")).not.toHaveAttribute("open");
+    expect(sportDetails("cricket")).not.toHaveAttribute("open");
+  });
+
+  it("opens the sport the address names, and only that one", () => {
+    renderWith([sport("tennis-men", "tennis"), sport("cricket-men-international", "cricket")], "/how-to-play#cricket");
+
+    expect(sportDetails("cricket")).toHaveAttribute("open");
+    expect(sportDetails("tennis")).not.toHaveAttribute("open");
+  });
+
+  // The browser reports a <details> opening or closing a moment later
+  // (its toggle event), hence the finds.
+  it("opens and closes a sport's section when its heading is clicked", async () => {
+    renderWith([sport("tennis-men", "tennis")]);
+    const summary = sportDetails("tennis").querySelector("summary")!;
+
+    fireEvent.click(summary);
+    expect(await within(summary).findByText("▾ Hide")).toBeInTheDocument();
+    expect(sportDetails("tennis")).toHaveAttribute("open");
+
+    fireEvent.click(summary);
+    expect(await within(summary).findByText("▸ Show")).toBeInTheDocument();
+    expect(sportDetails("tennis")).not.toHaveAttribute("open");
   });
 
   it("only shows sections for the sports there are", () => {

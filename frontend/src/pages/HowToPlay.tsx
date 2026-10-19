@@ -1,4 +1,4 @@
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { useLocation } from "react-router";
 import { Sport } from "../types";
 import { FamilyGroup, groupByFamily } from "../config/sportFamilies";
@@ -18,8 +18,9 @@ function utcMidnightLocalTime(): string {
 }
 
 // Every rule of the game in one place. The general rules hold for every
-// sport; each sport's section (anchor = its family, e.g. #cricket) says
-// when its clues count as close. The numbers come from the server (GameRules
+// sport and are always shown; each sport's section (anchor = its family,
+// e.g. #cricket) says when its clues count as close, and starts closed
+// unless the address names it, so readers open only the sport they play. The numbers come from the server (GameRules
 // via GET /api/sports); the closeness rules from config/sportFamilies.
 export default function HowToPlay({ sports, onBack }: Props) {
   const { hash } = useLocation();
@@ -27,14 +28,26 @@ export default function HowToPlay({ sports, onBack }: Props) {
   // Every tour shares the game's numbers (GameRules), so any one will do.
   const { maxGuesses, hintAfterGuess } = sports[0];
   const withBasis = families.filter((g) => g.display.difficultyBasis);
+  const [openFamilies, setOpenFamilies] = useState<ReadonlySet<string>>(() => new Set(hash ? [hash.slice(1)] : []));
+  const setOpen = (family: string, open: boolean) =>
+    setOpenFamilies((prev) => {
+      if (prev.has(family) === open) return prev;
+      const next = new Set(prev);
+      if (open) next.add(family);
+      else next.delete(family);
+      return next;
+    });
 
   useEffect(() => {
     document.title = "How to play | ID the Athlete";
   }, []);
 
-  // Opened from a tour (e.g. /how-to-play#cricket): go to that sport.
+  // Opened from a tour (e.g. /how-to-play#cricket): open that sport and go to it.
   useEffect(() => {
-    if (hash) document.getElementById(hash.slice(1))?.scrollIntoView();
+    if (!hash) return;
+    const family = hash.slice(1);
+    setOpenFamilies((prev) => (prev.has(family) ? prev : new Set(prev).add(family)));
+    document.getElementById(family)?.scrollIntoView();
   }, [hash]);
 
   return (
@@ -74,7 +87,7 @@ export default function HowToPlay({ sports, onBack }: Props) {
         {families
           .filter((g) => g.display.clueRules.length > 0)
           .map((g) => (
-            <SportSection key={g.family} group={g} />
+            <SportSection key={g.family} group={g} open={openFamilies.has(g.family)} onToggle={(open) => setOpen(g.family, open)} />
           ))}
 
         <Section title="The hint">
@@ -158,26 +171,41 @@ function Row({ pill, children }: { pill: ReactNode; children: ReactNode }) {
   );
 }
 
-function SportSection({ group }: { group: FamilyGroup }) {
+interface SportSectionProps {
+  group: FamilyGroup;
+  open: boolean;
+  onToggle: (open: boolean) => void;
+}
+
+// A native <details>, so it opens by keyboard, reads correctly to screen
+// readers, and find-in-page can still search it while closed.
+function SportSection({ group, open, onToggle }: SportSectionProps) {
   return (
     <section id={group.family} className="card rounded-md p-5 text-left text-sm text-[var(--text-secondary)] scroll-mt-4">
-      <h2 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wide mb-3">
-        {group.display.label} clues
-      </h2>
-      <ClueLegend family={group.family} />
-      <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wide mt-5 mb-2">When a clue is close</h3>
-      <table className="w-full border-collapse">
-        <tbody>
-          {group.display.clueRules.map((r) => (
-            <tr key={r.column} className="border-t border-[var(--border)] align-top">
-              <th scope="row" className="py-2 pr-4 w-1/3 text-left font-semibold text-[var(--text-primary)]">
-                {r.column}
-              </th>
-              <td className="py-2">{r.close}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <details open={open} onToggle={(e) => onToggle(e.currentTarget.open)}>
+        <summary className="flex items-center justify-between cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+          <h2 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wide">{group.display.label} clues</h2>
+          <span aria-hidden="true" className="text-[var(--text-muted)] text-xs">
+            {open ? "▾ Hide" : "▸ Show"}
+          </span>
+        </summary>
+        <div className="mt-3">
+          <ClueLegend family={group.family} />
+          <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wide mt-5 mb-2">When a clue is close</h3>
+          <table className="w-full border-collapse">
+            <tbody>
+              {group.display.clueRules.map((r) => (
+                <tr key={r.column} className="border-t border-[var(--border)] align-top">
+                  <th scope="row" className="py-2 pr-4 w-1/3 text-left font-semibold text-[var(--text-primary)]">
+                    {r.column}
+                  </th>
+                  <td className="py-2">{r.close}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
     </section>
   );
 }
