@@ -2,8 +2,8 @@ import { ClueExample } from "../config/sportFamilies";
 
 const STATE_CLASSES: Record<ClueExample["state"], string> = {
   match: "bg-[var(--accent)] text-[var(--on-accent)]",
-  close: "bg-[var(--close-bg)] text-[var(--text-primary)]",
-  miss: "bg-[var(--miss-bg)] text-[var(--text-primary)]",
+  close: "clue-close",
+  miss: "clue-miss",
 };
 
 interface Props {

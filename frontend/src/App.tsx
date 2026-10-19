@@ -12,6 +12,7 @@ import { Sport } from "./types";
 import { fetchActiveTheme, fetchDailyPuzzleDates, fetchSports } from "./api/client";
 import { groupByFamily } from "./config/sportFamilies";
 import { findTour, isMode, isPuzzleDate, paths } from "./routes/paths";
+import { ThemeContext } from "./theme/ThemeContext";
 
 // Every tour from the API, which every screen's address is resolved
 // against. sports is null until loaded.
@@ -24,37 +25,41 @@ interface SportsData {
 export default function App() {
   const [sports, setSports] = useState<Sport[] | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
-  const [themeReady, setThemeReady] = useState(false);
+  const [theme, setTheme] = useState<string | null>(null);
 
   useEffect(() => {
     fetchActiveTheme()
-      .then((theme) => document.documentElement.setAttribute("data-theme", theme))
-      .catch(() => document.documentElement.setAttribute("data-theme", "retro"))
-      .finally(() => setThemeReady(true));
+      .catch(() => "retro")
+      .then((name) => {
+        document.documentElement.setAttribute("data-theme", name);
+        setTheme(name);
+      });
 
     fetchSports()
       .then(setSports)
       .catch(() => setLoadFailed(true));
   }, []);
 
-  if (!themeReady) {
+  if (theme === null) {
     return null;
   }
 
   const data: SportsData = { sports, loadFailed };
   return (
-    <ErrorBoundary>
-      <Routes>
-        <Route path="/" element={<HomePage {...data} />} />
-        <Route path="/how-to-play" element={<HowToPlayPage {...data} />} />
-        <Route path="/:family" element={<FamilyPage {...data} />} />
-        <Route path="/:family/:tour" element={<TourPage {...data} />} />
-        <Route path="/:family/:tour/past" element={<PastPage {...data} />} />
-        <Route path="/:family/:tour/past/:date" element={<PastGamePage {...data} />} />
-        <Route path="/:family/:tour/:mode" element={<GamePage {...data} />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </ErrorBoundary>
+    <ThemeContext.Provider value={theme}>
+      <ErrorBoundary>
+        <Routes>
+          <Route path="/" element={<HomePage {...data} />} />
+          <Route path="/how-to-play" element={<HowToPlayPage {...data} />} />
+          <Route path="/:family" element={<FamilyPage {...data} />} />
+          <Route path="/:family/:tour" element={<TourPage {...data} />} />
+          <Route path="/:family/:tour/past" element={<PastPage {...data} />} />
+          <Route path="/:family/:tour/past/:date" element={<PastGamePage {...data} />} />
+          <Route path="/:family/:tour/:mode" element={<GamePage {...data} />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </ErrorBoundary>
+    </ThemeContext.Provider>
   );
 }
 
