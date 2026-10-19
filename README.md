@@ -387,8 +387,10 @@ description carries an AI attribution line. PRs are squash-merged with the
 title and description as the commit message, so the description is what
 reaches `main`. It reruns whenever the description is edited.
 
-`main` is protected: a PR merges only when all of these checks pass on a
-branch that's up to date with `main`.
+`main` is protected, for admins too: changes arrive only through pull
+requests, history stays linear, and force-pushes and deletion are blocked.
+A PR merges only when all of these checks pass on a branch that's up to
+date with `main` and every review conversation is resolved.
 
 CI uses no secrets and no paid APIs, and never touches a real database. It
 can't replace the checks against a copy of the dev data before opening a
