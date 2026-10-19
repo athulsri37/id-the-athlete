@@ -2,6 +2,8 @@ import { useEffect } from "react";
 import { FamilyGroup } from "../config/sportFamilies";
 import Scenery from "../components/scenery/Scenery";
 
+const FEEDBACK_EMAIL = "idtheathlete@gmail.com";
+
 interface Props {
   // One button per family, in display order. Null while still loading.
   families: FamilyGroup[] | null;
@@ -51,28 +53,16 @@ export default function HomeScreen({ families, loadFailed, onSelectFamily, onHow
         How to play
       </button>
 
-      <footer className="mt-auto pt-10 flex flex-col items-center gap-2">
-        <div className="flex items-center justify-center gap-3">
-          <a
-            href="mailto:athulsri@outlook.com?subject=ID%20the%20Athlete%20Feedback"
-            className="text-xs text-[var(--text-muted)] underline hover:text-[var(--accent)] transition-colors"
-          >
-            Tell me what you think
-          </a>
-          <span className="w-px h-3 bg-[var(--border)]" aria-hidden="true" />
-          <a
-            href="https://github.com/athulsri37/id-the-athlete/issues"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-[var(--text-muted)] underline hover:text-[var(--accent)] transition-colors"
-          >
-            Found a bug? Report it on GitHub
-          </a>
-        </div>
-        {/* Matches what the server records: see GameRecord. */}
-        <p className="text-xs text-[var(--text-muted)] text-center">
-          We record anonymous game stats (no personal data) to improve the game.
-        </p>
+      {/* The address is shown as text too: a mailto link does nothing on a
+          computer with no email app set up. */}
+      <footer className="mt-auto pt-10 text-xs text-[var(--text-muted)] text-center">
+        Feedback or found a bug?{" "}
+        <a
+          href={`mailto:${FEEDBACK_EMAIL}?subject=ID%20the%20Athlete%20Feedback`}
+          className="underline hover:text-[var(--accent)] transition-colors"
+        >
+          {FEEDBACK_EMAIL}
+        </a>
       </footer>
     </div>
   );

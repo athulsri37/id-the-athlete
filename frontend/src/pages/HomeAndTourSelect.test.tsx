@@ -37,6 +37,14 @@ describe("HomeScreen", () => {
     fireEvent.click(screen.getByRole("button", { name: "How to play" }));
     expect(onHowToPlay).toHaveBeenCalled();
   });
+
+  it("offers one way to get in touch: the feedback email, written out", () => {
+    render(<HomeScreen families={groupByFamily(SPORTS)} loadFailed={false} onSelectFamily={() => {}} onHowToPlay={() => {}} />);
+
+    const email = screen.getByRole("link", { name: "idtheathlete@gmail.com" });
+    expect(email).toHaveAttribute("href", expect.stringMatching(/^mailto:idtheathlete@gmail\.com\?/));
+    expect(screen.getAllByRole("link")).toHaveLength(1);
+  });
 });
 
 describe("TourSelect", () => {

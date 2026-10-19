@@ -442,8 +442,7 @@ with the agent.
 
 The server records one anonymous row per game in `GameRecords`, so you can
 see how games actually go. Nothing in it identifies a player: there's no IP
-address, device ID or cookie, only a random ID per game. The home page
-footer says so.
+address, device ID or cookie, only a random ID per game.
 
 - **A game starts at its first guess.** Opening a mode without guessing
   isn't recorded.
