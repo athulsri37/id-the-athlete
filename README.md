@@ -67,8 +67,10 @@ live, without a redeploy. `dotnet build` (backend) and `npm run build`
 - **Retro and Stadium themes** — two full visual themes switchable via a
   single `AppSettings` row, each with its own sport scenery behind the
   screens (see [Theme System](#theme-system))
-- **Shareable results** — Wordle-style emoji grid via the Web Share API /
-  clipboard, no social media API integration required
+- **Shareable results** — a Wordle-style grid (🟩 match, 🟨 close, ⬜ miss)
+  with the game, the day and a link back to the same puzzle, through the
+  device's share sheet or the clipboard, no social media API integration
+  required
 - **Internal admin tool** — a key-protected interface, not linked from
   the public UI, for editing player stats and difficulty overrides and
   toggling game settings live against the running database (see
