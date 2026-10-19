@@ -177,8 +177,8 @@ interface SportSectionProps {
   onToggle: (open: boolean) => void;
 }
 
-// A native <details>, so it opens by keyboard, reads correctly to screen
-// readers, and find-in-page can still search it while closed.
+// A native <details>, so it opens by keyboard and reads correctly to screen
+// readers (Chrome and Edge's find-in-page also search it while closed).
 function SportSection({ group, open, onToggle }: SportSectionProps) {
   return (
     <section id={group.family} className="card rounded-md p-5 text-left text-sm text-[var(--text-secondary)] scroll-mt-4">
