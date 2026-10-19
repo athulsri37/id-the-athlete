@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Sport, Difficulty } from "../types";
-import ClueLegend from "../components/ClueLegend";
 
 interface Props {
   sport: Sport;
   onSelectMode: (mode: Difficulty) => void;
   onPastChallenges: () => void;
+  onHowToPlay: () => void; // the rules page, at this sport's section
   onBack: () => void;
 }
 
@@ -16,8 +16,7 @@ const MODES: { key: Difficulty; label: string }[] = [
   { key: "hard", label: "Hard" },
 ];
 
-export default function SportHome({ sport, onSelectMode, onPastChallenges, onBack }: Props) {
-  const [showHowToPlay, setShowHowToPlay] = useState(false);
+export default function SportHome({ sport, onSelectMode, onPastChallenges, onHowToPlay, onBack }: Props) {
 
   useEffect(() => {
     document.title = `ID the ${sport.name} Player | ID the Athlete`;
@@ -39,47 +38,11 @@ export default function SportHome({ sport, onSelectMode, onPastChallenges, onBac
       </h1>
 
       <button
-        onClick={() => setShowHowToPlay((v) => !v)}
+        onClick={onHowToPlay}
         className="text-sm text-[var(--link-accent)] underline hover:text-[var(--link-accent-hover)] mb-8"
       >
         How to play?
       </button>
-
-      {showHowToPlay && (
-        <div className="card rounded-md p-5 mb-8 w-full max-w-md text-left">
-          <div className="mb-4">
-            <h2 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wide mb-1">
-              Objective
-            </h2>
-            <p className="text-[var(--text-secondary)] text-sm">
-              Guess the mystery player in 8 tries using clues.
-            </p>
-          </div>
-
-          <div className="mb-4">
-            <h2 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wide mb-2">
-              Reading clues
-            </h2>
-            <ClueLegend family={sport.family} />
-          </div>
-
-          <div>
-            <h2 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wide mb-2">
-              Modes
-            </h2>
-            <ul className="text-[var(--text-secondary)] text-sm flex flex-col gap-1">
-              <li>
-                <strong className="text-[var(--text-primary)]">Daily Challenge</strong>: one shared
-                puzzle per day, resets at midnight
-              </li>
-              <li>
-                <strong className="text-[var(--text-primary)]">Easy / Medium / Hard</strong>: unlimited
-                practice, different player eras
-              </li>
-            </ul>
-          </div>
-        </div>
-      )}
 
       <div className="flex flex-col gap-4 w-full max-w-xs">
         {MODES.map((m) => (

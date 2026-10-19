@@ -41,6 +41,10 @@ public sealed class CricketRules : ISportRules
         ["combined_wickets"] = ("CricketWicketsClosenessPercent", "CricketWicketsClosenessFloor"),
     };
 
+    // The How to Play page describes these closeness rules, the regions,
+    // roles and bowling types below and the default percent/floor settings
+    // (frontend/src/config/sportFamilies.ts, clueRules): change it with them.
+    //
     // Country closeness by cricket region, NOT land borders (which are wrong
     // for cricket: Pakistan and Bangladesh are closely linked cricket nations
     // with no shared border, and Australia-New Zealand, cricket's defining

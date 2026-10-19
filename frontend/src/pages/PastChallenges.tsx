@@ -70,7 +70,7 @@ export default function PastChallenges({ sport, onSelectDate, onBack }: Props) {
             return { date, badge, dayName, status: `Won in ${n} guess${n === 1 ? "" : "es"}`, done: true };
           }
 
-          return { date, badge, dayName, status: "Lost (8/8 used)", done: true };
+          return { date, badge, dayName, status: `Lost (${sport.maxGuesses}/${sport.maxGuesses} used)`, done: true };
         });
 
         setRows(built);

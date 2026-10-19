@@ -46,6 +46,12 @@ describe("routes", () => {
     expect(screen.getByRole("button", { name: "Past Challenges" })).toBeInTheDocument();
   });
 
+  it("/how-to-play shows the rules", async () => {
+    renderAt("/how-to-play");
+    expect(await screen.findByRole("heading", { name: "How to play" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Tennis clues" })).toBeInTheDocument();
+  });
+
   it.each([
     "/football",                       // unknown sport
     "/tennis/mixed",                   // unknown tour

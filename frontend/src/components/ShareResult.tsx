@@ -6,22 +6,23 @@ interface Props {
   won: boolean;
   mode: Difficulty;
   sportName: string;
+  maxGuesses: number;
 }
 
-function buildShareText(guesses: GuessResponse[], won: boolean, mode: Difficulty, sportName: string): string {
+function buildShareText(guesses: GuessResponse[], won: boolean, mode: Difficulty, sportName: string, maxGuesses: number): string {
   const modeLabel = mode === "daily" ? "Daily" : mode[0].toUpperCase() + mode.slice(1);
   const lines = guesses.map((g) =>
     g.clues.map((c) => (c.isMatch ? "🟩" : "⬜")).join("")
   );
-  const header = `ID the ${sportName} Player: ${modeLabel} ${won ? guesses.length + "/8" : "X/8"}`;
+  const header = `ID the ${sportName} Player: ${modeLabel} ${won ? guesses.length : "X"}/${maxGuesses}`;
   return [header, ...lines].join("\n");
 }
 
-export default function ShareResult({ guesses, won, mode, sportName }: Props) {
+export default function ShareResult({ guesses, won, mode, sportName, maxGuesses }: Props) {
   const [copied, setCopied] = useState(false);
 
   const handleShare = async () => {
-    const text = buildShareText(guesses, won, mode, sportName);
+    const text = buildShareText(guesses, won, mode, sportName, maxGuesses);
 
     if (navigator.share) {
       try {

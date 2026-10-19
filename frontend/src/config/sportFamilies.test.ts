@@ -31,6 +31,21 @@ describe("familyDisplay", () => {
     expect(display).toMatchObject({ label: "Football", titleAccent: "Football", titleSuffix: " Player" });
     expect(display.winEmoji).toBeUndefined();
     expect(display.legendExamples.length).toBeGreaterThan(0);
+    expect(display.clueRules).toEqual([]);
+  });
+
+  it.each(["tennis", "cricket", "football"])("%s's legend shows a match, a close and a miss, with distinct descriptions", (family) => {
+    const examples = familyDisplay(family).legendExamples;
+
+    expect(new Set(examples.map((e) => e.state))).toEqual(new Set(["match", "close", "miss"]));
+    expect(new Set(examples.map((e) => e.description)).size).toBe(examples.length);
+  });
+
+  it.each(["tennis", "cricket"])("%s explains when each of its clues is close", (family) => {
+    const display = familyDisplay(family);
+
+    expect(display.clueRules.length).toBeGreaterThan(0);
+    expect(display.difficultyBasis).toBeTruthy();
   });
 });
 
