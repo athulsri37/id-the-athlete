@@ -33,7 +33,7 @@ export default function SportHome({ sport, onSelectMode, onPastChallenges, onHow
         ← Back
       </button>
 
-      <h1 className="font-heading text-5xl tracking-wide mb-1">
+      <h1 className="font-heading text-3xl sm:text-4xl lg:text-5xl text-center text-balance tracking-wide mb-1">
         <span className="text-[var(--text-primary)]">ID the </span>
         <span className="text-[var(--accent-alt)]">{sport.name}</span>
         <span className="text-[var(--text-primary)]"> Player</span>

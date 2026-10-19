@@ -257,8 +257,8 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
 
   return (
     <div className="isolate min-h-screen bg-[var(--bg-primary)] flex flex-col items-center px-4 py-10">
-      <Scenery kind="page" family={sport.family} />
-      <h1 className="font-heading text-5xl tracking-wide mb-1">
+      <Scenery kind="game" family={sport.family} />
+      <h1 className="font-heading text-3xl sm:text-4xl lg:text-5xl text-center text-balance tracking-wide mb-1">
         <span className="text-[var(--text-primary)]">ID the </span>
         <span className="text-[var(--accent-alt)]">{sportName}</span>
         <span className="text-[var(--text-primary)]"> Player</span>
@@ -310,7 +310,7 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
           <button
             onClick={() => setShowLegend((v) => !v)}
             aria-label="What do the clues mean?"
-            className="btn-card flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold leading-none"
+            className="btn-card relative flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold leading-none before:absolute before:-inset-3 before:content-['']"
           >
             ?
           </button>

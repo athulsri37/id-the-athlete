@@ -89,7 +89,7 @@ export default function PastChallenges({ sport, onSelectDate, onBack }: Props) {
         ← Back
       </button>
 
-      <h1 className="font-heading text-5xl tracking-wide mb-1">
+      <h1 className="font-heading text-3xl sm:text-4xl lg:text-5xl text-center text-balance tracking-wide mb-1">
         <span className="text-[var(--text-primary)]">Past </span>
         <span className="text-[var(--accent-alt)]">Challenges</span>
       </h1>

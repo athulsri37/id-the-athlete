@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { sceneFor } from "./scenes";
-import { RetroCricketPage, RetroHome, RetroPage, RetroTennisPage, RetroTennisTour } from "./retro/RetroScenes";
-import { StadiumCricketPage, StadiumCricketTour, StadiumHome, StadiumPage } from "./stadium/StadiumScenes";
+import {
+  RetroCricketCorner,
+  RetroCricketPage,
+  RetroHome,
+  RetroPage,
+  RetroTennisPage,
+  RetroTennisTour,
+} from "./retro/RetroScenes";
+import { StadiumCricketPage, StadiumCricketTour, StadiumHome, StadiumPage, StadiumTennisPage } from "./stadium/StadiumScenes";
 
 describe("sceneFor", () => {
   it("gives the home screen its full scene, and phones the general one", () => {
@@ -17,6 +24,12 @@ describe("sceneFor", () => {
   it("gives reading screens the faint scene at every width", () => {
     expect(sceneFor("retro", "page", "cricket")).toEqual({ wide: RetroCricketPage, narrow: RetroCricketPage });
     expect(sceneFor("stadium", "page")).toEqual({ wide: StadiumPage, narrow: StadiumPage });
+  });
+
+  it("gives a game the faint scene, but only a corner piece on a phone", () => {
+    expect(sceneFor("retro", "game", "cricket")).toEqual({ wide: RetroCricketPage, narrow: RetroCricketCorner });
+    expect(sceneFor("stadium", "game", "tennis")).toEqual({ wide: StadiumTennisPage, narrow: StadiumPage });
+    expect(sceneFor("retro", "game", "football")).toEqual({ wide: RetroPage, narrow: RetroPage });
   });
 
   it("falls back to the theme's general scene for a sport without its own", () => {

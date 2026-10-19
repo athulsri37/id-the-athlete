@@ -17,6 +17,9 @@
      everything already relying on it) is untouched. */
   --link-accent: #9c5225;
   --link-accent-hover: #7a3f1c;
+  /* A button's text on hover or focus: --accent (lime) is unreadable on
+     the cream card, so it borrows the link colour. */
+  --btn-hover-text: #9c5225;
   --border: rgba(43, 33, 24, 0.25);
   --border-strong: #2B2118;
   --miss-bg: rgba(181, 96, 43, 0.35);
