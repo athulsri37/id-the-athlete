@@ -14,20 +14,28 @@ const SPORTS: Sport[] = [
 describe("HomeScreen", () => {
   it("shows one button per family from the API data, in order", () => {
     const onSelectFamily = vi.fn();
-    render(<HomeScreen families={groupByFamily(SPORTS)} loadFailed={false} onSelectFamily={onSelectFamily} />);
+    render(<HomeScreen families={groupByFamily(SPORTS)} loadFailed={false} onSelectFamily={onSelectFamily} onHowToPlay={() => {}} />);
 
-    const buttons = screen.getAllByRole("button").map((b) => b.textContent);
-    expect(buttons).toEqual(["Tennis", "Cricket"]);
+    const sportButtons = screen.getAllByRole("button").map((b) => b.textContent).filter((t) => t !== "How to play");
+    expect(sportButtons).toEqual(["Tennis", "Cricket"]);
 
     fireEvent.click(screen.getByRole("button", { name: "Cricket" }));
     expect(onSelectFamily).toHaveBeenCalledWith("cricket");
   });
 
   it("says so when the sports couldn't be loaded", () => {
-    render(<HomeScreen families={null} loadFailed={true} onSelectFamily={() => {}} />);
+    render(<HomeScreen families={null} loadFailed={true} onSelectFamily={() => {}} onHowToPlay={() => {}} />);
 
     expect(screen.getByText(/Couldn't load the sports/)).toBeInTheDocument();
-    expect(screen.queryAllByRole("button")).toHaveLength(0);
+    expect(screen.queryAllByRole("button").map((b) => b.textContent)).toEqual(["How to play"]);
+  });
+
+  it("links to the rules", () => {
+    const onHowToPlay = vi.fn();
+    render(<HomeScreen families={groupByFamily(SPORTS)} loadFailed={false} onSelectFamily={() => {}} onHowToPlay={onHowToPlay} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "How to play" }));
+    expect(onHowToPlay).toHaveBeenCalled();
   });
 });
 

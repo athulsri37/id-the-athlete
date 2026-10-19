@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router";
 import { fetchPlayerPool, startPracticeGame, submitGuess, fetchCountryHint, fetchAttributeDefinitions } from "../api/client";
 import { problemDetail, problemStatus } from "../api/problemDetails";
 import { PlayerSummary, GuessResponse, Difficulty, AttributeDefinition, GameRef, Sport } from "../types";
@@ -12,6 +13,7 @@ import { getCompletionForDate, recordDailyCompletion, recordDailyTrivia } from "
 import { getInProgress, saveInProgress, clearInProgress } from "../utils/dailyInProgress";
 import { todayUtcDateString } from "../utils/localDate";
 import { useGameTrivia } from "../hooks/useGameTrivia";
+import { paths } from "../routes/paths";
 
 interface Props {
   mode: Difficulty;
@@ -259,7 +261,7 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
         <span className="text-[var(--accent-alt)]">{sportName}</span>
         <span className="text-[var(--text-primary)]"> Player</span>
       </h1>
-      <p className="text-[var(--text-secondary)] text-sm mb-1">Guess the mystery player in 8 tries</p>
+      <p className="text-[var(--text-secondary)] text-sm mb-1">Guess the mystery player in {maxGuesses} tries</p>
       {isPastDate && (
         <p className="text-[var(--text-muted)] text-xs mb-5">
           Playing:{" "}
@@ -318,6 +320,12 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
               What do the clues mean?
             </h2>
             <ClueLegend family={family} />
+            <Link
+              to={paths.howToPlay(family)}
+              className="inline-block mt-3 text-sm text-[var(--link-accent)] underline hover:text-[var(--link-accent-hover)]"
+            >
+              All the rules: How to play
+            </Link>
           </div>
         )}
 
@@ -361,7 +369,7 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
                 )}
               </p>
             )}
-            <ShareResult guesses={guesses} won={won} mode={mode} sportName={sportName} />
+            <ShareResult guesses={guesses} won={won} mode={mode} sportName={sportName} maxGuesses={maxGuesses} />
             <div className="flex items-center justify-center gap-4 mt-3">
               {mode !== "daily" && (
                 <button

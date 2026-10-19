@@ -6,6 +6,7 @@ import SportHome from "./pages/SportHome";
 import PastChallenges from "./pages/PastChallenges";
 import GameBoard from "./pages/GameBoard";
 import NotFound from "./pages/NotFound";
+import HowToPlay from "./pages/HowToPlay";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { Sport } from "./types";
 import { fetchActiveTheme, fetchDailyPuzzleDates, fetchSports } from "./api/client";
@@ -45,6 +46,7 @@ export default function App() {
     <ErrorBoundary>
       <Routes>
         <Route path="/" element={<HomePage {...data} />} />
+        <Route path="/how-to-play" element={<HowToPlayPage {...data} />} />
         <Route path="/:family" element={<FamilyPage {...data} />} />
         <Route path="/:family/:tour" element={<TourPage {...data} />} />
         <Route path="/:family/:tour/past" element={<PastPage {...data} />} />
@@ -63,7 +65,25 @@ function HomePage({ sports, loadFailed }: SportsData) {
       families={sports && groupByFamily(sports)}
       loadFailed={loadFailed}
       onSelectFamily={(family) => navigate(paths.family(family))}
+      onHowToPlay={() => navigate(paths.howToPlay())}
     />
+  );
+}
+
+// Back returns to wherever the reader came from; opened directly, home.
+function HowToPlayPage(data: SportsData) {
+  const navigate = useNavigate();
+  const { key } = useLocation();
+  return (
+    <WaitForSports {...data}>
+      {(sports) =>
+        sports.length > 0 ? (
+          <HowToPlay sports={sports} onBack={() => (key === "default" ? navigate(paths.home()) : navigate(-1))} />
+        ) : (
+          <NotFound />
+        )
+      }
+    </WaitForSports>
   );
 }
 
@@ -111,6 +131,7 @@ function TourPage(data: SportsData) {
           sport={sport}
           onSelectMode={(mode) => navigate(paths.game(sport, mode))}
           onPastChallenges={() => navigate(paths.past(sport))}
+          onHowToPlay={() => navigate(paths.howToPlay(sport.family))}
           onBack={() => navigate(paths.family(sport.family))}
         />
       )}

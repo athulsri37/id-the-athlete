@@ -6,9 +6,10 @@ interface Props {
   families: FamilyGroup[] | null;
   loadFailed: boolean;
   onSelectFamily: (family: string) => void;
+  onHowToPlay: () => void;
 }
 
-export default function HomeScreen({ families, loadFailed, onSelectFamily }: Props) {
+export default function HomeScreen({ families, loadFailed, onSelectFamily, onHowToPlay }: Props) {
   useEffect(() => {
     document.title = "ID the Athlete";
   }, []);
@@ -40,6 +41,13 @@ export default function HomeScreen({ families, loadFailed, onSelectFamily }: Pro
           </button>
         ))}
       </div>
+
+      <button
+        onClick={onHowToPlay}
+        className="mt-6 text-sm text-[var(--link-accent)] underline hover:text-[var(--link-accent-hover)]"
+      >
+        How to play
+      </button>
 
       <footer className="mt-auto pt-10 flex flex-col items-center gap-2">
         <div className="flex items-center justify-center gap-3">

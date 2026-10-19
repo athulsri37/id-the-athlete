@@ -10,7 +10,9 @@ public sealed class TennisRules : ISportRules
 {
     private const string CountryClosenessFlag = "CountryClosenessEnabled";
 
-    // Fixed absolute closeness thresholds for numeric clues.
+    // Fixed absolute closeness thresholds for numeric clues. The How to Play
+    // page describes them (frontend/src/config/sportFamilies.ts, clueRules):
+    // change it with them.
     private static readonly Dictionary<string, decimal> NumericCloseThresholds = new()
     {
         ["grand_slam_titles"] = 2,
