@@ -35,7 +35,10 @@ live, without a redeploy. `dotnet build` (backend) and `npm run build`
   replay-lock preventing multiple attempts at the same day's puzzle
 - **Practice modes** — Easy / Medium / Hard, unlimited plays, difficulty
   computed live from each player's career stats rather than manually
-  tagged (see [Difficulty Tiers](#difficulty-tiers) below)
+  tagged (see [Difficulty Tiers](#difficulty-tiers) below). A game in
+  progress is kept for the browser tab, so a refresh or a trip to How to
+  Play carries on with it; choosing a difficulty from the menu or "Play
+  another" starts a new one
 - **Comparison clues, tailored per sport** — Tennis: 8 clues (Plays,
   Backhand, Country, Grand Slams, Career-High Rank, Turned Pro Year,
   Career Titles, Active/Retired status). Cricket: 9 clues (Country,

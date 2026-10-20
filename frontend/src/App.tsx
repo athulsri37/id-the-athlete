@@ -134,7 +134,7 @@ function TourPage(data: SportsData) {
       {(sport) => (
         <SportHome
           sport={sport}
-          onSelectMode={(mode) => navigate(paths.game(sport, mode))}
+          onSelectMode={(mode) => navigate(paths.game(sport, mode), { state: NEW_GAME })}
           onPastChallenges={() => navigate(paths.past(sport))}
           onHowToPlay={() => navigate(paths.howToPlay(sport.family))}
           onBack={() => navigate(paths.family(sport.family))}
@@ -159,16 +159,37 @@ function PastPage(data: SportsData) {
   );
 }
 
+// Choosing a practice difficulty from a tour's menu starts a new game, even
+// if this tab has one in progress there; arriving any other way (Back from
+// How to Play, a refresh, a link) carries on with it. The choice travels as
+// the history entry's state, which is cleared once read so that coming back
+// to this entry later resumes instead of starting yet another game.
+const NEW_GAME = { newGame: true };
+
 // Keyed by address so every game is a fresh GameBoard: switching games
 // never carries one game's state into the next.
 function GamePage(data: SportsData) {
   const { mode = "" } = useParams();
-  const { pathname } = useLocation();
+  const { pathname, state } = useLocation();
   const navigate = useNavigate();
+  const startFresh = (state as { newGame?: boolean } | null)?.newGame === true;
+
+  useEffect(() => {
+    if (startFresh) navigate(pathname, { replace: true, state: null });
+  }, [startFresh, pathname, navigate]);
+
   if (!isMode(mode)) return <NotFound />;
   return (
     <WithTour {...data}>
-      {(sport) => <GameBoard key={pathname} mode={mode} sport={sport} onBackToHome={() => navigate(paths.tour(sport))} />}
+      {(sport) => (
+        <GameBoard
+          key={pathname}
+          mode={mode}
+          sport={sport}
+          startFresh={startFresh}
+          onBackToHome={() => navigate(paths.tour(sport))}
+        />
+      )}
     </WithTour>
   );
 }
