@@ -11,6 +11,7 @@ from roster_validation import (
     schema_mismatch,
     tier_warning,
     validate_player,
+    write_confirmation,
 )
 
 SPECS = [
@@ -138,6 +139,16 @@ class SchemaMismatchTests(unittest.TestCase):
 
         self.assertIn("the database has no 'batting_hand' column for this sport", problems)
         self.assertIn("the agent doesn't research the 'debut_year' column", problems)
+
+
+class WriteConfirmationTests(unittest.TestCase):
+    def test_this_pc_needs_yes(self):
+        for host in (None, "", "localhost", "LOCALHOST", "127.0.0.1", "::1"):
+            self.assertEqual(write_confirmation(host, "idtheathlete"), "yes", host)
+
+    def test_another_server_needs_the_database_name(self):
+        self.assertEqual(write_confirmation("dpg-abc.singapore-postgres.render.com", "prod_db"), "prod_db")
+        self.assertEqual(write_confirmation("host.docker.internal", "prod_db"), "prod_db")
 
 
 if __name__ == "__main__":
