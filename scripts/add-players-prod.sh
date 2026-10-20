@@ -45,6 +45,10 @@ if [[ -z "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]]; then
   echo "CLAUDE_CODE_OAUTH_TOKEN isn't set: see the top of tools/roster_research_agent.py." >&2
   exit 1
 fi
+# The agent's own argument check, run before anything is asked or backed up,
+# so a mistyped tour name fails now rather than after the backup.
+(cd tools && "$python" -c 'import sys, roster_research_agent as a; p = a.build_arg_parser(); p.prog = "scripts/add-players-prod.sh"; p.parse_args(sys.argv[1:])' "$@")
+
 # docker compose exec reads standard input, so every docker call here (and the
 # backups) gets </dev/null: otherwise it can swallow your answers to the prompts.
 if ! docker compose exec -T postgres pg_isready -q </dev/null >/dev/null 2>&1; then
@@ -55,12 +59,16 @@ fi
 
 read -r -s -p "Production External Database URL (hidden): " db_url
 echo
+# Pasting from a password manager can bring a space or line break along, which
+# would become part of the database name.
+db_url="$(tr -d '[:space:]' <<<"$db_url")"
 if [[ ! "$db_url" =~ ^postgres(ql)?:// ]]; then
   echo "That doesn't look like a database URL (it should start with postgresql://)." >&2
   exit 1
 fi
 read -r -s -p "Production admin key, for the tier column (hidden; Enter to skip): " admin_key
 echo
+admin_key="$(tr -d '[:space:]' <<<"$admin_key")"
 
 echo "Waking the production API at $api_url (it sleeps when idle; up to 90 seconds)..."
 awake=false
