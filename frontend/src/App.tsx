@@ -8,6 +8,7 @@ import GameBoard from "./pages/GameBoard";
 import NotFound from "./pages/NotFound";
 import HowToPlay from "./pages/HowToPlay";
 import ErrorBoundary from "./components/ErrorBoundary";
+import StartupLoader from "./components/StartupLoader";
 import { Sport } from "./types";
 import { fetchActiveTheme, fetchDailyPuzzleDates, fetchSports } from "./api/client";
 import { groupByFamily } from "./config/sportFamilies";
@@ -40,8 +41,10 @@ export default function App() {
       .catch(() => setLoadFailed(true));
   }, []);
 
-  if (theme === null) {
-    return null;
+  // The tours are needed by every screen, so the loader covers the wait for
+  // both answers rather than drawing a screen that's still missing them.
+  if (theme === null || (sports === null && !loadFailed)) {
+    return <StartupLoader />;
   }
 
   const data: SportsData = { sports, loadFailed };
@@ -92,8 +95,8 @@ function HowToPlayPage(data: SportsData) {
   );
 }
 
-// Until the tours load, a deep link shows nothing (it's brief); if they
-// can't load, the home screen says so.
+// App shows the startup loader until the tours load, so only a failed load
+// reaches here without them: the home screen says so.
 function WaitForSports({ sports, loadFailed, children }: SportsData & { children: (sports: Sport[]) => JSX.Element }) {
   if (loadFailed) return <HomePage sports={null} loadFailed />;
   if (!sports) return null;

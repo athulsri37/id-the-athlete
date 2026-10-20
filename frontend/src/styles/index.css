@@ -10,6 +10,19 @@ body {
   font-family: var(--font-heading, 'Bebas Neue'), sans-serif;
 }
 
+/* StartupLoader's note: hidden while the API answers quickly, faded in once
+   the wait passes 3 seconds (a sleeping API takes up to a minute to wake). */
+.startup-note {
+  opacity: 0;
+  animation: startup-note-in 0.4s ease 3s forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .startup-note { animation-duration: 0s; }
+}
+@keyframes startup-note-in {
+  to { opacity: 1; }
+}
+
 /* Static content card: same depth treatment as buttons, no interactive states. */
 .card {
   background: var(--bg-card);

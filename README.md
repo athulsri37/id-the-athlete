@@ -326,6 +326,14 @@ name a screen, including a Past Challenge date with no puzzle, shows "Page
 not found"; an unexpected error shows a "Something went wrong" screen
 instead of a blank page.
 
+Every screen needs the theme and the tours from the API, so until both
+arrive the app shows a loading screen (`StartupLoader`, in fixed colours,
+since the theme isn't known yet). A host's free plan may put the API to
+sleep when idle, and waking it takes up to a minute: after 3 seconds the
+loader adds "Warming up the server. The first visit can take up to a
+minute." If the API doesn't answer within 90 seconds, or answers with an
+error, the home screen says it couldn't load the sports.
+
 ## Testing
 
 The project has three independent test layers, all run by CI on every pull

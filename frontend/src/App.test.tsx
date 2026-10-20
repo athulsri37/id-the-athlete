@@ -136,3 +136,38 @@ describe("routes", () => {
     expect(await screen.findByText(/Couldn't load the sports/)).toBeInTheDocument();
   });
 });
+
+describe("startup loader", () => {
+  it("shows while the API is waking, then gives way to the screen", async () => {
+    let answerSports: (sports: Sport[]) => void = () => {};
+    vi.mocked(client.fetchSports).mockReturnValue(new Promise((resolve) => { answerSports = resolve; }));
+    renderAt("/");
+
+    const loader = await screen.findByRole("status");
+    expect(loader).toHaveTextContent("ID the Athlete");
+    // The note is always rendered; CSS (.startup-note) keeps it hidden for the first 3 seconds.
+    expect(screen.getByText("Warming up the server. The first visit can take up to a minute.")).toHaveClass("startup-note");
+    expect(screen.queryByRole("button", { name: "Tennis" })).not.toBeInTheDocument();
+
+    answerSports(SPORTS);
+    expect(await screen.findByRole("button", { name: "Tennis" })).toBeInTheDocument();
+    expect(screen.queryByText(/Warming up the server/)).not.toBeInTheDocument();
+  });
+
+  it("stays up while only the theme has answered", async () => {
+    vi.mocked(client.fetchSports).mockReturnValue(new Promise(() => {}));
+    renderAt("/tennis/men");
+
+    expect(await screen.findByText(/Warming up the server/)).toBeInTheDocument();
+    expect(screen.queryByText("Page not found")).not.toBeInTheDocument();
+  });
+
+  it("gives way to the home screen's message when the API can't be reached", async () => {
+    vi.mocked(client.fetchActiveTheme).mockRejectedValue(new Error("timeout"));
+    vi.mocked(client.fetchSports).mockRejectedValue(new Error("timeout"));
+    renderAt("/");
+
+    expect(await screen.findByText(/Couldn't load the sports/)).toBeInTheDocument();
+    expect(screen.queryByText(/Warming up the server/)).not.toBeInTheDocument();
+  });
+});
