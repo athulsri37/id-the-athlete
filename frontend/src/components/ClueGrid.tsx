@@ -23,8 +23,10 @@ const PLAYER_COL = 6.5;
 const CLUE_COL = 4.75;
 const GAP = 0.375; // gap-1.5
 // Rows are padded 0.25rem (p-1), so the pinned cells stick where they sit.
-const STICKY_NUMBER = "sticky left-1 z-10";
-const STICKY_PLAYER = "sticky left-[2.625rem] z-10"; // row padding + NUMBER_COL + GAP
+// z-[1] lifts them over the clues scrolling beneath, and no higher: the
+// player search's suggestions open over the grid.
+const STICKY_NUMBER = "sticky left-1 z-[1]";
+const STICKY_PLAYER = "sticky left-[2.625rem] z-[1]"; // row padding + NUMBER_COL + GAP
 
 function ResultIcon({
   isMatch,
