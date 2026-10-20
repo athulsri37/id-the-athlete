@@ -229,6 +229,13 @@ key alone isn't enough to turn the feature on, and removing the key isn't
 the only way to turn it off. Switch it on or off from the admin tool's
 Settings tab (see [Admin Tool](#admin-tool)).
 
+The player never sees why a blurb is missing, so the API logs it instead: a
+warning for every failed call with Anthropic's reason (e.g.
+`authentication_error` for a bad key, `not_found_error` for an unknown
+model, a rate limit and how long trivia pauses), or a missing key while the
+setting is on, and an information line for each blurb generated. In
+production these are in the host's logs (Render: the API service's Logs).
+
 ### 4. (Required for the admin tool) Set an admin key
 
 The internal admin tool (see [Admin Tool](#admin-tool) below) is

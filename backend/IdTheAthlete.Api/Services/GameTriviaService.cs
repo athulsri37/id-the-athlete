@@ -41,8 +41,6 @@ public sealed class GameTriviaService : IGameTriviaService
             throw new InvalidRequestException("This trivia token is for a different sport.");
 
         var player = await _db.Players
-            .Include(p => p.AttributeValues)
-                .ThenInclude(v => v.AttributeDefinition)
             .FirstOrDefaultAsync(p => p.Id == grant.PlayerId && p.SportId == sportId, cancellationToken)
             // Only if the player was deleted after the game ended.
             ?? throw new InvalidRequestException("This game's player no longer exists.");
