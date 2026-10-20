@@ -159,7 +159,7 @@ id-the-athlete/
 │   │   └── AdminService.cs                 # Backs the internal admin tool
 │   ├── Controllers/      # PlayersController, GameController, SettingsController, AdminController
 │   └── Dtos/             # Request/response contracts
-├── scripts/               # db-backup.sh / db-restore.sh (the database is the source of truth)
+├── scripts/               # db-backup.sh / db-restore.sh (the database is the source of truth), add-players-prod.sh
 ├── tools/                 # Roster research agent (Python): researches, checks and adds players
 └── frontend/src/
     ├── api/              # Axios client
@@ -413,6 +413,14 @@ nowhere else, so back it up.
   shows each player's difficulty tier, and writes the ones you accept. See
   the instructions at the top of `tools/roster_research_agent.py`, e.g.
   `python roster_research_agent.py tennis-women 10 --tiers medium,hard`.
+- **Adding players to production:** `scripts/add-players-prod.sh`, with the
+  agent's arguments (e.g. `scripts/add-players-prod.sh tennis-men 20`). It
+  asks for production's database URL and admin key (hidden, never saved),
+  wakes the production API for the tier column, backs production up, runs
+  the agent against it, and then offers to copy production into your local
+  dev database. Writing to any database not on this PC needs its name typed,
+  not just `yes`. Production is the real data now, so add players there
+  rather than to dev.
 - **Correcting a player** or setting a difficulty override: use the
   [Admin Tool](#admin-tool).
 - **Backing up:** `scripts/db-backup.sh` writes a timestamped dump to

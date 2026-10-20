@@ -47,7 +47,11 @@ ENVIRONMENT VARIABLES
     ROSTER_DB_URL      database to read the roster from and write players to,
                        as a postgres URL. Defaults to the local Docker DB.
                        The target is always shown, and must be confirmed,
-                       before anything is written.
+                       before anything is written: by typing yes for a
+                       database on this PC, or the database's name for any
+                       other server (production). To add players to
+                       production, use scripts/add-players-prod.sh, which
+                       backs it up first and sets these three variables.
     ROSTER_API_URL     the game API used for difficulty tiers
                        (default http://localhost:5080)
     ROSTER_ADMIN_KEY   admin key for that API (tiers are skipped without it)
@@ -78,7 +82,8 @@ REVIEW MENU
 After research, the proposed players are shown in a numbered table with a
 menu:
     a  accept: write every player without errors to the database (after
-       confirming the target); players with errors are skipped and listed
+       confirming the target: yes, or the database's name if it isn't on
+       this PC); players with errors are skipped and listed
     r  remove players by number (e.g. 2,3); that many replacements are
        researched automatically
     s  search for more to reach the requested count (only shown when short)
@@ -126,6 +131,7 @@ from roster_validation import (
     schema_mismatch,
     tier_warning,
     validate_player,
+    write_confirmation,
 )
 
 # ============================================================
@@ -287,7 +293,7 @@ def load_existing_names(sport_slug):
             cur.execute(query_sql, (sport_slug,))
             return [row[0] for row in cur.fetchall()]
     except psycopg2.OperationalError as e:
-        print(f"ERROR: Could not connect to the database. Is Docker/Postgres running?")
+        print(f"ERROR: Could not connect to {describe_db_target()}. If it's the local one, is Docker/Postgres running?")
         print(f"Details: {e}")
         raise
 
@@ -319,6 +325,12 @@ def describe_db_target() -> str:
     """The database the agent writes to, without the password."""
     params = parse_dsn(DB_URL)
     return f"database '{params.get('dbname', '?')}' on {params.get('host', 'localhost')}:{params.get('port', '5432')}"
+
+
+def db_write_confirmation() -> str:
+    """What must be typed to write: "yes" locally, the database name elsewhere."""
+    params = parse_dsn(DB_URL)
+    return write_confirmation(params.get("host"), params.get("dbname"))
 
 
 def fetch_tiers(sport_slug: str, results: list[ValidationResult]) -> list[str] | None:
@@ -906,8 +918,9 @@ async def main(args):
             if not valid:
                 print("No player can be written (every one has an error). Choose r, s or q.")
                 continue
-            confirm = input(f"Write {len(valid)} players to {describe_db_target()}? Type yes to confirm: ")
-            if confirm.strip().lower() != "yes":
+            expected = db_write_confirmation()
+            confirm = input(f"Write {len(valid)} players to {describe_db_target()}? Type {expected} to confirm: ")
+            if confirm.strip().lower() != expected.lower():
                 print("Nothing written. Back to the review menu.")
                 continue
             try:

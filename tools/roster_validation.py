@@ -57,6 +57,20 @@ def tier_warning(tier: str | None, wanted: frozenset[str] | None) -> str | None:
     return f"tier is {tier}, but you asked for {describe_tiers(wanted)}"
 
 
+# Hosts that mean "this PC": its own Docker database. An empty host is a
+# local socket connection.
+LOCAL_HOSTS = frozenset({"", "localhost", "127.0.0.1", "::1"})
+
+
+def write_confirmation(host: str | None, dbname: str | None) -> str:
+    """What the reviewer must type before players are written: "yes" for a
+    database on this PC, the database's own name for any other (production),
+    so writing there can't be a reflex."""
+    if (host or "").strip().lower() in LOCAL_HOSTS:
+        return "yes"
+    return dbname or "?"
+
+
 @dataclass(frozen=True)
 class AttributeSpec:
     """One of a sport's clue columns, from its AttributeDefinitions row."""
