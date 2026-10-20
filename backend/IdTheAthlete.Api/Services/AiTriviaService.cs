@@ -102,12 +102,11 @@ public class AiTriviaService : IAiTriviaService
             // re-introducing a "tennis player" assumption.
             var playerDescription = string.IsNullOrWhiteSpace(sportName) ? "athlete" : $"{sportName} player";
 
-            var stats = string.Join(", ", player.AttributeValues
-                .Where(v => v.AttributeDefinition != null)
-                .Select(v => $"{v.AttributeDefinition!.Label}: {v.Value}"));
-
+            // No stats from the clue grid: given them, the model mostly
+            // repeated numbers the player had just seen, so it's left to
+            // write from what it knows about the player.
             var prompt = $"Write a short, engaging trivia blurb (exactly 2 sentences) about the {playerDescription} {player.Name}. " +
-                         $"Use these stats as context: {stats}. Return only the blurb text, with no preamble or quotation marks.";
+                         "Return only the blurb text, with no preamble or quotation marks.";
 
             var requestBody = new
             {

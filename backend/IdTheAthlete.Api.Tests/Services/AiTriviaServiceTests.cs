@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json;
 using Microsoft.Extensions.Logging.Abstractions;
 using IdTheAthlete.Api.Data;
 using IdTheAthlete.Api.Models;
@@ -22,12 +23,14 @@ public class AiTriviaServiceTests
     {
         private int _next;
         public int Calls { get; private set; }
+        public string? LastBody { get; private set; }
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Calls++;
+            LastBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
             var respond = responses[Math.Min(_next++, responses.Length - 1)];
-            return Task.FromResult(respond());
+            return respond();
         }
     }
 
@@ -111,6 +114,29 @@ public class AiTriviaServiceTests
         player.LastModifiedAt = time.GetUtcNow().UtcDateTime;
         Assert.Equal("Regenerated blurb.", await service.GetTriviaBlurbAsync(player));
         Assert.Equal(2, handler.Calls);
+    }
+
+    [Fact]
+    public async Task The_prompt_names_the_player_and_tour_but_gives_no_stats()
+    {
+        var handler = new ScriptedHandler(() => Blurb("A blurb."));
+        var (service, _) = Create(handler);
+        var player = new Player
+        {
+            Id = 4, SportId = 1, Name = "Pete Sampras",
+            AttributeValues =
+            [
+                new PlayerAttributeValue { Value = "14", AttributeDefinition = new AttributeDefinition { Key = "grand_slam_titles", Label = "Grand Slams" } },
+            ],
+        };
+
+        await service.GetTriviaBlurbAsync(player);
+
+        using var body = JsonDocument.Parse(handler.LastBody!);
+        var prompt = body.RootElement.GetProperty("messages")[0].GetProperty("content").GetString();
+        Assert.Contains("the Men's Tennis player Pete Sampras", prompt);
+        Assert.DoesNotContain("Grand Slams", prompt);
+        Assert.DoesNotContain("14", prompt);
     }
 
     [Fact]
