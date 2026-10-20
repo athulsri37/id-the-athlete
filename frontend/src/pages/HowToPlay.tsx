@@ -138,7 +138,7 @@ export default function HowToPlay({ sports, onBack }: Props) {
                 </>
               )}
             </li>
-            <li>A practice game isn't saved: refreshing starts a new one, and one left 90 minutes without a guess ends.</li>
+            <li>A practice game carries on if you refresh or open another page, until you close the tab, start another, or leave it 90 minutes without a guess.</li>
           </ul>
         </Section>
 

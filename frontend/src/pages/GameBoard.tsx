@@ -11,6 +11,7 @@ import ShareResult from "../components/ShareResult";
 import { recordDailyResult, getStreak, StreakData } from "../utils/dailyStreak";
 import { getCompletionForDate, recordDailyCompletion, recordDailyTrivia } from "../utils/dailyCompletion";
 import { getInProgress, saveInProgress, clearInProgress } from "../utils/dailyInProgress";
+import { clearPracticeInProgress, getPracticeInProgress, savePracticeInProgress } from "../utils/practiceInProgress";
 import { todayUtcDateString } from "../utils/localDate";
 import { useGameTrivia } from "../hooks/useGameTrivia";
 import { paths } from "../routes/paths";
@@ -23,10 +24,14 @@ interface Props {
   // means today -- the normal Daily Challenge flow. Set only when arriving
   // via Past Challenges.
   dailyDate?: string;
+  // Practice only: start a new game even if this tab has one in progress,
+  // because the player chose this difficulty from the menu. Otherwise
+  // (coming back from How to Play, a refresh) the kept game carries on.
+  startFresh?: boolean;
   onBackToHome: () => void;
 }
 
-export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Props) {
+export default function GameBoard({ mode, sport, dailyDate, startFresh = false, onBackToHome }: Props) {
   const { slug: sportSlug, name: sportName, family, maxGuesses, hintAfterGuess } = sport;
   const { winEmoji } = familyDisplay(family);
   const [players, setPlayers] = useState<PlayerSummary[]>([]);
@@ -36,6 +41,9 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
+  // Practice only: the server no longer has this game (left 90 minutes
+  // without a guess, or the server restarted), so it can't go on.
+  const [practiceExpired, setPracticeExpired] = useState(false);
 
   const [showHintModal, setShowHintModal] = useState(false);
   const [hintOffered, setHintOffered] = useState(false);
@@ -70,8 +78,11 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
     fetchAttributeDefinitions(sportSlug).then(setAttributes).catch(() => setError("Couldn't load clue columns."));
   }, [sportSlug]);
 
-  const startNewGame = async () => {
+  // fresh: practice only, start a new game instead of carrying on with the
+  // one this tab has in progress.
+  const startNewGame = async (fresh: boolean) => {
     setError("");
+    setPracticeExpired(false);
     setSessionId(undefined);
     setShowHintModal(false);
     setHintOffered(false);
@@ -111,6 +122,19 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
       }
     }
 
+    if (mode !== "daily") {
+      const kept = fresh ? null : getPracticeInProgress(sportSlug, mode);
+      if (kept) {
+        setSessionId(kept.sessionId);
+        setGuesses(kept.guesses);
+        setRevealedCountry(kept.revealedCountry);
+        setHintOffered(kept.hintOffered);
+        setHintDeclined(kept.hintDeclined);
+        return;
+      }
+      clearPracticeInProgress(sportSlug, mode);
+    }
+
     setGuesses([]);
 
     if (mode !== "daily") {
@@ -127,7 +151,7 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
   };
 
   useEffect(() => {
-    startNewGame();
+    startNewGame(startFresh);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, dailyDate]);
 
@@ -174,6 +198,13 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
     if (mode !== "daily" || isDailyReplay || guesses.length === 0 || gameOver) return;
     saveInProgress(sportSlug, { date: gameDate, guesses, revealedCountry, hintOffered, hintDeclined });
   }, [mode, isDailyReplay, guesses, gameOver, sportSlug, gameDate, revealedCountry, hintOffered, hintDeclined]);
+
+  // Keep a practice game for this tab after every change, finished ones
+  // too, so coming back shows the result with Play another.
+  useEffect(() => {
+    if (mode === "daily" || !sessionId) return;
+    savePracticeInProgress(sportSlug, mode, { sessionId, guesses, revealedCountry, hintOffered, hintDeclined });
+  }, [mode, sessionId, sportSlug, guesses, revealedCountry, hintOffered, hintDeclined]);
 
   // Mark this date's puzzle as completed exactly once per finished game,
   // and -- only for genuine "today" plays -- update the streak. Guarded by
@@ -223,9 +254,18 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
       // Forget it, so a refresh starts a fresh game instead of resuming
       // this one again.
       if (mode === "daily" && problemStatus(err) === 400) clearInProgress(sportSlug);
+      // A refused practice guess means the server no longer has the game.
+      if (mode !== "daily" && problemStatus(err) === 400) expirePractice();
     } finally {
       setLoading(false);
     }
+  };
+
+  const expirePractice = () => {
+    if (mode === "daily") return;
+    clearPracticeInProgress(sportSlug, mode);
+    setSessionId(undefined); // so nothing saves the dead game again
+    setPracticeExpired(true);
   };
 
   const handleHintYes = async () => {
@@ -235,6 +275,7 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
       setHintDeclined(false);
     } catch (err) {
       setError(problemDetail(err, "Couldn't fetch the hint right now."));
+      if (mode !== "daily" && problemStatus(err) === 400) expirePractice();
     } finally {
       setShowHintModal(false);
     }
@@ -280,12 +321,19 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
         <PlayerSearch
           players={players}
           guessedIds={guessedIds}
-          disabled={gameOver || loading}
-          placeholderOverride={isDailyReplay && !isPastDate ? "Come back tomorrow!" : undefined}
+          disabled={gameOver || loading || practiceExpired}
+          placeholderOverride={
+            practiceExpired ? "This game has ended" : isDailyReplay && !isPastDate ? "Come back tomorrow!" : undefined
+          }
           onGuess={handleGuess}
         />
 
         {error && <p className="text-[var(--accent-alt)] mt-2 text-sm">{error}</p>}
+        {practiceExpired && (
+          <button onClick={() => startNewGame(true)} className="btn-card mt-3 px-5 py-2.5 rounded-md font-semibold text-sm">
+            Start a new game
+          </button>
+        )}
 
         {revealedCountry !== null ? (
           <div className="card mt-3 px-4 py-1.5 rounded-full text-xs font-semibold text-[var(--text-primary)]">
@@ -384,7 +432,7 @@ export default function GameBoard({ mode, sport, dailyDate, onBackToHome }: Prop
             <div className="flex items-center justify-center gap-4 mt-3">
               {mode !== "daily" && (
                 <button
-                  onClick={() => startNewGame()}
+                  onClick={() => startNewGame(true)}
                   className="text-sm text-[var(--text-secondary)] underline hover:text-[var(--text-primary)]"
                 >
                   Play another

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import App from "./App";
 import * as client from "./api/client";
@@ -90,6 +90,44 @@ describe("routes", () => {
     await screen.findByRole("button", { name: "Tennis" });
     expect(document.documentElement).toHaveAttribute("data-theme", "retro");
     expect(container.querySelector('[data-scene="retro-home"]')).toBeInTheDocument();
+  });
+
+  it("keeps a practice game across a trip to How to Play and back", async () => {
+    let started = 0;
+    vi.mocked(client.startPracticeGame).mockImplementation(
+      async () => ({ sessionId: `session-${++started}` }) as Awaited<ReturnType<typeof client.startPracticeGame>>
+    );
+    vi.mocked(client.fetchPlayerPool).mockResolvedValue([{ id: 7, name: "Thomas Muster" }]);
+    vi.mocked(client.fetchAttributeDefinitions).mockResolvedValue([{ key: "country", label: "Country" }]);
+    vi.mocked(client.submitGuess).mockResolvedValue({
+      guessedPlayerId: 7,
+      guessedPlayerName: "Thomas Muster",
+      isCorrect: false,
+      clues: [{ attributeKey: "country", label: "Country", type: "categorical", value: "Austria", isMatch: true, isClose: false, direction: null }],
+      gameOver: false,
+      answerName: null,
+      triviaToken: null,
+      gameToken: null,
+      puzzleDate: null,
+    });
+    // jsdom has no layout, so no scrollIntoView (How to Play scrolls to a sport).
+    Element.prototype.scrollIntoView = vi.fn();
+    renderAt("/tennis/men");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Easy" }));
+    const input = await screen.findByPlaceholderText("Type a player name");
+    await vi.waitFor(() => expect(input).not.toBeDisabled());
+    fireEvent.change(input, { target: { value: "Must" } });
+    fireEvent.click(await screen.findByRole("button", { name: "Thomas Muster" }));
+    await screen.findByText("1 / 8 guesses");
+
+    // To the rules from the clue legend, and back.
+    fireEvent.click(screen.getByRole("button", { name: "What do the clues mean?" }));
+    fireEvent.click(screen.getByRole("link", { name: /How to play/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "← Back" }));
+
+    expect(await screen.findByText("1 / 8 guesses")).toBeInTheDocument();
+    expect(client.startPracticeGame).toHaveBeenCalledTimes(1);
   });
 
   it("a deep link says so when the sports can't load", async () => {
