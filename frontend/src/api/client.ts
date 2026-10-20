@@ -9,10 +9,16 @@ export const API_ROOT = `${(import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/
 
 const client = axios.create({ baseURL: API_ROOT });
 
+// The app's first two requests wait for the API to wake (up to a minute on
+// the hosting's free plan) behind the startup loader. This gives up well
+// after that, so a down API ends in the home screen's "couldn't load"
+// message instead of a loader that never goes away.
+const STARTUP_TIMEOUT_MS = 90_000;
+
 // Every playable tour with its family -- builds the home and tour-select
 // screens, so a new tour needs no frontend change.
 export async function fetchSports(): Promise<Sport[]> {
-  const res = await client.get(`/sports`);
+  const res = await client.get(`/sports`, { timeout: STARTUP_TIMEOUT_MS });
   return res.data;
 }
 
@@ -22,7 +28,7 @@ export async function fetchPlayerPool(sportSlug: string): Promise<PlayerSummary[
 }
 
 export async function fetchActiveTheme(): Promise<string> {
-  const res = await client.get(`/settings/theme`);
+  const res = await client.get(`/settings/theme`, { timeout: STARTUP_TIMEOUT_MS });
   return res.data.theme as string;
 }
 
