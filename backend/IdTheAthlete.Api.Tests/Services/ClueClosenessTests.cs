@@ -96,6 +96,10 @@ public class ClueClosenessTests
     [InlineData("France", "Spain", true)]          // land border
     [InlineData("Spain", "France", true)]          // symmetric
     [InlineData("Australia", "New Zealand", true)] // manual override
+    [InlineData("Denmark", "Sweden", true)]        // manual override
+    [InlineData("Norway", "Denmark", true)]        // manual override, symmetric
+    [InlineData("Norway", "Sweden", true)]         // land border
+    [InlineData("Denmark", "Finland", false)]
     [InlineData("India", "China", true)]           // border (not close in cricket)
     [InlineData("France", "Japan", false)]
     public async Task Tennis_Country_LandBorders(string guessed, string mystery, bool isClose)

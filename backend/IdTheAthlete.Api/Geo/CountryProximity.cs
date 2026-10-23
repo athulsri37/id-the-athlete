@@ -88,10 +88,14 @@ public static class CountryProximity
     // still intuitively "close" for a geography-guessing game. Deliberately
     // curated by hand -- NOT sourced from the border dataset above -- for
     // island/peninsula nations whose nearest geographic neighbor isn't
-    // reachable by land at all.
+    // reachable by land at all. Listed on the How to Play page
+    // (clueRules in frontend/src/config/sportFamilies.ts).
     private static readonly Dictionary<string, string[]> ManualCloseOverrides = new(StringComparer.OrdinalIgnoreCase)
     {
         ["Australia"] = new[] { "New Zealand" },
+        // Scandinavia: Denmark's only land border is Germany, but it sits
+        // across narrow straits from Sweden and Norway (which border each other).
+        ["Denmark"] = new[] { "Norway", "Sweden" },
         ["England"] = new[] { "Ireland" }, // same reasoning as United Kingdom-Ireland above, for cricket's separate "England" value
         ["Japan"] = new[] { "South Korea" },
     };
