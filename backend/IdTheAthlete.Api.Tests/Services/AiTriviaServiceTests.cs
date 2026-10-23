@@ -41,9 +41,13 @@ public class AiTriviaServiceTests
         return response;
     }
 
-    private static HttpResponseMessage Blurb(string text) => new(HttpStatusCode.OK)
+    private static HttpResponseMessage Blurb(string text, string stopReason = "end_turn") => new(HttpStatusCode.OK)
     {
-        Content = new StringContent($$"""{"content":[{"type":"text","text":"{{text}}"}]}""", Encoding.UTF8, "application/json")
+        Content = new StringContent(JsonSerializer.Serialize(new
+        {
+            content = new[] { new { type = "text", text } },
+            stop_reason = stopReason,
+        }), Encoding.UTF8, "application/json")
     };
 
     private static HttpResponseMessage AnthropicError(HttpStatusCode status, string type, string message) => new(status)
@@ -137,6 +141,64 @@ public class AiTriviaServiceTests
         Assert.Contains("the Men's Tennis player Pete Sampras", prompt);
         Assert.DoesNotContain("Grand Slams", prompt);
         Assert.DoesNotContain("14", prompt);
+    }
+
+    [Fact]
+    public async Task The_request_asks_for_certain_facts_only_within_200_tokens()
+    {
+        var handler = new ScriptedHandler(() => Blurb("A blurb."));
+        var (service, _) = Create(handler);
+
+        await service.GetTriviaBlurbAsync(PlayerWithId(3));
+
+        using var body = JsonDocument.Parse(handler.LastBody!);
+        Assert.Equal(200, body.RootElement.GetProperty("max_tokens").GetInt32());
+        var prompt = body.RootElement.GetProperty("messages")[0].GetProperty("content").GetString();
+        Assert.Contains("Only include facts you are certain are accurate.", prompt);
+        Assert.Contains("Never correct yourself", prompt);
+    }
+
+    [Fact]
+    public async Task A_cut_off_answer_is_dropped_logged_and_not_cached()
+    {
+        var handler = new ScriptedHandler(
+            () => Blurb("Katerina Siniakova, the Czech doubles powerhouse, has won multiple Grand Sl", stopReason: "max_tokens"),
+            () => Blurb("A finished blurb."));
+        var logger = new CapturingLogger<AiTriviaService>();
+        var (service, _) = Create(handler, logger);
+
+        Assert.Null(await service.GetTriviaBlurbAsync(PlayerWithId(3)));
+        Assert.Contains(logger.Entries, e => e.Level == LogLevel.Warning && e.Message.Contains("didn't finish") && e.Message.Contains("max_tokens"));
+
+        // Not cached: the next game on this player asks again.
+        Assert.Equal("A finished blurb.", await service.GetTriviaBlurbAsync(PlayerWithId(3)));
+        Assert.Equal(2, handler.Calls);
+    }
+
+    [Theory]
+    [InlineData("She won a doubles title in 2024... Wait, that's inaccurate, so let me correct it: she won it in 2022.")]
+    [InlineData("She won Wimbledon in 2019. Correction: it was 2018.")]
+    [InlineData("I'm not sure of the year, but she reached a Grand Slam final.")]
+    [InlineData("I’m not certain about her partner, but she is a doubles specialist.")]
+    [InlineData("I apologise, I don't have reliable information about this player.")]
+    public async Task An_answer_that_corrects_itself_or_admits_doubt_is_dropped(string text)
+    {
+        var handler = new ScriptedHandler(() => Blurb(text));
+        var logger = new CapturingLogger<AiTriviaService>();
+        var (service, _) = Create(handler, logger);
+
+        Assert.Null(await service.GetTriviaBlurbAsync(PlayerWithId(3)));
+        Assert.Contains(logger.Entries, e => e.Level == LogLevel.Warning && e.Message.Contains("corrects itself"));
+    }
+
+    [Theory]
+    [InlineData("She had to wait until 2019 for her first title. Fans waited hours to see her play.")]
+    [InlineData("He rose to world No. 1 in 2022. He also won the U.S. Open that year.")]
+    public async Task An_ordinary_blurb_passes_the_self_correction_check(string text)
+    {
+        var (service, _) = Create(new ScriptedHandler(() => Blurb(text)));
+
+        Assert.Equal(text, await service.GetTriviaBlurbAsync(PlayerWithId(3)));
     }
 
     [Fact]
