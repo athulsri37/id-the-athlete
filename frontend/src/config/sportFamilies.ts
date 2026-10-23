@@ -54,7 +54,7 @@ const FAMILY_DISPLAY: Record<string, FamilyDisplay> = {
     ],
     clueRules: [
       { column: "Status, Plays, Backhand", close: EXACT_ONLY },
-      { column: "Country", close: "Shares a land border with the answer's country (Australia and New Zealand count too)" },
+      { column: "Country", close: "Shares a land border with the answer's country (Australia and New Zealand, Japan and South Korea, and Denmark with Norway or Sweden count too)" },
       { column: "Grand Slams", close: "Within 2" },
       { column: "Career-High Rank", close: "Within 5 places" },
       { column: "Turned Pro", close: "Within 3 years" },
