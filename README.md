@@ -236,6 +236,12 @@ model, a rate limit and how long trivia pauses), or a missing key while the
 setting is on, and an information line for each blurb generated. In
 production these are in the host's logs (Render: the API service's Logs).
 
+A blurb is also dropped, with a warning, when the answer was cut off at the
+token limit (stop reason `max_tokens`) or when it corrects itself or admits
+doubt ("Wait, that's inaccurate…", "I'm not sure…"); the warning includes
+the rejected text. A dropped blurb isn't cached, so the next game on that
+player asks again.
+
 ### 4. (Required for the admin tool) Set an admin key
 
 The internal admin tool (see [Admin Tool](#admin-tool) below) is

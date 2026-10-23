@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -24,6 +25,19 @@ public class AiTriviaService : IAiTriviaService
     private const int DefaultRetryAfterSeconds = 10;
     private const int MaxRateLimitCooldownSeconds = 30;
     private static readonly TimeSpan MaxBackoffDelay = TimeSpan.FromSeconds(5);
+
+    // Room for a 2-sentence blurb with plenty to spare; an answer that still
+    // runs into it is cut off and dropped.
+    private const int MaxTokens = 200;
+
+    // Backstop for the prompt's "never correct yourself": phrases of a model
+    // second-guessing itself in the answer ("Wait, that's inaccurate..."),
+    // never of a real trivia fact. A whole-phrase match, so an ordinary word
+    // like "wait" in a sentence doesn't trip it. Rejections are logged with
+    // the text, to tune this list.
+    private static readonly Regex SelfCorrection = new(
+        @"\b(?:wait[,.!]|let me correct|correction:|inaccurate|i['’]?m not (?:sure|certain)|i am not (?:sure|certain)|i apologi[sz]e|i don['’]?t have (?:any )?(?:reliable )?information)",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     private readonly HttpClient _httpClient;
     private readonly AnthropicOptions _options;
@@ -104,14 +118,20 @@ public class AiTriviaService : IAiTriviaService
 
             // No stats from the clue grid: given them, the model mostly
             // repeated numbers the player had just seen, so it's left to
-            // write from what it knows about the player.
+            // write from what it knows about the player. The certainty and
+            // no-self-correction lines are there because, for less famous
+            // players, it would otherwise guess at details and then correct
+            // itself mid-blurb.
             var prompt = $"Write a short, engaging trivia blurb (exactly 2 sentences) about the {playerDescription} {player.Name}. " +
+                         "Only include facts you are certain are accurate. " +
+                         "If you are unsure of a specific title, year, score or partner, leave it out and write about something you are sure of instead. " +
+                         "Never correct yourself, mention uncertainty, or add notes. " +
                          "Return only the blurb text, with no preamble or quotation marks.";
 
             var requestBody = new
             {
                 model,
-                max_tokens = 150,
+                max_tokens = MaxTokens,
                 messages = new[]
                 {
                     new { role = "user", content = prompt }
@@ -154,6 +174,23 @@ public class AiTriviaService : IAiTriviaService
                         if (string.IsNullOrWhiteSpace(text))
                         {
                             _logger.LogWarning("AI trivia for player {PlayerId}: Anthropic answered with no text.", player.Id);
+                            return null;
+                        }
+
+                        // Anything but a finished answer (e.g. max_tokens: cut
+                        // off mid-sentence) is dropped, not shown or cached;
+                        // the next game on this player tries again.
+                        if (payload?.StopReason != "end_turn")
+                        {
+                            _logger.LogWarning("AI trivia for player {PlayerId}: answer didn't finish (stop reason {StopReason}); not shown.",
+                                player.Id, payload?.StopReason ?? "none");
+                            return null;
+                        }
+
+                        if (SelfCorrection.IsMatch(text))
+                        {
+                            _logger.LogWarning("AI trivia for player {PlayerId}: answer corrects itself or admits doubt; not shown. {Blurb}",
+                                player.Id, text);
                             return null;
                         }
 
@@ -246,6 +283,10 @@ public class AiTriviaService : IAiTriviaService
     {
         [JsonPropertyName("content")]
         public List<AnthropicContentBlock>? Content { get; set; }
+
+        // "end_turn" for a finished answer; "max_tokens" when it was cut off.
+        [JsonPropertyName("stop_reason")]
+        public string? StopReason { get; set; }
     }
 
     private class AnthropicContentBlock
