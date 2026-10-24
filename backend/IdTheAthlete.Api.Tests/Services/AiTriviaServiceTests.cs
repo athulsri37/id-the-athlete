@@ -153,6 +153,7 @@ public class AiTriviaServiceTests
 
         using var body = JsonDocument.Parse(handler.LastBody!);
         Assert.Equal(200, body.RootElement.GetProperty("max_tokens").GetInt32());
+        Assert.Equal("disabled", body.RootElement.GetProperty("thinking").GetProperty("type").GetString());
         var prompt = body.RootElement.GetProperty("messages")[0].GetProperty("content").GetString();
         Assert.Contains("Only include facts you are certain are accurate.", prompt);
         Assert.Contains("Never correct yourself", prompt);
@@ -173,6 +174,53 @@ public class AiTriviaServiceTests
         // Not cached: the next game on this player asks again.
         Assert.Equal("A finished blurb.", await service.GetTriviaBlurbAsync(PlayerWithId(3)));
         Assert.Equal(2, handler.Calls);
+    }
+
+    [Fact]
+    public async Task The_blurb_is_read_from_the_first_text_block_even_after_another_kind()
+    {
+        var handler = new ScriptedHandler(() => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("""
+                {"content":[{"type":"thinking","thinking":"Recalling his career..."},{"type":"text","text":"Tim Southee took over 750 international wickets."}],
+                 "stop_reason":"end_turn"}
+                """, Encoding.UTF8, "application/json")
+        });
+        var (service, _) = Create(handler);
+
+        Assert.Equal("Tim Southee took over 750 international wickets.", await service.GetTriviaBlurbAsync(PlayerWithId(90)));
+    }
+
+    [Fact]
+    public async Task An_answer_with_no_text_logs_its_stop_reason_and_block_kinds()
+    {
+        var handler = new ScriptedHandler(() => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("""{"content":[{"type":"thinking","thinking":"..."}],"stop_reason":"max_tokens"}""",
+                Encoding.UTF8, "application/json")
+        });
+        var logger = new CapturingLogger<AiTriviaService>();
+        var (service, _) = Create(handler, logger);
+
+        Assert.Null(await service.GetTriviaBlurbAsync(PlayerWithId(90)));
+
+        var warning = Assert.Single(logger.Entries, e => e.Level == LogLevel.Warning);
+        Assert.Contains("no text (stop reason max_tokens; blocks: thinking)", warning.Message);
+    }
+
+    [Fact]
+    public async Task An_empty_answer_logs_that_there_were_no_blocks()
+    {
+        var handler = new ScriptedHandler(() => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("""{"content":[],"stop_reason":"refusal"}""", Encoding.UTF8, "application/json")
+        });
+        var logger = new CapturingLogger<AiTriviaService>();
+        var (service, _) = Create(handler, logger);
+
+        Assert.Null(await service.GetTriviaBlurbAsync(PlayerWithId(90)));
+
+        Assert.Contains(logger.Entries, e => e.Level == LogLevel.Warning && e.Message.Contains("no text (stop reason refusal; blocks: none)"));
     }
 
     [Theory]
