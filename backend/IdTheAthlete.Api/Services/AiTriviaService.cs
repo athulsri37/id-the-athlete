@@ -169,11 +169,17 @@ public class AiTriviaService : IAiTriviaService
                     if (response.IsSuccessStatusCode)
                     {
                         var payload = await response.Content.ReadFromJsonAsync<AnthropicMessageResponse>();
-                        var text = payload?.Content?.FirstOrDefault()?.Text?.Trim();
+                        // The first text block, not just the first block: an
+                        // answer can open with another kind (e.g. thinking).
+                        var text = payload?.Content?.FirstOrDefault(b => b.Type == "text")?.Text?.Trim();
 
                         if (string.IsNullOrWhiteSpace(text))
                         {
-                            _logger.LogWarning("AI trivia for player {PlayerId}: Anthropic answered with no text.", player.Id);
+                            var blockTypes = payload?.Content is { Count: > 0 } blocks
+                                ? string.Join(", ", blocks.Select(b => b.Type ?? "unknown"))
+                                : "none";
+                            _logger.LogWarning("AI trivia for player {PlayerId}: Anthropic answered with no text (stop reason {StopReason}; blocks: {BlockTypes}).",
+                                player.Id, payload?.StopReason ?? "none", blockTypes);
                             return null;
                         }
 
@@ -291,6 +297,10 @@ public class AiTriviaService : IAiTriviaService
 
     private class AnthropicContentBlock
     {
+        // "text" for the answer; other kinds (e.g. "thinking") carry no blurb.
+        [JsonPropertyName("type")]
+        public string? Type { get; set; }
+
         [JsonPropertyName("text")]
         public string? Text { get; set; }
     }
