@@ -153,6 +153,7 @@ public class AiTriviaServiceTests
 
         using var body = JsonDocument.Parse(handler.LastBody!);
         Assert.Equal(200, body.RootElement.GetProperty("max_tokens").GetInt32());
+        Assert.Equal("disabled", body.RootElement.GetProperty("thinking").GetProperty("type").GetString());
         var prompt = body.RootElement.GetProperty("messages")[0].GetProperty("content").GetString();
         Assert.Contains("Only include facts you are certain are accurate.", prompt);
         Assert.Contains("Never correct yourself", prompt);

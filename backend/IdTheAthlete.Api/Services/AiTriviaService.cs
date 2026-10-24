@@ -128,10 +128,14 @@ public class AiTriviaService : IAiTriviaService
                          "Never correct yourself, mention uncertainty, or add notes. " +
                          "Return only the blurb text, with no preamble or quotation marks.";
 
+            // Thinking off: a 2-sentence blurb doesn't need it, and the model
+            // otherwise opens with a thinking block that can use the whole
+            // token budget before any blurb is written.
             var requestBody = new
             {
                 model,
                 max_tokens = MaxTokens,
+                thinking = new { type = "disabled" },
                 messages = new[]
                 {
                     new { role = "user", content = prompt }
