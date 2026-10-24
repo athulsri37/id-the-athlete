@@ -23,6 +23,40 @@ OPEN_VALUE_ATTRIBUTES = frozenset({"country"})
 
 _WHOLE_NUMBER = re.compile(r"\d+")
 
+# Other names for countries the game already spells one way, so the same
+# country is never stored twice (e.g. "United States" next to "USA"): the
+# clues compare names exactly, so a second spelling never matches or counts
+# as close. Keys are casefolded; values are the game's spelling, which the
+# closeness rules (CountryProximity, CricketRules) also use. Spelling slips
+# ("Austrailia") are caught separately by the "did you mean" hint.
+COUNTRY_ALIASES = {
+    "united states": "USA",
+    "united states of america": "USA",
+    "us": "USA",
+    "u.s.": "USA",
+    "u.s.a.": "USA",
+    "america": "USA",
+    "great britain": "United Kingdom",
+    "britain": "United Kingdom",
+    "gb": "United Kingdom",
+    "gbr": "United Kingdom",
+    "uk": "United Kingdom",
+    "u.k.": "United Kingdom",
+    "czechia": "Czech Republic",
+    "russian federation": "Russia",
+    "united arab emirates": "UAE",
+    "u.a.e.": "UAE",
+    "bosnia & herzegovina": "Bosnia and Herzegovina",
+    "bosnia-herzegovina": "Bosnia and Herzegovina",
+    "the netherlands": "Netherlands",
+    "holland": "Netherlands",
+    "korea": "South Korea",
+    "republic of korea": "South Korea",
+    "korea, republic of": "South Korea",
+    "republic of ireland": "Ireland",
+    "windies": "West Indies",
+}
+
 # The game's difficulty tiers, easiest first (see the backend's ISportRules).
 TIERS = ("easy", "medium", "hard")
 
@@ -127,6 +161,22 @@ def schema_mismatch(profile_fields: list[str], specs: list[AttributeSpec]) -> li
     return problems
 
 
+def standard_country(text: str) -> str:
+    """The game's spelling of a country given under another name, or the
+    text unchanged when it isn't a known alias."""
+    return COUNTRY_ALIASES.get(text.strip().casefold(), text.strip())
+
+
+def prompt_countries(specs: list[AttributeSpec]) -> list[str]:
+    """The countries a sport already uses, in the game's spelling, for the
+    agent's prompt. A value stored under an alias is left out, so the prompt
+    never teaches the agent the wrong spelling."""
+    country = next((spec for spec in specs if spec.key == "country"), None)
+    if country is None:
+        return []
+    return sorted(v for v in country.known_values if standard_country(v) == v)
+
+
 def _as_text(value: object) -> str:
     return "" if value is None else str(value).strip()
 
@@ -140,6 +190,8 @@ def _check_number(spec: AttributeSpec, raw: object, text: str, result: Validatio
 
 
 def _check_category(spec: AttributeSpec, text: str, result: ValidationResult) -> None:
+    if spec.key == "country":
+        text = standard_country(text)
     canonical = next((v for v in spec.known_values if v.casefold() == text.casefold()), None)
     if canonical is not None:
         result.values[spec.key] = canonical

@@ -431,7 +431,10 @@ nowhere else, so back it up.
 
 - **Adding players:** run the roster research agent in `tools/`. It
   researches candidates, checks every value against what the game accepts,
-  shows each player's difficulty tier, and writes the ones you accept. See
+  shows each player's difficulty tier, and writes the ones you accept. A
+  country given under another name (e.g. "United States", "Great Britain")
+  is written in the game's spelling ("USA", "United Kingdom"), from
+  `COUNTRY_ALIASES` in `tools/roster_validation.py`. See
   the instructions at the top of `tools/roster_research_agent.py`, e.g.
   `python roster_research_agent.py tennis-women 10 --tiers medium,hard`.
 - **Adding players to production:** `scripts/add-players-prod.sh`, with the

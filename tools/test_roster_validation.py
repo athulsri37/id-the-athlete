@@ -8,6 +8,7 @@ from roster_validation import (
     AttributeSpec,
     describe_tiers,
     parse_tiers,
+    prompt_countries,
     schema_mismatch,
     tier_warning,
     validate_player,
@@ -92,6 +93,36 @@ class ValidatePlayerTests(unittest.TestCase):
 
         self.assertIn("did you mean 'New Zealand'?", result.warnings[0])
 
+    def test_country_alias_is_written_in_the_games_spelling(self):
+        result = validate_player(player(country="Great Britain"), SPECS)
+
+        self.assertTrue(result.is_valid)
+        self.assertEqual(result.values["country"], "United Kingdom")
+        self.assertEqual(result.warnings, [])
+
+    def test_country_alias_ignores_case_and_spaces(self):
+        specs = [AttributeSpec("country", CATEGORICAL, frozenset({"USA"}))]
+
+        result = validate_player({"name": "Test Player", "country": " united states "}, specs)
+
+        self.assertEqual(result.values["country"], "USA")
+        self.assertEqual(result.warnings, [])
+
+    def test_country_alias_wins_over_a_stored_alias_spelling(self):
+        # A sport that already has both spellings still gets the standard one.
+        specs = [AttributeSpec("country", CATEGORICAL, frozenset({"USA", "United States"}))]
+
+        result = validate_player({"name": "Test Player", "country": "United States"}, specs)
+
+        self.assertEqual(result.values["country"], "USA")
+
+    def test_aliases_only_apply_to_country(self):
+        specs = [AttributeSpec("team", CATEGORICAL, frozenset())]
+
+        result = validate_player({"name": "Test Player", "team": "UK"}, specs)
+
+        self.assertEqual(result.values["team"], "UK")
+
     def test_attribute_with_no_existing_values_accepts_with_a_warning(self):
         specs = [AttributeSpec("position", CATEGORICAL, frozenset())]
 
@@ -139,6 +170,16 @@ class SchemaMismatchTests(unittest.TestCase):
 
         self.assertIn("the database has no 'batting_hand' column for this sport", problems)
         self.assertIn("the agent doesn't research the 'debut_year' column", problems)
+
+
+class PromptCountriesTests(unittest.TestCase):
+    def test_sorted_and_without_alias_spellings(self):
+        specs = [AttributeSpec("country", CATEGORICAL, frozenset({"USA", "United States", "Spain", "Great Britain"}))]
+
+        self.assertEqual(prompt_countries(specs), ["Spain", "USA"])
+
+    def test_empty_without_a_country_column(self):
+        self.assertEqual(prompt_countries([AttributeSpec("role", CATEGORICAL, frozenset({"Batter"}))]), [])
 
 
 class WriteConfirmationTests(unittest.TestCase):

@@ -100,8 +100,11 @@ Every proposed player is checked against the sport's columns in the
 database (see roster_validation.py): missing values, stats that aren't whole
 numbers, and values the game doesn't recognise (e.g. a role spelled
 differently) are errors; a country new to the game is a warning, since the
-closeness rules may need it added. The table shows each player's difficulty
-tier, computed by the game's own rules through the API.
+closeness rules may need it added. A country given under another name
+("United States", "Great Britain") is written in the game's spelling ("USA",
+"United Kingdom"), and the prompt lists the spellings the sport already uses.
+The table shows each player's difficulty tier, computed by the game's own
+rules through the API.
 """
 
 import argparse
@@ -128,6 +131,7 @@ from roster_validation import (
     ValidationResult,
     describe_tiers,
     parse_tiers,
+    prompt_countries,
     schema_mismatch,
     tier_warning,
     validate_player,
@@ -398,8 +402,14 @@ def build_tier_guidance(wanted: frozenset[str] | None) -> str | None:
     return "Aim for players who fit these difficulty tiers:\n- " + "\n- ".join(lines)
 
 
-def build_prompt(profile, batch_size, tier_guidance, existing_names, note=None):
+def build_prompt(profile, batch_size, tier_guidance, existing_names, countries, note=None):
     existing_list = "\n".join(f"- {name}" for name in existing_names)
+    country_line = (
+        "\n- country: write it exactly as the roster already spells it when it is one of these: "
+        f"{', '.join(countries)}. Otherwise use its common English name, not a code."
+        if countries
+        else "\n- country: its common English name, not a code."
+    )
     tier_section = f"\nTIER GUIDANCE:\n{tier_guidance}\n" if tier_guidance else ""
     sport = profile["display_name"]
     source_name = profile["source_name"]
@@ -438,7 +448,7 @@ share a country, append their birth year instead, e.g. "John Smith (b. 1985)".
 Never do this for someone who is already in the roster - that is a duplicate.
 
 For each of the {batch_size} players, verify via web search the following fields:
-{profile["field_descriptions"]}
+{profile["field_descriptions"].rstrip()}{country_line}
 
 IMPORTANT ACCURACY NOTES:
 - Cite your source for each player's stats where possible.
@@ -716,7 +726,7 @@ def tiers_arg(value: str) -> frozenset[str]:
         raise argparse.ArgumentTypeError(str(e))
 
 
-async def research_players(profile, count, tier_guidance, exclusion_names, seen_keys, note=None):
+async def research_players(profile, count, tier_guidance, exclusion_names, seen_keys, countries, note=None):
     """Runs the chunked research loop for `count` players. The initial search
     and every replacement search both go through here so they behave the
     same. Mutates seen_keys via filter_duplicates. Returns
@@ -738,7 +748,7 @@ async def research_players(profile, count, tier_guidance, exclusion_names, seen_
         print(f"\n--- Chunk {chunk_num}: requesting {this_chunk_size} players ---")
 
         exclusion_list = exclusion_names + [p.get("name", "") for p in all_players]
-        prompt = build_prompt(profile, this_chunk_size, tier_guidance, exclusion_list, note)
+        prompt = build_prompt(profile, this_chunk_size, tier_guidance, exclusion_list, countries, note)
 
         try:
             raw_response = await call_agent(prompt)
@@ -862,12 +872,13 @@ async def main(args):
     # Keys are never removed from seen_keys, so a player the reviewer removes
     # stays excluded for the rest of this run. Nothing persists between runs.
     seen_keys = {normalize_name(name) for name in existing_names}
+    countries = prompt_countries(specs)
     proposed_names = []
     players = []
 
     async def search(count, note=None):
         found, dropped, shortfall, status, reviewer_notes = await research_players(
-            profile, count, tier_guidance, existing_names + proposed_names, seen_keys, note
+            profile, count, tier_guidance, existing_names + proposed_names, seen_keys, countries, note
         )
         proposed_names.extend(p.get("name", "") for p in found)
         players.extend(found)
