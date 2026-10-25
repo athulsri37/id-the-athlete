@@ -10,6 +10,7 @@ shows the review table and writes only what the reviewer accepts.
 from __future__ import annotations
 
 import re
+import unicodedata
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Iterable
@@ -176,6 +177,52 @@ def _check_consistency(after: dict[str, str], result: RefreshCheck) -> None:
             )
 
 
+# A same-name player's disambiguation, e.g. " (New Zealand)" or " (b. 1985)",
+# which the research shouldn't search for.
+_DISAMBIGUATION = re.compile(r"\s*\([^()]*\)\s*$")
+
+
+def search_name(name: str) -> str:
+    """The name to research a player under, without any disambiguation."""
+    return _DISAMBIGUATION.sub("", name).strip()
+
+
+def same_name(stored: str, answered: str) -> bool:
+    """True when the research answered for the name it was given, ignoring
+    case, accents, punctuation and the disambiguation."""
+    return _name_key(search_name(stored)) == _name_key(answered)
+
+
+def _name_key(name: str) -> str:
+    text = "".join(c for c in unicodedata.normalize("NFKD", name) if not unicodedata.combining(c))
+    return " ".join(re.sub(r"[^a-z0-9]+", " ", text.casefold()).split())
+
+
+def match_answers(requested: Iterable[int], answers: list[dict]) -> tuple[dict[int, dict], list[str]]:
+    """The research's answers keyed by the player ID they were asked for,
+    plus a note for every answer that can't be used: an ID that wasn't
+    asked for, an ID given twice, or a requested player with no answer.
+    Unused answers are dropped, never matched by name."""
+    wanted = set(requested)
+    matched: dict[int, dict] = {}
+    problems: list[str] = []
+    for answer in answers:
+        raw = answer.get("id")
+        try:
+            player_id = int(str(raw).strip())
+        except ValueError:
+            problems.append(f"an answer has no usable id ({raw!r}); ignored")
+            continue
+        if player_id not in wanted:
+            problems.append(f"an answer is for id {player_id}, which wasn't asked for; ignored")
+        elif player_id in matched:
+            problems.append(f"id {player_id} was answered twice; the first answer is kept")
+        else:
+            matched[player_id] = answer
+    problems += [f"no answer for id {player_id}" for player_id in sorted(wanted - set(matched))]
+    return matched, problems
+
+
 def held_players(puzzles: Iterable[tuple[date, int]], today: date) -> dict[int, date]:
     """Players whose changes wait for a later apply, each with the first UTC
     date an apply can write them: the answers of today's and yesterday's
@@ -233,13 +280,19 @@ def tier_cell(before: str | None, after: str | None, overridden: bool) -> str:
     return before if before == after else f"{before} -> {after}"
 
 
+def shown_checks(checks: list[RefreshCheck]) -> list[RefreshCheck]:
+    """The players the review table lists, in its order (row 1 first): those
+    with a change or an error."""
+    return [c for c in checks if c.changes or c.errors]
+
+
 def review_lines(checks: list[RefreshCheck], tiers: dict[int, str], held: dict[int, date]) -> list[str]:
     """The review table plus a note per player with something to look at.
     Lists only players with a change or an error; everyone else is counted
     in the summary line. Status is "ERROR" (not written), "held" (a recent
     daily answer, written by an apply on or after the date shown), "check" (written
     if accepted, but look at the note) or "ok"."""
-    shown = [c for c in checks if c.changes or c.errors]
+    shown = shown_checks(checks)
     headers = ["#", "player", "changes", "tier", "status"]
     rows = []
     for i, check in enumerate(shown, start=1):

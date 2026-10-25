@@ -543,10 +543,11 @@ async def call_agent(prompt):
                 raise  # exhausted retries, let the caller decide what to do
 
 
-def parse_players(raw_text):
+def parse_players(raw_text, required_key="name"):
     # The response often contains other bracketed text (source lists,
     # markdown links, asides) before or after the player array, so try
-    # decoding at every "[" and keep the last list that looks like players.
+    # decoding at every "[" and keep the last list that looks like players:
+    # objects that all have required_key.
     decoder = json.JSONDecoder()
     found = None
     pos = raw_text.find("[")
@@ -558,7 +559,7 @@ def parse_players(raw_text):
         if (
             isinstance(value, list)
             and value
-            and all(isinstance(item, dict) and "name" in item for item in value)
+            and all(isinstance(item, dict) and required_key in item for item in value)
         ):
             found = value
         pos = raw_text.find("[", pos + 1)

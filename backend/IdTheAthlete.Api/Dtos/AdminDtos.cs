@@ -37,6 +37,10 @@ public class AdminPlayerUpdateDto
     // Ignored server-side (forced to null) when IsOverridden is false --
     // see AdminService.UpdatePlayerAsync.
     public string? DifficultyOverride { get; set; }
+    // Where the edit comes from, shown as the Changes tab's action: omitted
+    // for a Control Room edit, "stat-refresh" for the stat refresh tool.
+    // Any other value is refused.
+    public string? Source { get; set; }
 }
 
 public class AdminSettingDto

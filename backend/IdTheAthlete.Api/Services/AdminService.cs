@@ -126,6 +126,12 @@ public class AdminService : IAdminService
 
     private static readonly HashSet<string> ValidDifficultyOverrides = new() { "Easy", "Medium", "Hard" };
 
+    // AdminPlayerUpdateDto.Source -> the action its edits are logged under.
+    private static readonly Dictionary<string, string> PlayerEditActions = new()
+    {
+        ["stat-refresh"] = "Stat refresh",
+    };
+
     // Server-side validation is deliberate defense in depth: the frontend
     // already restricts numeric fields to type="number" inputs and the
     // difficulty dropdown to these exact 3 options, but this must not be
@@ -138,6 +144,10 @@ public class AdminService : IAdminService
                 .ThenInclude(v => v.AttributeDefinition)
             .FirstOrDefaultAsync(p => p.Id == playerId)
             ?? throw new NotFoundException("Player not found");
+
+        var action = "Player edited";
+        if (!string.IsNullOrEmpty(request.Source) && !PlayerEditActions.TryGetValue(request.Source, out action!))
+            throw new InvalidRequestException($"Source must be one of: {string.Join(", ", PlayerEditActions.Keys)}.");
 
         var changes = new List<string>();
         foreach (var (key, value) in request.Attributes)
@@ -185,7 +195,7 @@ public class AdminService : IAdminService
         if (changes.Count > 0)
         {
             var sportName = await _db.Sports.Where(s => s.Id == player.SportId).Select(s => s.Name).FirstAsync();
-            Audit("Player edited", $"{sportName}: {player.Name}", changes);
+            Audit(action, $"{sportName}: {player.Name}", changes);
         }
 
         await _db.SaveChangesAsync();
