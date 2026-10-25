@@ -147,19 +147,22 @@ export function StadiumHome() {
   );
 }
 
-// The tour scenes put the court or pitch on the right; the tour screens move
-// their menu to the left to match (.tour-layout in styles/index.css).
-// The tour scenes are drawn whole, never cropped: scaled to fit the window's
-// height (or width, on a tall one) and pinned to the bottom right, so the
-// floodlights above the stand always show. On a window wider than the
-// picture, the spare room is on the left, behind the menu, where the ground
-// (drawn far past the picture's left edge) carries on. The left light stands
-// clear of the menu's title.
+// The tour scenes put the court or pitch in the middle of the window, with
+// the tour screens' menu on the left (.tour-layout in styles/index.css).
+// They're drawn whole, never cropped: scaled to fit the window's height (or
+// width, on a tall one), pinned to the bottom, and framed (TOUR_VIEW) so the
+// court's centre line, x=820, is the middle of the view, which keeps the
+// floodlights above the stand showing. On a window wider than the picture,
+// the ground and the stand carry on both ways (drawn from x=-3000 to 4600),
+// so the stand never stops mid-screen. The left light stands clear of the
+// menu's title.
+const TOUR_VIEW = "180 0 1280 800";
+
 function TourSky({ id }: { id: (name: string) => string }) {
   return (
     <>
-      <rect x="460" y="220" width="820" height="70" fill={STAND} />
-      <rect x="460" y="220" width="820" height="70" fill={`url(#${id("crowd")})`} />
+      <rect x="-3000" y="220" width="7600" height="70" fill={STAND} />
+      <rect x="-3000" y="220" width="7600" height="70" fill={`url(#${id("crowd")})`} />
       <Floodlight x={1130} y={98} big poleTo={220} glow={id("glow")} />
       <Floodlight x={800} y={110} poleTo={220} glow={id("glow")} />
     </>
@@ -171,7 +174,7 @@ export function StadiumTennisTour() {
   const id = useSvgIds();
   return (
     <div className="absolute inset-0" data-scene="stadium-tennis-tour">
-      <svg viewBox="0 0 1280 800" preserveAspectRatio="xMaxYMax meet" className="absolute inset-0 h-full w-full">
+      <svg viewBox={TOUR_VIEW} preserveAspectRatio="xMidYMax meet" className="absolute inset-0 h-full w-full">
         <defs>
           <Glow id={id("glow")} />
           <Crowd id={id("crowd")} />
@@ -180,7 +183,7 @@ export function StadiumTennisTour() {
             <path d="M0 0 L7 7 M7 0 L0 7" stroke="#e2e8f0" strokeOpacity="0.35" strokeWidth="0.8" />
           </pattern>
         </defs>
-        <rect x="-3000" y="290" width="4280" height="510" fill="#0b1724" />
+        <rect x="-3000" y="290" width="7600" height="510" fill="#0b1724" />
         <polygon points="690,316 950,316 1300,800 340,800" fill="#0e2134" />
         <polygon points="710.3,330 929.7,330 1210,790 430,790" fill="#14406a" />
         <g fill="none" stroke={LIGHT} strokeWidth="3" filter={`url(#${id("neon")})`} strokeLinejoin="round">
@@ -204,19 +207,25 @@ export function StadiumCricketTour() {
   const id = useSvgIds();
   return (
     <div className="absolute inset-0" data-scene="stadium-cricket-tour">
-      <svg viewBox="0 0 1280 800" preserveAspectRatio="xMaxYMax meet" className="absolute inset-0 h-full w-full">
+      <svg viewBox={TOUR_VIEW} preserveAspectRatio="xMidYMax meet" className="absolute inset-0 h-full w-full">
         <defs>
           <Glow id={id("glow")} />
           <Crowd id={id("crowd")} />
           <NeonBlur id={id("neon")} blur={2.5} />
           <clipPath id={id("field")}>
-            <rect x="-3000" y="290" width="4280" height="510" />
+            <rect x="-3000" y="290" width="7600" height="510" />
           </clipPath>
         </defs>
         <g clipPath={`url(#${id("field")})`}>
-          <rect x="-3000" y="290" width="4280" height="510" fill="#0d1d15" />
-          <Stripes vx={820} vy={150} fill="#12291c" from={-4380} to={2220} />
-          <path d="M-3000 380 Q-200 374.7 380 330 Q820 296 1300 330" fill="none" stroke={NEON} strokeOpacity="0.6" strokeWidth="3" />
+          <rect x="-3000" y="290" width="7600" height="510" fill="#0d1d15" />
+          <Stripes vx={820} vy={150} fill="#12291c" from={-4380} to={6020} />
+          <path
+            d="M-3000 380 Q-200 374.7 380 330 Q820 296 1260 330 Q1840 374.7 4640 380"
+            fill="none"
+            stroke={NEON}
+            strokeOpacity="0.6"
+            strokeWidth="3"
+          />
         </g>
         <polygon points="787.5,341.7 852.5,341.7 930.1,800 709.9,800" fill={PITCH} />
         <g fill="none" stroke={LIGHT} strokeWidth="2.5" filter={`url(#${id("neon")})`}>
