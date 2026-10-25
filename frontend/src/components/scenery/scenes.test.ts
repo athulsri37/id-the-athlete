@@ -32,10 +32,18 @@ describe("sceneFor", () => {
     expect(sceneFor("stadium", "page")).toEqual({ wide: StadiumPage, narrow: StadiumPage });
   });
 
-  it("gives a game the faint scene, but only a corner piece on a phone", () => {
+  it("gives a Retro game the faint scene, but only a corner piece on a phone", () => {
     expect(sceneFor("retro", "game", "cricket")).toEqual({ wide: RetroCricketPage, narrow: RetroCricketCorner });
-    expect(sceneFor("stadium", "game", "tennis")).toEqual({ wide: StadiumTennisPage, narrow: StadiumPage });
     expect(sceneFor("retro", "game", "football")).toEqual({ wide: RetroPage, narrow: RetroPage });
+  });
+
+  it("keeps a Stadium game plain at every width: just the floodlights' glow", () => {
+    expect(sceneFor("stadium", "game", "tennis")).toEqual({ wide: StadiumPage, narrow: StadiumPage });
+    expect(sceneFor("stadium", "game", "cricket")).toEqual({ wide: StadiumPage, narrow: StadiumPage });
+  });
+
+  it("still gives Stadium's reading screens a sport's faint scene", () => {
+    expect(sceneFor("stadium", "page", "tennis")).toEqual({ wide: StadiumTennisPage, narrow: StadiumTennisPage });
   });
 
   it("falls back to the theme's general scene for a sport without its own", () => {

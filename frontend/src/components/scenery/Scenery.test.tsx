@@ -17,9 +17,9 @@ const scenes = (container: HTMLElement) =>
 
 describe("Scenery", () => {
   it("draws the full scene and the phone one, for CSS to choose between", () => {
-    const { container } = renderScenery("stadium", "game", "cricket");
+    const { container } = renderScenery("retro", "game", "cricket");
 
-    expect(scenes(container)).toEqual(["stadium-cricket-page", "stadium-page"]);
+    expect(scenes(container)).toEqual(["retro-cricket-page", "retro-cricket-corner"]);
   });
 
   it("gives a tour's screens the venue on phones where the theme has one", () => {
