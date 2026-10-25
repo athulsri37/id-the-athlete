@@ -125,9 +125,9 @@ body {
     radial-gradient(circle at 94% 0, rgba(244, 255, 248, 0.2), transparent 220px);
 }
 
-/* A sport's tour screens. Stadium's tour scenery puts the court or pitch on
-   the right, so on screens 1024px wide and up (where that scenery shows)
-   its menu moves to the left. */
+/* A sport's tour screens. Stadium's tour scenery puts the court or pitch in
+   the middle, so on screens 1024px wide and up (where that scenery shows)
+   its menu moves to the left, clear of it. */
 @media (min-width: 1024px) {
   :root[data-theme="stadium"] .tour-layout {
     align-items: flex-start;
