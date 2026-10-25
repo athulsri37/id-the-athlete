@@ -577,6 +577,8 @@ Every gameplay route is sport-agnostic, parameterized by `{sportSlug}`
 - `GET /api/sports/{sportSlug}/game/trivia?triviaToken=...` — the finished game's AI trivia blurb, or null when unavailable; fetched after the result is shown so the final guess never waits on the AI call
 - `GET /api/sports/{sportSlug}/game/hint/country?mode=...&sessionId=...&gameToken=...` — free hint after 5 guesses (enforced by the server), reveals only the mystery player's country
 - `GET /api/settings/theme` — the currently active visual theme
+- `GET /api/health` — `{"status":"ok"}` whenever the API is running; Render's Health Check Path, so it deliberately doesn't touch the database
+- `GET /api/health/ready` — `{"status":"ok"}` only when the API can also reach its database, otherwise a 503 (and a logged warning); for an uptime monitor, which also keeps the free API from sleeping
 
 Every error is a standard problem response (RFC 9457,
 `application/problem+json`) with a human-readable `detail`: 404 when the

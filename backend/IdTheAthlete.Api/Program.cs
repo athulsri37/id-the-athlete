@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using Scalar.AspNetCore;
 using IdTheAthlete.Api.Data;
 using IdTheAthlete.Api.Errors;
+using IdTheAthlete.Api.Health;
 using IdTheAthlete.Api.Middleware;
 using IdTheAthlete.Api.Rules;
 using IdTheAthlete.Api.Services;
@@ -121,5 +122,6 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
+app.MapGet("/api/health/ready", ReadinessCheck.CheckAsync);
 
 app.Run();
