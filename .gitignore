@@ -27,4 +27,8 @@ backups/
 tools/proposed_batch_*.csv
 tools/raw_output.txt
 
+# Stat refresh research, kept between research and apply
+tools/stat_refresh_*.json
+tools/stat_refresh_*.json.tmp
+
 .DS_Store

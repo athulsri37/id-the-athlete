@@ -6,9 +6,13 @@ from datetime import date
 from stat_refresh import (
     check_refresh,
     held_players,
+    match_answers,
     plan_apply,
     refreshable_keys,
     review_lines,
+    same_name,
+    search_name,
+    shown_checks,
     tier_cell,
 )
 
@@ -185,6 +189,43 @@ class CheckRefreshTests(unittest.TestCase):
         self.assertTrue(result.is_valid)
 
 
+class NameTests(unittest.TestCase):
+    def test_search_name_drops_the_disambiguation(self):
+        self.assertEqual(search_name("John Smith (New Zealand)"), "John Smith")
+        self.assertEqual(search_name("John Smith (b. 1985)"), "John Smith")
+        self.assertEqual(search_name("Jannik Sinner"), "Jannik Sinner")
+
+    def test_same_name_ignores_case_accents_punctuation_and_disambiguation(self):
+        self.assertTrue(same_name("Albert Montañés", "albert montanes"))
+        self.assertTrue(same_name("John Smith (New Zealand)", "John Smith"))
+        self.assertTrue(same_name("Jean-Julien Rojer", "Jean Julien Rojer"))
+        self.assertFalse(same_name("Stan Wawrinka", "Stanislas Wawrinka"))
+
+
+class MatchAnswersTests(unittest.TestCase):
+    def test_matches_by_id_and_reports_every_unusable_answer(self):
+        answers = [
+            {"id": 1, "name": "A"},
+            {"id": "2", "name": "B"},
+            {"id": 2, "name": "B again"},
+            {"id": 9, "name": "Stranger"},
+            {"id": "x", "name": "No id"},
+        ]
+
+        matched, problems = match_answers([1, 2, 3], answers)
+
+        self.assertEqual({k: v["name"] for k, v in matched.items()}, {1: "A", 2: "B"})
+        self.assertEqual(
+            problems,
+            [
+                "id 2 was answered twice; the first answer is kept",
+                "an answer is for id 9, which wasn't asked for; ignored",
+                "an answer has no usable id ('x'); ignored",
+                "no answer for id 3",
+            ],
+        )
+
+
 class HeldPlayerTests(unittest.TestCase):
     def test_holds_todays_and_yesterdays_answers_until_two_days_after_their_puzzle(self):
         puzzles = [
@@ -268,6 +309,11 @@ class ReviewLinesTests(unittest.TestCase):
 
         self.assertIn("held", lines[2])
         self.assertIn("run apply again on or after 27 Oct 2026 (UTC)", "\n".join(lines))
+
+    def test_shown_checks_matches_the_tables_rows(self):
+        changed, same, broken = tennis(career_titles="19"), cricket(), tennis(career_titles="17")
+
+        self.assertEqual(shown_checks([changed, same, broken]), [changed, broken])
 
     def test_nobody_changed_prints_only_the_summary(self):
         self.assertEqual(

@@ -60,6 +60,34 @@ public class AdminAuditTests
     }
 
     [Fact]
+    public async Task AStatRefreshEdit_IsLoggedAsAStatRefresh()
+    {
+        var edit = Edit("Spain", "4");
+        edit.Source = "stat-refresh";
+
+        await _admin.UpdatePlayerAsync(PlayerId, edit);
+
+        var entry = Assert.Single(await _admin.GetRecentChangesAsync(10));
+        Assert.Equal(("Athul", "Stat refresh"), (entry.Admin, entry.Action));
+        Assert.Equal("Career Titles: 3 → 4", entry.Changes);
+    }
+
+    [Theory]
+    [InlineData("Stat-Refresh")]
+    [InlineData("control-room")]
+    public async Task AnUnknownSource_IsRefusedAndChangesNothing(string source)
+    {
+        var edit = Edit("France", "4");
+        edit.Source = source;
+
+        await Assert.ThrowsAsync<InvalidRequestException>(() => _admin.UpdatePlayerAsync(PlayerId, edit));
+
+        Assert.Empty(await _admin.GetRecentChangesAsync(10));
+        var values = await _db.PlayerAttributeValues.Where(v => v.PlayerId == PlayerId).Select(v => v.Value).ToListAsync();
+        Assert.Equal(new[] { "Spain", "3" }, values.OrderByDescending(v => v));
+    }
+
+    [Fact]
     public async Task SavingAPlayerWithNothingChanged_LogsNothing()
     {
         await _admin.UpdatePlayerAsync(PlayerId, Edit("Spain", "3"));
