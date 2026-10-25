@@ -48,7 +48,7 @@ npm run test:e2e   # requires both dev servers already running; E2E_BASE_URL=htt
 ```
 ```
 cd tools
-python -m unittest test_roster_validation   # roster agent's value checks
+python -m unittest   # every test_*.py: roster agent and stat refresh checks
 ```
 
 ## Working process
@@ -77,7 +77,7 @@ Everything else (naming, structure, refactors within scope, test design, choices
 - Keep commit messages clean too: `scripts/check-attribution.sh` checks the commits in `origin/main..HEAD` before you push.
 
 ### Definition of done (all of these, every PR)
-1. Unit tests: `dotnet test`, `npm test`, `python -m unittest test_roster_validation` (if `tools/` changed); plus `tsc` and `npm run build`.
+1. Unit tests: `dotnet test`, `npm test`, `python -m unittest` in `tools/` (if `tools/` changed); plus `tsc` and `npm run build`.
 2. The real API against a throwaway database (restore a backup with `DB_NAME=...`, or migrate an empty one and add minimal rows), in Production mode with `AllowedOrigins` set, covering success and error paths. Drop the database afterwards.
 3. Any change a player or admin can see: Playwright through every affected mode (daily, practice, past-challenge replay, both sport families, admin), including slow, failed and empty responses (use `page.route`).
 4. Paid APIs are never called: use a fake key (rejected free) or mock the response.
