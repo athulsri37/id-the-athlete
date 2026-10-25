@@ -241,14 +241,13 @@ export function StadiumCricketTour() {
 }
 
 // A tour's screens on a phone or portrait tablet: the venue seen from the
-// stands, drawn tall (390 x 844) as one scene from the floodlight towers
-// down to the near end, so nothing sits on its own band. It fills the
-// screen's width and keeps its bottom, cropping the sky first on a shorter
-// screen. The towers run up off the screen with their light in the top
-// corners: lamps drawn on a phone this narrow would land behind Back, the
-// title or the menu at one screen height or another. On a short landscape
-// screen (a phone on its side) there's no room below the menu, so only the
-// corner glow is left.
+// stands, drawn tall (390 x 844) as one scene from the stand down to the
+// near end, so nothing sits on its own band. It fills the screen's width
+// and keeps its bottom, cropping the sky first on a shorter screen. The
+// floodlights are only their glow in the top corners: lamps or towers drawn
+// on a phone this narrow land behind Back, the title or the menu at one
+// screen height or another. On a short landscape screen (a phone on its
+// side) there's no room below the menu, so only the corner glow is left.
 function PhoneVenue({ scene, children }: { scene: string; children: (id: (name: string) => string) => ReactNode }) {
   const id = useSvgIds();
   return (
@@ -263,7 +262,6 @@ function PhoneVenue({ scene, children }: { scene: string; children: (id: (name: 
           <Glow id={id("pool")} />
           <Crowd id={id("crowd")} />
         </defs>
-        <path d="M38 0 V486 M352 0 V486" stroke={POLE} strokeWidth="5" />
         <rect x="-200" y="486" width="790" height="70" fill={STAND} />
         <rect x="-200" y="486" width="790" height="70" fill={`url(#${id("crowd")})`} />
         {children(id)}
