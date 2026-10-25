@@ -446,10 +446,12 @@ nowhere else, so back it up.
   not just `yes`. Production is the real data now, so add players there
   rather than to dev.
 - **Refreshing active players' stats:** `scripts/refresh-stats-prod.sh
-  <tour>` (try `--limit 10` first). It researches current titles, rankings,
-  matches, runs, wickets and retirements for the tour's active players
-  (reading production only), then, if you go on, backs production up and
-  shows only what changed for you to review. Values that can't be right, such
+  <tour>`. It researches current titles, rankings, matches, runs, wickets and
+  retirements for the tour's active players (reading production only), then,
+  if you go on, backs production up and shows only what changed for you to
+  review. `--limit 40` researches 40 more players per run, so one refresh can
+  be spread over several sessions: each run continues where the last stopped,
+  and you can apply after any run. Values that can't be right, such
   as a total going down, are never written; today's and yesterday's daily
   answers wait for a later run (`--apply-only`). Changes go through the
   Control Room's API, so they appear in its Recent changes as "Stat refresh".

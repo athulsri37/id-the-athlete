@@ -5,7 +5,7 @@ Stat refresh for active players
 Keeps active players' changing stats current (titles, rankings, matches,
 runs, wickets, retirement) in two steps, both run by hand:
 
-    python stat_refresh_agent.py research tennis-men [--limit 10]
+    python stat_refresh_agent.py research tennis-men [--limit 40]
     python stat_refresh_agent.py apply tennis-men
 
 For production, run scripts/refresh-stats-prod.sh instead: it asks for the
@@ -16,8 +16,11 @@ RESEARCH only reads. It finds every Active player of the tour, asks the agent
 for their current values in chunks of 10 (identified by ID, name, country and
 turned-pro or debut year; the stored stats are not shown, so each value is
 researched independently) and saves the answers to stat_refresh_<tour>.json
-after every chunk. If it stops (usage limit, a failed chunk), run it again and
-choose to continue. --limit researches only the first N players, for a trial.
+after every chunk. A refresh covers every Active player and can take several
+runs: --limit N researches at most N more players this run, so a refresh can
+be spread over several sessions to save your usage (run again and choose to
+continue). The same goes if a run stops early (usage limit, a failed chunk).
+Apply can run after any of these runs: it writes what's researched so far.
 Uses your Claude subscription, like the roster agent (same environment
 checks).
 
@@ -243,11 +246,9 @@ def save_proposal(proposal: dict) -> None:
     os.replace(path + ".tmp", path)
 
 
-def new_proposal(sport_slug: str, limit: int | None) -> dict:
+def new_proposal(sport_slug: str) -> dict:
     players = load_players(sport_slug)
     active = [(pid, p) for pid, p in players.items() if p["attributes"].get("active_status") == ACTIVE]
-    if limit is not None:
-        active = active[:limit]
     keys = refreshable_keys({key for p in players.values() for key in p["attributes"]})
     return {
         "tour": sport_slug,
@@ -273,18 +274,20 @@ async def research(sport_slug: str, limit: int | None) -> None:
     proposal = load_proposal(sport_slug)
     if proposal is not None:
         done = sum(1 for p in proposal["players"] if p["answer"] is not None)
-        print(f"{proposal_path(sport_slug)} from {proposal['started']} has {done} of {len(proposal['players'])} players researched.")
+        print(f"The refresh started {proposal['started']} has {done} of {len(proposal['players'])} active players researched.")
         choice = input("Continue it (c), start a new refresh (n, replaces it), or quit (q)? ").strip().lower()
         if choice == "n":
             proposal = None
         elif choice != "c":
             return
     if proposal is None:
-        proposal = new_proposal(sport_slug, limit)
+        proposal = new_proposal(sport_slug)
         save_proposal(proposal)
 
     todo = [p for p in proposal["players"] if p["answer"] is None]
-    print(f"{len(todo)} active players to research, {CHUNK_SIZE} per request.")
+    if limit is not None:
+        todo = todo[:limit]
+    print(f"Researching {len(todo)} players this run, {CHUNK_SIZE} per request.")
     for start in range(0, len(todo), CHUNK_SIZE):
         chunk = todo[start:start + CHUNK_SIZE]
         print(f"\n--- Players {start + 1}-{start + len(chunk)} of {len(todo)} ---")
@@ -292,11 +295,11 @@ async def research(sport_slug: str, limit: int | None) -> None:
         try:
             answers = parse_players(await call_agent(prompt), required_key="id")
         except UsageExhaustedError as e:
-            print(f"\nUSAGE LIMIT HIT: {e}\nProgress is saved: run research again later and choose c.")
-            return
+            print(f"\nUSAGE LIMIT HIT: {e}")
+            break
         except Exception as e:
-            print(f"\nThis request failed: {e}\nProgress is saved: run research again and choose c.")
-            return
+            print(f"\nThis request failed: {e}")
+            break
 
         matched, problems = match_answers([p["id"] for p in chunk], answers)
         for problem in problems:
@@ -306,11 +309,16 @@ async def research(sport_slug: str, limit: int | None) -> None:
                 player["answer"] = matched[player["id"]]
         save_proposal(proposal)
 
-    missing = sum(1 for p in proposal["players"] if p["answer"] is None)
-    print(f"\nResearch saved to {proposal_path(sport_slug)}.")
-    if missing:
-        print(f"{missing} of them got no answer: run research again and choose c to retry them.")
-    print(f"Next: python stat_refresh_agent.py apply {sport_slug}")
+    report_progress(proposal)
+
+
+def report_progress(proposal: dict) -> None:
+    total = len(proposal["players"])
+    left = sum(1 for p in proposal["players"] if p["answer"] is None)
+    print(f"\nResearch saved to {proposal_path(proposal['tour'])}: {total - left} of {total} active players researched.")
+    if left:
+        print(f"{left} still to research: run research again (any time) and choose c.")
+    print(f"You can apply what's researched so far: python stat_refresh_agent.py apply {proposal['tour']}")
 
 
 # ============================================================
@@ -473,7 +481,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Refresh active players' stats: research, then apply.")
     parser.add_argument("step", choices=["research", "apply"])
     parser.add_argument("sport", choices=sorted(SPORT_PROFILES), help="which tour")
-    parser.add_argument("--limit", type=positive_int, help="research only the first N active players (a trial)")
+    parser.add_argument("--limit", type=positive_int, help="research at most N more players this run; run again later to continue")
     return parser
 
 

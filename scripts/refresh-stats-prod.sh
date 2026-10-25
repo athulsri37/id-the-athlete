@@ -12,9 +12,12 @@
 #   5. offers to copy production into your local dev database
 #
 # Usage (Git Bash, from anywhere in the repo):
-#   scripts/refresh-stats-prod.sh tennis-men --limit 10   # a trial on 10 players
-#   scripts/refresh-stats-prod.sh tennis-men              # every active player
+#   scripts/refresh-stats-prod.sh tennis-men --limit 40   # research 40 more players
+#   scripts/refresh-stats-prod.sh tennis-men              # research all the rest
 #   scripts/refresh-stats-prod.sh tennis-men --apply-only # write held players later
+# A refresh covers every active player and can be spread over several runs
+# (sessions) with --limit: each run asks whether to continue it (c) or start
+# a new one (n), and you can apply after any run.
 #
 # Needs the local Docker postgres container running (the backup runs pg_dump
 # in it), the agent's Python packages, and, unless --apply-only,
@@ -28,7 +31,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 if [[ $# -eq 0 || "$1" == "-h" || "$1" == "--help" ]]; then
-  sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,29p' "$0" | sed 's/^# \{0,1\}//'
   exit 0
 fi
 
