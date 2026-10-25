@@ -25,8 +25,9 @@ import {
 //   tour: a sport's own screens (choosing a tour, a tour's menu).
 //   page: screens with more to read (Past Challenges, How to Play, not
 //         found), which get a faint version kept to the edges.
-//   game: a game, which gets the faint version too, but on a phone only a
-//         corner piece: the clue grid needs the whole screen there.
+//   game: a game. Retro gives it the faint version too (on a phone only a
+//         corner piece); Stadium keeps its games plain at every width, just
+//         the floodlights' corner glow, so the clues have the screen.
 // Phones and portrait tablets (under 1024px) get the faint version, as a
 // full scene would sit behind the buttons there, except a sport's tour
 // screens where the theme has a tall phone scene for it (phoneTours). A
@@ -41,6 +42,7 @@ interface ThemeScenes {
   tours: Partial<Record<string, Scene>>;
   pages: Partial<Record<string, Scene>>;
   page: Scene; // any screen without a family, or a family without its own
+  games: Partial<Record<string, Scene>>; // a game on a wide screen; none: page
   phoneTours: Partial<Record<string, Scene>>; // a tour's screens on a phone
   corners: Partial<Record<string, Scene>>; // a game on a phone
   corner: Scene;
@@ -52,6 +54,7 @@ const SCENES: Partial<Record<string, ThemeScenes>> = {
     tours: { tennis: RetroTennisTour, cricket: RetroCricketTour },
     pages: { tennis: RetroTennisPage, cricket: RetroCricketPage },
     page: RetroPage,
+    games: { tennis: RetroTennisPage, cricket: RetroCricketPage },
     phoneTours: {},
     corners: { tennis: RetroTennisCorner, cricket: RetroCricketCorner },
     corner: RetroPage,
@@ -61,6 +64,7 @@ const SCENES: Partial<Record<string, ThemeScenes>> = {
     tours: { tennis: StadiumTennisTour, cricket: StadiumCricketTour },
     pages: { tennis: StadiumTennisPage, cricket: StadiumCricketPage },
     page: StadiumPage,
+    games: {},
     phoneTours: { tennis: StadiumTennisVenue, cricket: StadiumCricketVenue },
     corners: {},
     corner: StadiumPage, // just the floodlights' glow
@@ -77,7 +81,12 @@ export function sceneFor(theme: string, kind: SceneKind, family?: string): Scene
   if (!scenes) return null;
 
   const page = (family && scenes.pages[family]) || scenes.page;
-  if (kind === "game") return { wide: page, narrow: (family && scenes.corners[family]) || scenes.corner };
+  if (kind === "game") {
+    return {
+      wide: (family && scenes.games[family]) || scenes.page,
+      narrow: (family && scenes.corners[family]) || scenes.corner,
+    };
+  }
   if (kind === "tour") {
     return { wide: (family && scenes.tours[family]) || page, narrow: (family && scenes.phoneTours[family]) || page };
   }
