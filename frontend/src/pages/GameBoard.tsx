@@ -6,6 +6,7 @@ import { PlayerSummary, GuessResponse, Difficulty, AttributeDefinition, GameRef,
 import { familyDisplay } from "../config/sportFamilies";
 import PlayerSearch from "../components/PlayerSearch";
 import ClueGrid from "../components/ClueGrid";
+import GuessCards from "../components/GuessCards";
 import ClueLegend from "../components/ClueLegend";
 import ShareResult from "../components/ShareResult";
 import { recordDailyResult, getStreak, StreakData } from "../utils/dailyStreak";
@@ -353,7 +354,12 @@ export default function GameBoard({ mode, sport, dailyDate, startFresh = false, 
 
         <div className="flex items-center gap-2 mt-2">
           <p className="text-[var(--text-muted)] text-xs">
-            {guesses.length} / {maxGuesses} guesses
+            <span className="lg:hidden">
+              Guess {guesses.length} of {maxGuesses}
+            </span>
+            <span className="hidden lg:inline">
+              {guesses.length} / {maxGuesses} guesses
+            </span>
           </p>
           <button
             onClick={() => setShowLegend((v) => !v)}
@@ -379,7 +385,14 @@ export default function GameBoard({ mode, sport, dailyDate, startFresh = false, 
           </div>
         )}
 
-        <ClueGrid guesses={guesses} revealedCountry={revealedCountry} attributes={attributes} />
+        {/* The table on wide screens; cards on phones and portrait tablets,
+            where the table would scroll sideways. */}
+        <div className="hidden w-full justify-center lg:flex">
+          <ClueGrid guesses={guesses} revealedCountry={revealedCountry} attributes={attributes} />
+        </div>
+        <div className="flex w-full justify-center lg:hidden">
+          <GuessCards guesses={guesses} revealedCountry={revealedCountry} />
+        </div>
 
         {gameOver && (
           <div className="mt-6 text-center">

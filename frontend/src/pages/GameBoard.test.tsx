@@ -63,12 +63,14 @@ describe("GameBoard practice games", () => {
   it("carries on with the same game after leaving and coming back", async () => {
     const first = renderGame();
     await guess("Roger Federer");
-    expect(await screen.findByText("Roger Federer")).toBeInTheDocument();
+    // The guess shows in both the wide-screen table and the phone cards (CSS
+    // picks one); the card is the one that can be found by its name.
+    expect(await screen.findByRole("region", { name: "Guess 1: Roger Federer" })).toBeInTheDocument();
     first.unmount();
 
     renderGame();
 
-    expect(await screen.findByText("Roger Federer")).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Guess 1: Roger Federer" })).toBeInTheDocument();
     expect(client.startPracticeGame).toHaveBeenCalledTimes(1);
     await guess("Rafael Nadal");
     expect(vi.mocked(client.submitGuess).mock.calls[vi.mocked(client.submitGuess).mock.calls.length - 1][2].sessionId).toBe("session-1");
@@ -82,7 +84,7 @@ describe("GameBoard practice games", () => {
     renderGame({ startFresh: true });
 
     await vi.waitFor(() => expect(client.startPracticeGame).toHaveBeenCalledTimes(2));
-    expect(screen.queryByText("Roger Federer")).not.toBeInTheDocument();
+    expect(screen.queryAllByText("Roger Federer")).toHaveLength(0);
   });
 
   it("offers a new game when the server no longer has this one", async () => {

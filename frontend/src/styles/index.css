@@ -75,6 +75,16 @@ body {
   color: var(--text-primary);
 }
 
+/* GuessCards' folded squares: at that size the translucent close and miss
+   colours are too faint to tell apart, so they're laid on twice. */
+.clue-dot.clue-close {
+  background: linear-gradient(var(--close-bg), var(--close-bg)), linear-gradient(var(--close-bg), var(--close-bg)), var(--bg-primary);
+}
+
+.clue-dot.clue-miss {
+  background: linear-gradient(var(--miss-bg), var(--miss-bg)), linear-gradient(var(--miss-bg), var(--miss-bg)), var(--bg-primary);
+}
+
 /* The clue grid's pinned number and player cells (ClueGrid): opaque, so the
    clues scrolling sideways pass beneath them, and covering the row's padding
    before them and the gap after them too. Alternate rows keep their tint;

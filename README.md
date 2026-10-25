@@ -44,6 +44,11 @@ live, without a redeploy. `dotnet build` (backend) and `npm run build`
   Career Titles, Active/Retired status). Cricket: 9 clues (Country,
   Batting Hand, Bowling Style, Role, Combined Matches, Combined Runs,
   Combined Wickets, Debut Year, Active/Retired status)
+- **Guesses on any screen** — a table of guesses (one row each, oldest
+  first) on screens 1024px wide and up; on phones and portrait tablets,
+  cards, newest first: the latest open with every clue labelled, earlier
+  ones folded to the name and a coloured square per clue, opened with a
+  tap and folded again by the next guess
 - **Closeness-tier feedback** — clues show a distinct "close" state (not
   just match/miss) when a guess is near the correct answer:
   - **Numeric** — fixed thresholds for Tennis (e.g. career-high rank
@@ -163,7 +168,7 @@ id-the-athlete/
 ├── tools/                 # Roster research agent (Python): researches, checks and adds players
 └── frontend/src/
     ├── api/              # Axios client
-    ├── components/       # PlayerSearch, ClueGrid, ClueLegend, ShareResult; scenery/ (each theme's background artwork)
+    ├── components/       # PlayerSearch, ClueGrid (wide screens), GuessCards (phones), ClueLegend, ShareResult; scenery/ (each theme's background artwork)
     ├── hooks/             # useGameTrivia (fetches a finished game's trivia blurb)
     ├── pages/             # HomeScreen, TourSelect, SportHome, GameBoard, PastChallenges (home → tour → sport → game flow)
     ├── admin/             # Login gate, tab shell, player editor, settings editor — the internal admin tool
@@ -602,8 +607,11 @@ net, stumps), Stadium's floodlit court and pitch. `scenes.ts` says which
 screen gets what: the home screen and a sport's own screens get a full scene
 on screens 1024px wide and up, while games, Past Challenges, How to Play and
 phones get a faint version kept to the edges, so it never sits behind
-anything to read. A game on a phone gets only a corner piece, and on a short
-screen (a phone held sideways) the bottom bands are left out. A sport or
+anything to read. The exception is Stadium's sport screens on a phone, which
+get a tall scene of their own: the venue from the stands, from the
+floodlight towers down to the near stumps or baseline. A game on a phone
+gets only a corner piece, and on a short screen (a phone held sideways) the
+bottom bands and the venue are left out. A sport or
 theme without scenery of its own gets the theme's general scenery, or none.
 
 To switch themes, edit `ActiveTheme` in the [Admin Tool](#admin-tool)'s
