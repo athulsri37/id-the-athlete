@@ -460,6 +460,11 @@ nowhere else, so back it up.
   as a total going down, are never written; today's and yesterday's daily
   answers wait for a later run (`--apply-only`). Changes go through the
   Control Room's API, so they appear in its Recent changes as "Stat refresh".
+  `--audit-retired` checks the tour's retired players instead, once, to
+  correct stats that were wrong from the start: there a total going down is
+  a correction shown for a second look, not blocked. It keeps its own
+  progress file, so it never mixes with the active refresh. Progress files
+  (`tools/stat_refresh_<tour>[_retired].json`) are local and not in git.
   Details at the top of `tools/stat_refresh_agent.py`.
 - **Correcting a player** or setting a difficulty override: use the
   [Admin Tool](#admin-tool).

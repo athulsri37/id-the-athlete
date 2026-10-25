@@ -15,9 +15,13 @@
 #   scripts/refresh-stats-prod.sh tennis-men --limit 40   # research 40 more players
 #   scripts/refresh-stats-prod.sh tennis-men              # research all the rest
 #   scripts/refresh-stats-prod.sh tennis-men --apply-only # write held players later
+#   scripts/refresh-stats-prod.sh tennis-men --audit-retired --limit 40
+#                                  # check retired players' stored stats (once)
 # A refresh covers every active player and can be spread over several runs
 # (sessions) with --limit: each run asks whether to continue it (c) or start
-# a new one (n), and you can apply after any run.
+# a new one (n), and you can apply after any run. --audit-retired works the
+# same way on the tour's retired players, in its own file, and goes with
+# --apply-only too.
 #
 # Needs the local Docker postgres container running (the backup runs pg_dump
 # in it), the agent's Python packages, and, unless --apply-only,
@@ -31,7 +35,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 if [[ $# -eq 0 || "$1" == "-h" || "$1" == "--help" ]]; then
-  sed -n '2,29p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,33p' "$0" | sed 's/^# \{0,1\}//'
   exit 0
 fi
 
@@ -39,15 +43,18 @@ tour="$1"
 shift
 apply_only=false
 research_args=()
+audit_args=() # --audit-retired goes to both steps
 for arg in "$@"; do
   if [[ "$arg" == "--apply-only" ]]; then
     apply_only=true
+  elif [[ "$arg" == "--audit-retired" ]]; then
+    audit_args=("--audit-retired")
   else
     research_args+=("$arg")
   fi
 done
 if $apply_only && ((${#research_args[@]} > 0)); then
-  echo "--apply-only takes no other options." >&2
+  echo "--apply-only takes no other options except --audit-retired." >&2
   exit 1
 fi
 
@@ -69,7 +76,7 @@ if ! $apply_only; then
   fi
 fi
 # The tool's own argument check, so a mistyped tour name fails now.
-(cd tools && "$python" -c 'import sys, stat_refresh_agent as a; p = a.build_arg_parser(); p.prog = "scripts/refresh-stats-prod.sh"; p.parse_args(sys.argv[1:])' research "$tour" ${research_args[@]+"${research_args[@]}"})
+(cd tools && "$python" -c 'import sys, stat_refresh_agent as a; p = a.build_arg_parser(); p.prog = "scripts/refresh-stats-prod.sh"; p.parse_args(sys.argv[1:])' research "$tour" ${research_args[@]+"${research_args[@]}"} ${audit_args[@]+"${audit_args[@]}"})
 
 # docker compose exec reads standard input, so every docker call here (and the
 # backups) gets </dev/null: otherwise it can swallow your answers to the prompts.
@@ -121,11 +128,11 @@ run_tool() {
 }
 
 if ! $apply_only; then
-  run_tool research "$tour" ${research_args[@]+"${research_args[@]}"}
+  run_tool research "$tour" ${research_args[@]+"${research_args[@]}"} ${audit_args[@]+"${audit_args[@]}"}
   echo
   read -r -p "Review and apply the research now? (y/N) " answer
   if [[ ! "$answer" =~ ^[Yy] ]]; then
-    echo "Not applied. Later: scripts/refresh-stats-prod.sh $tour --apply-only"
+    echo "Not applied. Later: scripts/refresh-stats-prod.sh $tour --apply-only${audit_args[*]+ ${audit_args[*]}}"
     exit 0
   fi
 fi
@@ -133,7 +140,7 @@ fi
 echo "Backing up production first..."
 DATABASE_URL="$db_url" bash scripts/db-backup.sh </dev/null
 
-run_tool apply "$tour"
+run_tool apply "$tour" ${audit_args[@]+"${audit_args[@]}"}
 
 echo
 read -r -p "Copy production into your local dev database now, so dev matches it? (y/N) " answer

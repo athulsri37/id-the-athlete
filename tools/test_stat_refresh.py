@@ -189,6 +189,61 @@ class CheckRefreshTests(unittest.TestCase):
         self.assertTrue(result.is_valid)
 
 
+RETIRED_TENNIS = {**TENNIS, "active_status": "Retired"}
+RETIRED_CRICKET = {**CRICKET, "active_status": "Retired"}
+
+
+def audit(current, **proposed):
+    return check_refresh(9, "Retired Player", current, {**_same(current), **proposed}, audit=True)
+
+
+class AuditTests(unittest.TestCase):
+    def test_a_total_corrected_down_is_a_warning_not_an_error(self):
+        result = audit(RETIRED_TENNIS, career_titles="15")
+
+        self.assertTrue(result.is_valid)
+        self.assertEqual(result.changes, {"career_titles": ("18", "15")})
+        self.assertIn("career_titles corrected down, 18 -> 15: check the source", result.warnings[0])
+
+    def test_a_career_high_corrected_worse_is_a_warning_not_an_error(self):
+        current = {**RETIRED_TENNIS, "career_high_ranking": "8"}
+
+        result = audit(current, career_high_ranking="12")
+
+        self.assertTrue(result.is_valid)
+        self.assertIn("career_high_ranking corrected, 8 -> 12", result.warnings[0])
+
+    def test_runs_may_be_corrected_without_the_matches(self):
+        result = audit(RETIRED_CRICKET, combined_runs="25000", combined_wickets="6")
+
+        self.assertTrue(result.is_valid)
+        self.assertEqual(set(result.changes), {"combined_runs", "combined_wickets"})
+
+    def test_a_correction_up_within_the_limit_needs_no_note(self):
+        result = audit(RETIRED_TENNIS, career_titles="19")
+
+        self.assertEqual((result.errors, result.warnings), ([], []))
+
+    def test_still_blocks_more_grand_slams_than_titles(self):
+        result = audit(RETIRED_TENNIS, grand_slam_titles="20")
+
+        self.assertFalse(result.is_valid)
+
+    def test_still_blocks_a_comeback(self):
+        result = audit(RETIRED_TENNIS, active_status="Active")
+
+        self.assertFalse(result.is_valid)
+        self.assertIn("set it in the Control Room", result.errors[0])
+
+    def test_still_blocks_values_that_arent_whole_numbers(self):
+        self.assertFalse(audit(RETIRED_TENNIS, career_titles="about 15").is_valid)
+
+    def test_without_audit_the_same_answer_is_blocked(self):
+        result = check_refresh(9, "Retired Player", RETIRED_TENNIS, {**_same(RETIRED_TENNIS), "career_titles": "15"})
+
+        self.assertFalse(result.is_valid)
+
+
 class NameTests(unittest.TestCase):
     def test_search_name_drops_the_disambiguation(self):
         self.assertEqual(search_name("John Smith (New Zealand)"), "John Smith")
