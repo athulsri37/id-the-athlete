@@ -153,13 +153,14 @@ export function StadiumHome() {
 // height (or width, on a tall one) and pinned to the bottom right, so the
 // floodlights above the stand always show. On a window wider than the
 // picture, the spare room is on the left, behind the menu, where the ground
-// (drawn far past the picture's left edge) carries on. The left light stands
-// clear of the menu's title.
+// and the stand (both drawn far past the picture's left edge) carry on, so
+// the stand never stops mid-screen. The left light stands clear of the
+// menu's title.
 function TourSky({ id }: { id: (name: string) => string }) {
   return (
     <>
-      <rect x="460" y="220" width="820" height="70" fill={STAND} />
-      <rect x="460" y="220" width="820" height="70" fill={`url(#${id("crowd")})`} />
+      <rect x="-3000" y="220" width="4280" height="70" fill={STAND} />
+      <rect x="-3000" y="220" width="4280" height="70" fill={`url(#${id("crowd")})`} />
       <Floodlight x={1130} y={98} big poleTo={220} glow={id("glow")} />
       <Floodlight x={800} y={110} poleTo={220} glow={id("glow")} />
     </>
