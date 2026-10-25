@@ -24,6 +24,12 @@ Apply can run after any of these runs: it writes what's researched so far.
 Uses your Claude subscription, like the roster agent (same environment
 checks).
 
+--audit-retired (on both steps) checks the tour's Retired players instead,
+once, to correct stored stats that were wrong from the start. It keeps its
+own file (stat_refresh_<tour>_retired.json), so it never mixes with the
+active refresh, and its checks expect corrections either way: a total going
+down or a career high getting worse is shown for a second look, not blocked.
+
 APPLY re-reads every researched player from the database, checks each answer
 (see stat_refresh.py: a total going down, a career high getting worse or a
 comeback is never written; retirements and big jumps are flagged) and shows
@@ -66,6 +72,7 @@ from roster_research_agent import (
 )
 from stat_refresh import (
     ACTIVE,
+    RETIRED,
     RefreshCheck,
     UNSURE,
     check_refresh,
@@ -98,8 +105,13 @@ IDENTITY_KEYS = ["country", "turned_pro_year", "debut_year"]
 USER_AGENT = "id-the-athlete-stat-refresh"
 
 
-def proposal_path(sport_slug: str) -> str:
-    return f"stat_refresh_{sport_slug}.json"
+def proposal_path(sport_slug: str, audit: bool = False) -> str:
+    suffix = "_retired" if audit else ""
+    return f"stat_refresh_{sport_slug}{suffix}.json"
+
+
+def players_word(proposal: dict) -> str:
+    return "retired players" if proposal.get("audit") else "active players"
 
 
 # ============================================================
@@ -192,7 +204,7 @@ def fetch_tiers(sport_slug: str, stats: list[dict[str, str]]) -> list[str] | Non
 # RESEARCH
 # ============================================================
 
-def build_refresh_prompt(profile: dict, keys: list[str], players: list[tuple[int, dict]]) -> str:
+def build_refresh_prompt(profile: dict, keys: list[str], players: list[tuple[int, dict]], audit: bool = False) -> str:
     lines = []
     for player_id, player in players:
         details = ", ".join(
@@ -200,6 +212,12 @@ def build_refresh_prompt(profile: dict, keys: list[str], players: list[tuple[int
         )
         lines.append(f"- id {player_id}: {search_name(player['name'])}" + (f" ({details})" if details else ""))
     field_lines = "\n".join(f"- {key}: {FIELD_NOTES[key]}" for key in keys)
+    retired_note = (
+        "\nThese players are retired, so their career totals should be final: give the final\n"
+        "figures. If one has come back to play again, give active_status as Active.\n"
+        if audit
+        else ""
+    )
 
     return f"""You are checking the CURRENT career statistics of {profile["display_name"]} players
 for a stats-guessing game. For each player below, find their values as of today,
@@ -211,7 +229,7 @@ cite it. Only use another source if a player genuinely has no profile there.
 
 IDENTITY: identify each player by every detail given (name, country, year), not
 the name alone: some players share a name with other athletes.
-
+{retired_note}
 FIELDS:
 {field_lines}
 
@@ -229,8 +247,8 @@ response, with nothing after it.
 """
 
 
-def load_proposal(sport_slug: str) -> dict | None:
-    path = proposal_path(sport_slug)
+def load_proposal(sport_slug: str, audit: bool = False) -> dict | None:
+    path = proposal_path(sport_slug, audit)
     if not os.path.exists(path):
         return None
     with open(path, encoding="utf-8") as f:
@@ -240,18 +258,20 @@ def load_proposal(sport_slug: str) -> dict | None:
 def save_proposal(proposal: dict) -> None:
     # Written to a temporary file first, so a crash mid-write can't leave
     # a half-written proposal behind.
-    path = proposal_path(proposal["tour"])
+    path = proposal_path(proposal["tour"], proposal.get("audit", False))
     with open(path + ".tmp", "w", encoding="utf-8") as f:
         json.dump(proposal, f, indent=2, ensure_ascii=False)
     os.replace(path + ".tmp", path)
 
 
-def new_proposal(sport_slug: str) -> dict:
+def new_proposal(sport_slug: str, audit: bool = False) -> dict:
     players = load_players(sport_slug)
-    active = [(pid, p) for pid, p in players.items() if p["attributes"].get("active_status") == ACTIVE]
+    status = RETIRED if audit else ACTIVE
+    chosen = [(pid, p) for pid, p in players.items() if p["attributes"].get("active_status") == status]
     keys = refreshable_keys({key for p in players.values() for key in p["attributes"]})
     return {
         "tour": sport_slug,
+        "audit": audit,
         "started": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "keys": keys,
         "players": [
@@ -261,27 +281,31 @@ def new_proposal(sport_slug: str) -> dict:
                 "attributes": {k: p["attributes"][k] for k in keys + IDENTITY_KEYS if k in p["attributes"]},
                 "answer": None,
             }
-            for pid, p in active
+            for pid, p in chosen
         ],
     }
 
 
-async def research(sport_slug: str, limit: int | None) -> None:
+async def research(sport_slug: str, limit: int | None, audit: bool = False) -> None:
     check_environment()
     profile = SPORT_PROFILES[sport_slug]
     print(f"Reading {describe_db_target()}...")
 
-    proposal = load_proposal(sport_slug)
+    proposal = load_proposal(sport_slug, audit)
     if proposal is not None:
         done = sum(1 for p in proposal["players"] if p["answer"] is not None)
-        print(f"The refresh started {proposal['started']} has {done} of {len(proposal['players'])} active players researched.")
+        kind = "audit" if audit else "refresh"
+        print(
+            f"The {kind} started {proposal['started']} has {done} of "
+            f"{len(proposal['players'])} {players_word(proposal)} researched."
+        )
         choice = input("Continue it (c), start a new refresh (n, replaces it), or quit (q)? ").strip().lower()
         if choice == "n":
             proposal = None
         elif choice != "c":
             return
     if proposal is None:
-        proposal = new_proposal(sport_slug)
+        proposal = new_proposal(sport_slug, audit)
         save_proposal(proposal)
 
     todo = [p for p in proposal["players"] if p["answer"] is None]
@@ -291,7 +315,7 @@ async def research(sport_slug: str, limit: int | None) -> None:
     for start in range(0, len(todo), CHUNK_SIZE):
         chunk = todo[start:start + CHUNK_SIZE]
         print(f"\n--- Players {start + 1}-{start + len(chunk)} of {len(todo)} ---")
-        prompt = build_refresh_prompt(profile, proposal["keys"], [(p["id"], p) for p in chunk])
+        prompt = build_refresh_prompt(profile, proposal["keys"], [(p["id"], p) for p in chunk], audit)
         try:
             answers = parse_players(await call_agent(prompt), required_key="id")
         except UsageExhaustedError as e:
@@ -315,10 +339,15 @@ async def research(sport_slug: str, limit: int | None) -> None:
 def report_progress(proposal: dict) -> None:
     total = len(proposal["players"])
     left = sum(1 for p in proposal["players"] if p["answer"] is None)
-    print(f"\nResearch saved to {proposal_path(proposal['tour'])}: {total - left} of {total} active players researched.")
+    audit = proposal.get("audit", False)
+    flag = " --audit-retired" if audit else ""
+    print(
+        f"\nResearch saved to {proposal_path(proposal['tour'], audit)}: {total - left} of {total} "
+        f"{players_word(proposal)} researched."
+    )
     if left:
         print(f"{left} still to research: run research again (any time) and choose c.")
-    print(f"You can apply what's researched so far: python stat_refresh_agent.py apply {proposal['tour']}")
+    print(f"You can apply what's researched so far: python stat_refresh_agent.py apply {proposal['tour']}{flag}")
 
 
 # ============================================================
@@ -337,7 +366,7 @@ def checks_for(proposal: dict, live: dict[int, dict]) -> tuple[list[RefreshCheck
             notes.append(f"{player['name']} (id {player['id']}) is no longer in this tour; skipped")
             continue
         before = {k: player["attributes"][k] for k in proposal["keys"] if k in player["attributes"]}
-        check = check_refresh(player["id"], player["name"], before, answer)
+        check = check_refresh(player["id"], player["name"], before, answer, audit=proposal.get("audit", False))
         answered = str(answer.get("name", ""))
         if answered and not same_name(player["name"], answered):
             check.warnings.append(f"answered as '{answered}': check it's the same player")
@@ -401,10 +430,11 @@ def write_player(check: RefreshCheck) -> str:
     return "written: " + "; ".join(f"{k} {v}" for k, v in plan.write.items())
 
 
-def apply(sport_slug: str) -> None:
-    proposal = load_proposal(sport_slug)
+def apply(sport_slug: str, audit: bool = False) -> None:
+    proposal = load_proposal(sport_slug, audit)
     if proposal is None:
-        sys.exit(f"No research to apply: run 'python stat_refresh_agent.py research {sport_slug}' first.")
+        flag = " --audit-retired" if audit else ""
+        sys.exit(f"No research to apply: run 'python stat_refresh_agent.py research {sport_slug}{flag}' first.")
     if not ADMIN_KEY:
         sys.exit("ROSTER_ADMIN_KEY isn't set: apply writes through the Control Room's API and needs its key.")
 
@@ -482,6 +512,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("step", choices=["research", "apply"])
     parser.add_argument("sport", choices=sorted(SPORT_PROFILES), help="which tour")
     parser.add_argument("--limit", type=positive_int, help="research at most N more players this run; run again later to continue")
+    parser.add_argument(
+        "--audit-retired",
+        action="store_true",
+        help="check the tour's Retired players' stored stats instead (a one-off correction, kept in its own file)",
+    )
     return parser
 
 
@@ -498,8 +533,8 @@ def positive_int(value: str) -> int:
 if __name__ == "__main__":
     args = build_arg_parser().parse_args()
     if args.step == "research":
-        asyncio.run(research(args.sport, args.limit))
+        asyncio.run(research(args.sport, args.limit, args.audit_retired))
     else:
         if args.limit is not None:
             sys.exit("--limit only applies to research.")
-        apply(args.sport)
+        apply(args.sport, args.audit_retired)

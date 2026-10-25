@@ -74,13 +74,22 @@ class RefreshCheck:
         return not self.errors
 
 
-def check_refresh(player_id: int, name: str, current: dict[str, str], proposed: dict[str, object]) -> RefreshCheck:
+def check_refresh(
+    player_id: int, name: str, current: dict[str, str], proposed: dict[str, object], audit: bool = False
+) -> RefreshCheck:
     """Compares one player's researched values with their stored ones.
 
     Any error blocks the whole player: an answer with one impossible value
     (a total going down, a career high getting worse) is not trusted for its
     other values either. A genuine decrease, such as a record correction, is
-    for the reviewer to make by hand in the Control Room."""
+    for the reviewer to make by hand in the Control Room.
+
+    audit: checking a retired player's stored values rather than following
+    an active player's progress. Their totals are final, so any difference
+    is a correction to the stored data, and it can go either way: a total
+    going down or a career high getting worse is shown for a second look
+    instead of blocked, and runs or wickets may be corrected without the
+    matches."""
     result = RefreshCheck(player_id=player_id, name=name)
     after: dict[str, str] = {}
 
@@ -99,10 +108,10 @@ def check_refresh(player_id: int, name: str, current: dict[str, str], proposed: 
             continue
         after[key] = value
         if value != before:
-            _check_change(key, before, value, result)
+            _check_change(key, before, value, result, audit)
             result.changes[key] = (before, value)
 
-    _check_consistency(after, result)
+    _check_consistency(after, result, audit)
     return result
 
 
@@ -119,7 +128,7 @@ def _clean(key: str, raw: object, text: str, result: RefreshCheck) -> str | None
     return str(int(text))
 
 
-def _check_change(key: str, before: str, after: str, result: RefreshCheck) -> None:
+def _check_change(key: str, before: str, after: str, result: RefreshCheck, audit: bool) -> None:
     rule = REFRESH_RULES[key]
     if rule.kind == STATUS:
         if before == RETIRED and after == ACTIVE:
@@ -137,7 +146,9 @@ def _check_change(key: str, before: str, after: str, result: RefreshCheck) -> No
     old, new = int(before), int(after)
 
     if rule.kind == BEST_RANK:
-        if new > old:
+        if new > old and audit:
+            result.warnings.append(f"{key} corrected, {old} -> {new}: check the source")
+        elif new > old:
             result.errors.append(
                 f"{key} got worse, {old} -> {new}: a career high never does (a current ranking?); not written"
             )
@@ -145,7 +156,9 @@ def _check_change(key: str, before: str, after: str, result: RefreshCheck) -> No
             result.warnings.append(f"{key} {old} -> 1: check the player reached No. 1")
         return
 
-    if new < old:
+    if new < old and audit:
+        result.warnings.append(f"{key} corrected down, {old} -> {new}: check the source")
+    elif new < old:
         result.errors.append(
             f"{key} went down, {old} -> {new}: not written; if it's right, change it in the Control Room"
         )
@@ -153,17 +166,19 @@ def _check_change(key: str, before: str, after: str, result: RefreshCheck) -> No
         result.warnings.append(f"{key} rose by {new - old}, {old} -> {new}: check it")
 
 
-def _check_consistency(after: dict[str, str], result: RefreshCheck) -> None:
+def _check_consistency(after: dict[str, str], result: RefreshCheck, audit: bool) -> None:
     """Rules between fields, on the values the player would end up with.
     Each rule only judges a refresh that changes one of its fields, so an
-    unrelated change (a retirement) isn't blocked by older stored data."""
+    unrelated change (a retirement) isn't blocked by older stored data. An
+    audit skips the matches rule: correcting runs or wickets doesn't mean
+    more matches were played."""
     if not result.is_valid:
         return
 
     def rose(key: str) -> bool:
         return key in result.changes and int(result.changes[key][1]) > int(result.changes[key][0])
 
-    if "combined_matches" in after and not rose("combined_matches"):
+    if not audit and "combined_matches" in after and not rose("combined_matches"):
         for key in ("combined_runs", "combined_wickets"):
             if rose(key):
                 result.errors.append(f"{key} rose but combined_matches didn't; not written")
