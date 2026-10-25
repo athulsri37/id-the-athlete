@@ -12,10 +12,12 @@ import {
 import {
   StadiumCricketPage,
   StadiumCricketTour,
+  StadiumCricketVenue,
   StadiumHome,
   StadiumPage,
   StadiumTennisPage,
   StadiumTennisTour,
+  StadiumTennisVenue,
 } from "./stadium/StadiumScenes";
 
 // Which background artwork each screen gets, per theme and sport family.
@@ -25,9 +27,11 @@ import {
 //         found), which get a faint version kept to the edges.
 //   game: a game, which gets the faint version too, but on a phone only a
 //         corner piece: the clue grid needs the whole screen there.
-// Phones and portrait tablets (under 1024px) always get the faint version:
-// a full scene would sit behind the buttons there. A family or theme without
-// artwork of its own gets the theme's general page scenery, or none.
+// Phones and portrait tablets (under 1024px) get the faint version, as a
+// full scene would sit behind the buttons there, except a sport's tour
+// screens where the theme has a tall phone scene for it (phoneTours). A
+// family or theme without artwork of its own gets the theme's general page
+// scenery, or none.
 export type SceneKind = "home" | "tour" | "page" | "game";
 
 type Scene = ComponentType;
@@ -37,6 +41,7 @@ interface ThemeScenes {
   tours: Partial<Record<string, Scene>>;
   pages: Partial<Record<string, Scene>>;
   page: Scene; // any screen without a family, or a family without its own
+  phoneTours: Partial<Record<string, Scene>>; // a tour's screens on a phone
   corners: Partial<Record<string, Scene>>; // a game on a phone
   corner: Scene;
 }
@@ -47,6 +52,7 @@ const SCENES: Partial<Record<string, ThemeScenes>> = {
     tours: { tennis: RetroTennisTour, cricket: RetroCricketTour },
     pages: { tennis: RetroTennisPage, cricket: RetroCricketPage },
     page: RetroPage,
+    phoneTours: {},
     corners: { tennis: RetroTennisCorner, cricket: RetroCricketCorner },
     corner: RetroPage,
   },
@@ -55,6 +61,7 @@ const SCENES: Partial<Record<string, ThemeScenes>> = {
     tours: { tennis: StadiumTennisTour, cricket: StadiumCricketTour },
     pages: { tennis: StadiumTennisPage, cricket: StadiumCricketPage },
     page: StadiumPage,
+    phoneTours: { tennis: StadiumTennisVenue, cricket: StadiumCricketVenue },
     corners: {},
     corner: StadiumPage, // just the floodlights' glow
   },
@@ -71,6 +78,8 @@ export function sceneFor(theme: string, kind: SceneKind, family?: string): Scene
 
   const page = (family && scenes.pages[family]) || scenes.page;
   if (kind === "game") return { wide: page, narrow: (family && scenes.corners[family]) || scenes.corner };
-  const wide = kind === "home" ? scenes.home : kind === "tour" ? (family && scenes.tours[family]) || page : page;
-  return { wide, narrow: page };
+  if (kind === "tour") {
+    return { wide: (family && scenes.tours[family]) || page, narrow: (family && scenes.phoneTours[family]) || page };
+  }
+  return { wide: kind === "home" ? scenes.home : page, narrow: page };
 }

@@ -240,6 +240,103 @@ export function StadiumCricketTour() {
   );
 }
 
+// A tour's screens on a phone or portrait tablet: the venue seen from the
+// stands, drawn tall (390 x 844) as one scene from the floodlight towers
+// down to the near end, so nothing sits on its own band. It fills the
+// screen's width and keeps its bottom, cropping the sky first on a shorter
+// screen. The towers run up off the screen with their light in the top
+// corners: lamps drawn on a phone this narrow would land behind Back, the
+// title or the menu at one screen height or another. On a short landscape
+// screen (a phone on its side) there's no room below the menu, so only the
+// corner glow is left.
+function PhoneVenue({ scene, children }: { scene: string; children: (id: (name: string) => string) => ReactNode }) {
+  const id = useSvgIds();
+  return (
+    <div className="absolute inset-0" data-scene={scene}>
+      <Floodlights />
+      <svg
+        viewBox="0 0 390 844"
+        preserveAspectRatio="xMidYMax slice"
+        className="absolute inset-0 h-full w-full [@media(max-height:500px)]:hidden"
+      >
+        <defs>
+          <Glow id={id("pool")} />
+          <Crowd id={id("crowd")} />
+        </defs>
+        <path d="M38 0 V486 M352 0 V486" stroke={POLE} strokeWidth="5" />
+        <rect x="-200" y="486" width="790" height="70" fill={STAND} />
+        <rect x="-200" y="486" width="790" height="70" fill={`url(#${id("crowd")})`} />
+        {children(id)}
+      </svg>
+    </div>
+  );
+}
+
+export function StadiumCricketVenue() {
+  return (
+    <PhoneVenue scene="stadium-cricket-venue">
+      {(id) => (
+        <>
+          <defs>
+            <clipPath id={id("field")}>
+              <path d="M-200 590 Q195 528 590 590 L590 844 L-200 844 Z" />
+            </clipPath>
+          </defs>
+          <g clipPath={`url(#${id("field")})`}>
+            <rect x="-200" y="520" width="790" height="324" fill="#0d1d15" />
+            <Stripes vx={195} vy={510} fill="#12291c" from={-569} to={959} step={139} bottom={844} />
+          </g>
+          <path d="M-200 606 Q195 546 590 606" fill="none" stroke={NEON} strokeOpacity="0.6" strokeWidth="2.5" />
+          <polygon points="181,625 209,625 243,844 147,844" fill={PITCH} />
+          <path d="M179 640 H211" stroke={LIGHT} strokeWidth="1.5" />
+          <ellipse cx="195" cy="636" rx="34" ry="8" fill={`url(#${id("pool")})`} />
+          <path d="M192 636 V622 M195 636 V622 M198 636 V622" stroke={WOOD} strokeWidth="1.8" strokeLinecap="round" />
+          <path d="M155 790 H235 M152 812 H238" stroke={LIGHT} strokeWidth="2.5" strokeOpacity="0.85" />
+          <ellipse cx="195" cy="812" rx="92" ry="22" fill={`url(#${id("pool")})`} />
+          <path
+            d="M187 812 L215 821 M197 812 L225 821 M207 812 L235 821"
+            stroke="#2B2118"
+            strokeOpacity="0.55"
+            strokeWidth="5"
+            strokeLinecap="round"
+          />
+          <g stroke={WOOD} strokeLinecap="round">
+            <path d="M185 812 V748 M195 812 V748 M205 812 V748" strokeWidth="5" />
+            <path d="M183 743 H194 M196 743 H207" strokeWidth="3.5" />
+          </g>
+        </>
+      )}
+    </PhoneVenue>
+  );
+}
+
+export function StadiumTennisVenue() {
+  return (
+    <PhoneVenue scene="stadium-tennis-venue">
+      {(id) => (
+        <>
+          <defs>
+            <pattern id={id("mesh")} width="7" height="7" patternUnits="userSpaceOnUse">
+              <path d="M0 0 L7 7 M7 0 L0 7" stroke="#e2e8f0" strokeOpacity="0.4" strokeWidth="0.8" />
+            </pattern>
+          </defs>
+          <rect x="-200" y="556" width="790" height="288" fill="#0f2f4a" />
+          <path d="M-200 556 H590" stroke={NEON} strokeOpacity="0.5" strokeWidth="2" />
+          <polygon points="124,630 266,630 355,844 35,844" fill="#14406a" />
+          <g fill="none" stroke={LIGHT} strokeWidth="2" strokeOpacity="0.9">
+            <polygon points="124,630 266,630 355,844 35,844" />
+            <path d="M141.7 630 L75 844 M248.3 630 L315 844" />
+            <path d="M131.7 662 H258.3 M91.6 790 H298.4 M195 662 V790" />
+          </g>
+          <rect x="82" y="699" width="226" height="18" fill={`url(#${id("mesh")})`} />
+          <path d="M82 699 H308" stroke={LIGHT} strokeWidth="3" />
+          <path d="M82 693 V725 M308 693 V725" stroke="#9aa7b4" strokeWidth="4" />
+        </>
+      )}
+    </PhoneVenue>
+  );
+}
+
 // The quieter versions: floodlight glow in the top corners, and the sport's
 // near end along the bottom (cropped to the middle on narrow screens).
 

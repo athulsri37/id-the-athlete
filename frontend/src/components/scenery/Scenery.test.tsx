@@ -17,9 +17,17 @@ const scenes = (container: HTMLElement) =>
 
 describe("Scenery", () => {
   it("draws the full scene and the phone one, for CSS to choose between", () => {
-    const { container } = renderScenery("stadium", "tour", "tennis");
+    const { container } = renderScenery("stadium", "game", "cricket");
 
-    expect(scenes(container)).toEqual(["stadium-tennis-tour", "stadium-tennis-page"]);
+    expect(scenes(container)).toEqual(["stadium-cricket-page", "stadium-page"]);
+  });
+
+  it("gives a tour's screens the venue on phones where the theme has one", () => {
+    const stadium = renderScenery("stadium", "tour", "cricket").container;
+    const retro = renderScenery("retro", "tour", "tennis").container;
+
+    expect(scenes(stadium)).toEqual(["stadium-cricket-tour", "stadium-cricket-venue"]);
+    expect(scenes(retro)).toEqual(["retro-tennis-tour", "retro-tennis-page"]);
   });
 
   it("draws one scene when both widths share it", () => {

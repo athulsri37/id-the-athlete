@@ -1,10 +1,5 @@
 import { ClueExample } from "../config/sportFamilies";
-
-const STATE_CLASSES: Record<ClueExample["state"], string> = {
-  match: "bg-[var(--accent)] text-[var(--on-accent)]",
-  close: "clue-close",
-  miss: "clue-miss",
-};
+import { CLUE_STATE_CLASSES } from "../utils/clueState";
 
 interface Props {
   state: ClueExample["state"];
@@ -17,7 +12,7 @@ interface Props {
 export default function CluePill({ state, value, icon }: Props) {
   return (
     <span
-      className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold flex-shrink-0 whitespace-nowrap ${STATE_CLASSES[state]}`}
+      className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold flex-shrink-0 whitespace-nowrap ${CLUE_STATE_CLASSES[state]}`}
     >
       {value} {icon}
     </span>

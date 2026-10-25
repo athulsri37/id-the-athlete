@@ -8,7 +8,13 @@ import {
   RetroTennisPage,
   RetroTennisTour,
 } from "./retro/RetroScenes";
-import { StadiumCricketPage, StadiumCricketTour, StadiumHome, StadiumPage, StadiumTennisPage } from "./stadium/StadiumScenes";
+import {
+  StadiumCricketTour,
+  StadiumCricketVenue,
+  StadiumHome,
+  StadiumPage,
+  StadiumTennisPage,
+} from "./stadium/StadiumScenes";
 
 describe("sceneFor", () => {
   it("gives the home screen its full scene, and phones the general one", () => {
@@ -16,9 +22,9 @@ describe("sceneFor", () => {
     expect(sceneFor("stadium", "home")).toEqual({ wide: StadiumHome, narrow: StadiumPage });
   });
 
-  it("gives a sport's screens its full scene, and phones its faint one", () => {
+  it("gives a sport's screens its full scene, and phones its venue or, without one, its faint one", () => {
+    expect(sceneFor("stadium", "tour", "cricket")).toEqual({ wide: StadiumCricketTour, narrow: StadiumCricketVenue });
     expect(sceneFor("retro", "tour", "tennis")).toEqual({ wide: RetroTennisTour, narrow: RetroTennisPage });
-    expect(sceneFor("stadium", "tour", "cricket")).toEqual({ wide: StadiumCricketTour, narrow: StadiumCricketPage });
   });
 
   it("gives reading screens the faint scene at every width", () => {

@@ -1,4 +1,6 @@
 import { AttributeDefinition, GuessResponse } from "../types";
+import { CLUE_STATE_CLASSES, clueState } from "../utils/clueState";
+import ResultIcon from "./ResultIcon";
 
 interface Props {
   guesses: GuessResponse[];
@@ -15,9 +17,10 @@ interface Props {
 const CELL_PADDING = "px-1.5 py-2 sm:[padding:clamp(14px,2vw,24px)_clamp(8px,1.8vw,22px)]";
 
 // Column widths in rem: the guess number, the player, and each clue. The
-// grid never gets narrower than these add up to; on a phone it scrolls
-// sideways, with the number and player pinned (STICKY_*) so each row stays
-// readable.
+// grid never gets narrower than these add up to. It's shown on screens
+// 1024px wide and up, which fit it (phones get GuessCards instead); should a
+// window ever be narrower, it scrolls sideways with the number and player
+// pinned (STICKY_*) so each row stays readable.
 const NUMBER_COL = 2;
 const PLAYER_COL = 6.5;
 const CLUE_COL = 4.75;
@@ -27,26 +30,6 @@ const GAP = 0.375; // gap-1.5
 // player search's suggestions open over the grid.
 const STICKY_NUMBER = "sticky left-1 z-[1]";
 const STICKY_PLAYER = "sticky left-[2.625rem] z-[1]"; // row padding + NUMBER_COL + GAP
-
-function ResultIcon({
-  isMatch,
-  isClose,
-  direction,
-}: {
-  isMatch: boolean;
-  isClose: boolean;
-  direction: "up" | "down" | null;
-}) {
-  if (isMatch) return <span className="text-xs">✓</span>;
-  // Direction takes priority over closeness for numeric attributes -- the
-  // arrow is still the more useful signal, closeness only changes the pill
-  // color. Categorical attributes (country, and Cricket's Role/Bowling
-  // Style) have no direction, so they get a distinct "approximately" mark
-  // instead.
-  if (direction) return <span className="text-xs">{direction === "up" ? "▲" : "▼"}</span>;
-  if (isClose) return <span className="text-xs">≈</span>;
-  return <span className="text-xs">✕</span>;
-}
 
 export default function ClueGrid({ guesses, revealedCountry, attributes }: Props) {
   // Two fixed leading columns (guess number, player name) plus one per
@@ -98,32 +81,15 @@ export default function ClueGrid({ guesses, revealedCountry, attributes }: Props
                 </div>
               </div>
               {g.clues.map((c) => {
-                // Once the country hint is revealed, drive that column's
-                // match state off the revealed value instead of the
-                // server-computed isMatch, per the hint feature's spec —
-                // in practice these always agree (isMatch was already
-                // computed against the same true country), this just makes
-                // the dependency on the revealed value explicit.
-                const isMatch =
-                  c.attributeKey === "country" && revealedCountry
-                    ? c.value.toLowerCase() === revealedCountry.toLowerCase()
-                    : c.isMatch;
-                const isClose = !isMatch && c.isClose;
-
+                const state = clueState(c, revealedCountry);
                 return (
                   <div
                     key={c.attributeKey}
-                    className={`flex flex-wrap items-center justify-center gap-x-1 min-w-0 rounded-2xl sm:rounded-full text-center text-xs sm:text-sm font-semibold leading-tight [overflow-wrap:anywhere] ${CELL_PADDING} ${
-                      isMatch
-                        ? "bg-[var(--accent)] text-[var(--on-accent)]"
-                        : isClose
-                        ? "clue-close"
-                        : "clue-miss"
-                    }`}
+                    className={`flex flex-wrap items-center justify-center gap-x-1 min-w-0 rounded-2xl sm:rounded-full text-center text-xs sm:text-sm font-semibold leading-tight [overflow-wrap:anywhere] ${CELL_PADDING} ${CLUE_STATE_CLASSES[state]}`}
                     title={c.label}
                   >
                     <span>{c.value}</span>
-                    <ResultIcon isMatch={isMatch} isClose={isClose} direction={c.direction} />
+                    <ResultIcon state={state} direction={c.direction} />
                   </div>
                 );
               })}
