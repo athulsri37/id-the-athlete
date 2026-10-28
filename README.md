@@ -18,9 +18,9 @@ engine required. Since then the platform has grown a full Daily
 Challenge system (scheduled generation, replay via Past Challenges,
 streak tracking), a two-tier closeness-feedback system covering both
 sports' different stat shapes, per-sport-calibrated difficulty formulas,
-and an internal admin tool for correcting player data and game settings
-live, without a redeploy. `dotnet build` (backend) and `npm run build`
-(frontend) have been verified to pass cleanly.
+an internal admin tool for correcting player data and game settings
+live, without a redeploy, and tools for adding players and keeping their
+stats current. The game has been live on Render since October 2026.
 
 ## Features
 
@@ -118,7 +118,8 @@ real-world recognizability, editable live via the admin tool.
 | Frontend   | React 18, TypeScript, Vite, Tailwind CSS      |
 | Backend    | C#, ASP.NET Core 10 Web API, Entity Framework Core |
 | Database   | PostgreSQL                                    |
-| Deployment | Docker & Docker Compose                       |
+| Deployment | Docker & Docker Compose; hosted on Render     |
+| Data tools | Python, Claude Agent SDK                      |
 
 ## Architecture
 
@@ -135,12 +136,13 @@ Cricket's "Combined Wickets" are stored the same way, keyed by an
 `AttributeDefinition.Key` string the frontend and comparison engine read
 generically. Adding a sport means inserting rows (a `Sport`, its
 `AttributeDefinition`s, its players and their `PlayerAttributeValue`s)
-and, where a sport's stats genuinely behave differently, adding a
-sport-specific branch in the small set of services that need to know the
-difference (difficulty tiers, closeness thresholds) — never a schema
-change, and never a change to `GameController`, `PlayersController`, or
-the frontend's game-flow components, all of which are entirely
-sport-agnostic (routed by `{sportSlug}`).
+and, since sports score differently, an `ISportRules` class for its
+family (`Rules/`: difficulty tiers, closeness thresholds), picked by the
+sport's `Family` — never a schema change, and never a change to
+`GameController`, `PlayersController`, or the frontend's game-flow
+components, all of which are entirely sport-agnostic (routed by
+`{sportSlug}`). No code outside a family's rules class branches on a
+sport, and the app refuses to start if any sport's family has no rules.
 
 ```
 id-the-athlete/
@@ -152,6 +154,7 @@ id-the-athlete/
 │   ├── Rules/             # Per-sport-family scoring: ISportRules, TennisRules, CricketRules, SportRulesRegistry
 │   ├── Middleware/        # AdminAuthMiddleware (protects /api/admin/*)
 │   ├── Errors/            # NotFoundException / InvalidRequestException + the central handler that turns them into problem responses
+│   ├── Health/            # ReadinessCheck (/api/health/ready: is the database reachable?)
 │   ├── Services/
 │   │   ├── GameService.cs                  # Orchestration: guess submission, session/daily-puzzle resolution
 │   │   ├── DifficultyService.cs            # Curator override, else the sport family's difficulty formula
@@ -164,15 +167,17 @@ id-the-athlete/
 │   │   └── AdminService.cs                 # Backs the internal admin tool
 │   ├── Controllers/      # PlayersController, GameController, SettingsController, AdminController
 │   └── Dtos/             # Request/response contracts
-├── scripts/               # db-backup.sh / db-restore.sh (the database is the source of truth), add-players-prod.sh
-├── tools/                 # Roster research agent (Python): researches, checks and adds players
+├── scripts/               # db-backup.sh / db-restore.sh (the database is the source of truth), add-players-prod.sh, refresh-stats-prod.sh, check-attribution.sh
+├── tools/                 # Python agents: the roster research agent (adds players) and the stat refresh agent (updates their stats)
 └── frontend/src/
     ├── api/              # Axios client
-    ├── components/       # PlayerSearch, ClueGrid (wide screens), GuessCards (phones), ClueLegend, ShareResult; scenery/ (each theme's background artwork)
+    ├── components/       # PlayerSearch, ClueGrid (wide screens), GuessCards (phones), ClueLegend, ShareResult, StartupLoader, ErrorBoundary; scenery/ (each theme's background artwork)
+    ├── config/            # sportFamilies (per-family wording, legend examples, How to Play clue rules)
     ├── hooks/             # useGameTrivia (fetches a finished game's trivia blurb)
-    ├── pages/             # HomeScreen, TourSelect, SportHome, GameBoard, PastChallenges (home → tour → sport → game flow)
-    ├── admin/             # Login gate, tab shell, player editor, settings editor — the internal admin tool
-    ├── utils/              # dailyStreak, dailyCompletion, localDate (UTC-aligned "today" helpers)
+    ├── pages/             # HomeScreen, TourSelect, SportHome, GameBoard, PastChallenges, HowToPlay, NotFound (home → tour → sport → game flow)
+    ├── routes/            # paths (each screen's address)
+    ├── admin/             # The Control Room: login gate, tab shell, players, settings, stats and recent changes tabs
+    ├── utils/              # clueState, dailyStreak, dailyCompletion, dailyInProgress, practiceInProgress, localDate (UTC-aligned "today" helpers)
     ├── styles/             # index.css (Tailwind entry), themes.css (retro/stadium theme variables)
     └── types/
 ```
@@ -350,9 +355,11 @@ error, the home screen says it couldn't load the sports.
 The project has three independent test layers, all run by CI on every pull
 request (see [Continuous integration](#continuous-integration)). The backend
 suite covers the game rules (clue scoring for every sport, difficulty tiers,
-guess counting, practice-game expiry, settings fallbacks); the frontend suite
-covers daily streaks and completions, trivia fetching and error messages; the
-end-to-end suite is still a single smoke test.
+guess counting, practice-game expiry, settings fallbacks, the admin API, AI
+trivia); the frontend suite covers the game screens, both guess layouts,
+sharing, daily streaks and completions, trivia fetching and error messages;
+the end-to-end suite is still a single smoke test. The Python tests in
+`tools/` cover the agents' value checks.
 
 ### Backend unit tests
 
@@ -377,8 +384,8 @@ dotnet test
 
 ### Frontend unit tests
 
-Vitest + React Testing Library, covering pure utility functions and,
-eventually, components.
+Vitest + React Testing Library, covering utility functions, hooks,
+components and pages.
 ```bash
 cd frontend
 npm test
@@ -389,7 +396,7 @@ npm test
 Playwright drives the app through a real browser against the actual
 running dev servers — it does not start them itself. **Both the backend
 and frontend dev servers must already be running** (see
-[Getting Started](#getting-started) steps 5 and 6) before running this
+[Getting Started](#getting-started) steps 6 and 7) before running this
 suite:
 ```bash
 cd frontend
@@ -404,7 +411,8 @@ push to it, in parallel jobs:
 
 - **Backend tests:** `dotnet test`.
 - **Frontend tests, type check and build:** `npm test`, `npm run build`.
-- **Roster agent checks:** the Python unit tests in `tools/`.
+- **Roster agent checks:** every Python unit test in `tools/`, for both the
+  roster agent and the stat refresh.
 - **Docker images build:** builds the backend and frontend images, then
   checks that the frontend image serves the site on an assigned port, with
   the API address baked in and no Node in the image.
@@ -492,9 +500,10 @@ creates today's puzzle.
 
 A new sport is one PR: a migration that inserts its `Sports` and
 `AttributeDefinitions` rows (like `AddReferenceData`), an `ISportRules`
-class for its scoring, an entry in `frontend/src/config/sportFamilies.ts`,
-and a profile in the roster agent's `SPORT_PROFILES`. Then add its players
-with the agent.
+class for its scoring, an entry in `frontend/src/config/sportFamilies.ts`
+(including its How to Play clue rules), its scenery for each theme in
+`frontend/src/components/scenery/scenes.ts`, and a profile in the roster
+agent's `SPORT_PROFILES`. Then add its players with the agent.
 
 ## Game Stats
 
@@ -628,8 +637,8 @@ would leave the site unstyled; a new theme needs its CSS and an entry in
 
 ## Admin Tool
 
-An internal, key-protected admin interface — not linked from the public
-UI — lets a curator browse any sport's roster, edit a player's raw stats
+An internal, key-protected admin interface, the **Control Room** — not
+linked from the public UI — lets a curator browse any sport's roster, edit a player's raw stats
 or set a difficulty override, and edit any existing `AppSettings` row
 (closeness feature flags and thresholds, AI trivia, the theme) directly
 against the running database, without a redeploy. Its Stats tab shows the
@@ -654,18 +663,18 @@ other session or account system.
 
 ## Notes on the dataset
 
-As of October 2026 the dataset contains **723 real athletes** across two
-sports, individually researched — not placeholder or sample data:
+As of late October 2026 the dataset contains **923 real athletes** across
+two sports, individually researched — not placeholder or sample data:
 
 | Tour                          | Players |
 |--------------------------------|---------|
-| Men's Tennis                   | 200     |
+| Men's Tennis                   | 230     |
 | Women's Tennis                 | 134     |
-| **Tennis total**                | **334** |
-| Men's International Cricket     | 259     |
-| Women's International Cricket   | 130     |
-| **Cricket total**                | **389** |
-| **Grand total**                  | **723** |
+| **Tennis total**                | **364** |
+| Men's International Cricket     | 374     |
+| Women's International Cricket   | 185     |
+| **Cricket total**                | **559** |
+| **Grand total**                  | **923** |
 
 Tennis spans current tour players, the 2005–2015 golden era, and
 historical legends going back to the pre-Open Era. Cricket spans current
@@ -675,7 +684,7 @@ Women's international game.
 New players are added with the roster research agent (see
 [Player Data & Backups](#player-data--backups)).
 
-Player stats (Grand Slam counts, titles, career runs/wickets, etc.) are
-accurate as of mid-2026 but will drift for active players over time —
-treat this as a dataset that needs periodic manual refreshes, not a live
-feed.
+Active players' stats (Grand Slam counts, titles, career runs/wickets,
+etc.) drift over time, so they are refreshed periodically with the stat
+refresh tool (see [Player Data & Backups](#player-data--backups)) — a
+reviewed refresh, not a live feed.
