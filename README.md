@@ -4,6 +4,8 @@ A daily deduction game where you identify a mystery athlete using
 stat-based clues — Wordle's daily format and shareable results, with a
 Guess Who?-style comparison mechanic.
 
+**Play it live:** https://id-the-athlete.onrender.com
+
 The platform now spans two sports across four tours: **Men's Tennis**,
 **Women's Tennis**, **Men's International Cricket**, and **Women's
 International Cricket** ("ID the Tennis Player" / "ID the Cricketer").
