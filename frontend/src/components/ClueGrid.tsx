@@ -15,7 +15,7 @@ interface Props {
 
 // Responsive cell padding: generous on wide screens, compact on phones, where
 // a clue's text wraps inside its cell instead of spilling into the next one.
-const CELL_PADDING = "px-1.5 py-2 sm:[padding:clamp(14px,2vw,24px)_clamp(8px,1.8vw,22px)]";
+const CELL_PADDING = "px-1.5 py-2 sm:[padding:clamp(14px,2vw,24px)_clamp(6px,1.15vw,22px)]";
 
 // Column widths in rem: the guess number, the player (photo and name), and
 // each clue. The grid never gets narrower than these add up to. It's shown on screens
@@ -23,7 +23,7 @@ const CELL_PADDING = "px-1.5 py-2 sm:[padding:clamp(14px,2vw,24px)_clamp(8px,1.8
 // window ever be narrower, it scrolls sideways with the number and player
 // pinned (STICKY_*) so each row stays readable.
 const NUMBER_COL = 2;
-const PLAYER_COL = 9.5;
+const PLAYER_COL = 11.5;
 const CLUE_COL = 4.75;
 const GAP = 0.375; // gap-1.5
 // Rows are padded 0.25rem (p-1), so the pinned cells stick where they sit.
@@ -76,9 +76,9 @@ export default function ClueGrid({ guesses, revealedCountry, attributes }: Props
               </div>
               <div className={`${STICKY_PLAYER} ${idx % 2 === 1 ? "grid-sticky-alt" : "grid-sticky"} flex`}>
                 <div
-                  className={`flex flex-1 items-center gap-2 rounded-2xl sm:rounded-full border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-primary)] text-xs sm:text-sm font-medium break-words leading-snug min-w-0 ${CELL_PADDING} !pl-1.5`}
+                  className={`flex flex-1 items-center gap-2 rounded-2xl sm:rounded-full border border-[var(--border)] bg-[var(--bg-card)] text-[var(--text-primary)] text-xs sm:text-sm font-medium break-words leading-snug min-w-0 ${CELL_PADDING} !py-1 !pl-1`}
                 >
-                  <PlayerPhoto name={g.guessedPlayerName} photo={g.guessedPlayerPhoto} size={32} />
+                  <PlayerPhoto name={g.guessedPlayerName} photo={g.guessedPlayerPhoto} size={56} />
                   <span className="min-w-0">{g.guessedPlayerName}</span>
                 </div>
               </div>
