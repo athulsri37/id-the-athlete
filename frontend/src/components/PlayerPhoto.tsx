@@ -12,7 +12,8 @@ interface Props {
 // Commons serves thumbnails at a set of standard widths, which it keeps
 // ready; these are the smallest that stay sharp at 2-3x pixel density.
 function thumbWidth(size: number): number {
-  return size <= 40 ? 120 : 330;
+  if (size <= 40) return 120;
+  return size <= 80 ? 250 : 330;
 }
 
 // A player's photo cropped to a circle around its centre point, with the

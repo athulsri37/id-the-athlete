@@ -17,9 +17,11 @@ describe("a player's photo", () => {
     expect(img.title).toBe("Photo: si.robi, CC BY-SA 2.0");
   });
 
-  it("asks for a larger thumbnail when shown large", () => {
-    const { container } = render(<PlayerPhoto name="Roger Federer" photo={photo} size={112} />);
-    expect(container.querySelector("img")!.getAttribute("src")).toMatch(/\?width=330$/);
+  it("asks for a larger thumbnail when shown larger", () => {
+    const { container: table } = render(<PlayerPhoto name="Roger Federer" photo={photo} size={56} />);
+    const { container: result } = render(<PlayerPhoto name="Roger Federer" photo={photo} size={112} />);
+    expect(table.querySelector("img")!.getAttribute("src")).toMatch(/\?width=250$/);
+    expect(result.querySelector("img")!.getAttribute("src")).toMatch(/\?width=330$/);
   });
 
   it("is the player's initials when there's no photo", () => {
