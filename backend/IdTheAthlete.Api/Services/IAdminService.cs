@@ -10,6 +10,8 @@ public interface IAdminService
     Task<List<string>> PreviewDifficultyTiersAsync(string sportSlug, List<Dictionary<string, string>> players);
     Task<AdminPlayerDetailDto> GetPlayerAsync(int playerId);
     Task UpdatePlayerAsync(int playerId, AdminPlayerUpdateDto request);
+    Task SetPlayerPhotoAsync(int playerId, AdminPlayerPhotoUpdateDto request);
+    Task RemovePlayerPhotoAsync(int playerId);
     Task<List<AdminSettingDto>> GetSettingsAsync();
     Task UpdateSettingAsync(string key, string newValue);
     Task<List<AdminAuditEntryDto>> GetRecentChangesAsync(int limit);

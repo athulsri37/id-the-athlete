@@ -79,6 +79,22 @@ public class AdminController : ControllerBase
         return Ok(new { message = "Player updated." });
     }
 
+    // PUT /api/admin/players/{playerId}/photo -- sets or replaces the
+    // player's photo (a Wikimedia Commons file, its credit and licence).
+    [HttpPut("players/{playerId}/photo")]
+    public async Task<IActionResult> SetPlayerPhoto(int playerId, [FromBody] AdminPlayerPhotoUpdateDto request)
+    {
+        await _adminService.SetPlayerPhotoAsync(playerId, request);
+        return Ok(new { message = "Photo saved." });
+    }
+
+    [HttpDelete("players/{playerId}/photo")]
+    public async Task<IActionResult> RemovePlayerPhoto(int playerId)
+    {
+        await _adminService.RemovePlayerPhotoAsync(playerId);
+        return Ok(new { message = "Photo removed." });
+    }
+
     [HttpGet("settings")]
     public async Task<ActionResult<List<AdminSettingDto>>> GetSettings()
     {

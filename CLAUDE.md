@@ -48,7 +48,7 @@ npm run test:e2e   # requires both dev servers already running; E2E_BASE_URL=htt
 ```
 ```
 cd tools
-python -m unittest   # every test_*.py: roster agent and stat refresh checks
+python -m unittest   # every test_*.py: roster agent, stat refresh and photo matching checks
 ```
 
 ## Working process
@@ -103,6 +103,8 @@ Players are added with the roster research agent (`tools/roster_research_agent.p
 
 Active players' changing stats (titles, rankings, matches, runs, wickets, retirement) are refreshed with `scripts/refresh-stats-prod.sh`, also run by the user: research proposes, apply writes only what passes the checks in `tools/stat_refresh.py` and the user accepts, through the admin API.
 
+Player photos are Wikimedia Commons files (stored by file name with their credit and licence, never copied), suggested by `scripts/review-photos-prod.sh`, also run by the user: it matches players on Wikidata (`tools/photo_matching.py`), and writes only the photos the user accepts, through the admin API. Wrong people and badly cropped photos are fixed in the admin interface.
+
 Player names are unique per sport (the `(SportId, Name)` index). A different person with the same name as an existing player in that sport gets a disambiguated name: their country as written in the `country` field, e.g. `John Smith (New Zealand)`, or their birth year if they also share a country, e.g. `John Smith (b. 1985)`. The agent's prompt already does this; use the same format when renaming a player in the admin interface.
 
 ## Known gotchas
@@ -122,4 +124,6 @@ Player names are unique per sport (the `(SportId, Name)` index). A different per
 - `docker compose exec -T` reads the script's standard input even when the command inside doesn't need it, so in a script that prompts the user (`read`, or a Python `input()` it runs) it silently swallows the next answers. Give such docker calls `</dev/null` (see `scripts/add-players-prod.sh`), and test interactive scripts with answers piped in.
 - The admin API locks an IP out of every admin request for 15 minutes after a few wrong keys, the right key included. A tool that calls it should check the key once before doing anything (see `check_admin_key` in `tools/stat_refresh_agent.py`), not discover a bad key on every request.
 - `tools/` holds the owner's real, git-ignored work in progress: the stat refresh's `stat_refresh_<tour>[_retired].json` progress files (research their subscription paid for) and the roster agent's CSVs. Test the tools in a copy of the folder, never by writing, overwriting or deleting files in `tools/` itself; a test once overwrote a real refresh's progress file.
+- An EF `HasDefaultValue(x)` on a non-nullable value column also makes EF treat the CLR default (0, false) as "not set" on insert, so an explicit 0 is swapped for `x`. Where 0 is a real value (the photo centre), add `.HasSentinel(<a value never stored>)` and test it against real Postgres: the in-memory provider doesn't apply defaults.
+- Python on the owner's Windows PC can fail to verify Wikimedia's HTTPS certificate ("certificate has expired") while curl works: its system certificate store is out of date. Point it at Git's bundle with `SSL_CERT_FILE` (`scripts/review-photos-prod.sh` does). Wikidata itself: famous people's names are often only in the `mul` (multilingual) label, not `en`, so ask for `languages=en|mul`; and a `wbgetentities` batch of several large items can come back incomplete, so batch small and refetch what's missing.
 - On phones, check anything that floats over other content with it open: a new layer (`position: sticky`, a `z-` class) can paint over an existing pop-up, as the clue grid's pinned cells did over the player search's suggestions. Text fields need 16px text on phones, or iOS Safari zooms the whole page in when one is tapped, which looks like the layout overflowing sideways.

@@ -31,4 +31,7 @@ tools/raw_output.txt
 tools/stat_refresh_*.json
 tools/stat_refresh_*.json.tmp
 
+# Photo review pages, opened in the browser for the review
+tools/photo_review_*.html
+
 .DS_Store

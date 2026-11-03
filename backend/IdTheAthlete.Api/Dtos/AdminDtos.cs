@@ -27,6 +27,30 @@ public class AdminPlayerDetailDto
     public List<AdminAttributeValueDto> Attributes { get; set; } = new();
     public bool IsOverridden { get; set; }
     public string? DifficultyOverride { get; set; }
+    // Null when the player has no photo.
+    public AdminPlayerPhotoDto? Photo { get; set; }
+}
+
+// A player's photo, a file on Wikimedia Commons (see Player.PhotoFile).
+public class AdminPlayerPhotoDto
+{
+    public string File { get; set; } = string.Empty;
+    public string Credit { get; set; } = string.Empty;
+    public string License { get; set; } = string.Empty;
+    public int FocusX { get; set; } = 50;
+    public int FocusY { get; set; } = 50;
+}
+
+public class AdminPlayerPhotoUpdateDto
+{
+    public string File { get; set; } = string.Empty;
+    public string Credit { get; set; } = string.Empty;
+    public string License { get; set; } = string.Empty;
+    public int FocusX { get; set; } = 50;
+    public int FocusY { get; set; } = 50;
+    // Omitted for a Control Room edit, "photo-review" for the photo review
+    // tool. Any other value is refused.
+    public string? Source { get; set; }
 }
 
 public class AdminPlayerUpdateDto

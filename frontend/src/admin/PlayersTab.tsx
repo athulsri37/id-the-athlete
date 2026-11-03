@@ -11,6 +11,7 @@ import {
   fetchAdminSports,
   updateAdminPlayer,
 } from "./adminClient";
+import PhotoEditor from "./PhotoEditor";
 
 type SaveStatus = "idle" | "saving" | "success" | "error";
 
@@ -240,6 +241,8 @@ export default function PlayersTab() {
               {saveStatus === "success" && <span className="text-green-400 text-sm">Saved.</span>}
               {saveStatus === "error" && <span className="text-red-400 text-sm">{saveError}</span>}
             </div>
+
+            <PhotoEditor key={playerDetail.id} playerId={playerDetail.id} photo={playerDetail.photo} />
           </div>
         )}
       </div>
