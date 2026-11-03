@@ -149,7 +149,7 @@ sport, and the app refuses to start if any sport's family has no rules.
 ```
 id-the-athlete/
 ├── backend/IdTheAthlete.Api/
-│   ├── Models/          # Sport, Player, AttributeDefinition, PlayerAttributeValue, DailyPuzzle, AppSetting
+│   ├── Models/          # Sport, Player (incl. its photo), AttributeDefinition, PlayerAttributeValue, DailyPuzzle, AppSetting
 │   ├── Data/             # GameDbContext
 │   ├── Migrations/       # EF Core migrations (generated, committed)
 │   ├── Geo/               # CountryProximity (Tennis land-border adjacency)
@@ -169,8 +169,8 @@ id-the-athlete/
 │   │   └── AdminService.cs                 # Backs the internal admin tool
 │   ├── Controllers/      # PlayersController, GameController, SettingsController, AdminController
 │   └── Dtos/             # Request/response contracts
-├── scripts/               # db-backup.sh / db-restore.sh (the database is the source of truth), add-players-prod.sh, refresh-stats-prod.sh, check-attribution.sh
-├── tools/                 # Python agents: the roster research agent (adds players) and the stat refresh agent (updates their stats)
+├── scripts/               # db-backup.sh / db-restore.sh (the database is the source of truth), add-players-prod.sh, refresh-stats-prod.sh, review-photos-prod.sh, check-attribution.sh
+├── tools/                 # Python tools: the roster research agent (adds players), the stat refresh agent (updates their stats), the photo review (suggests photos)
 └── frontend/src/
     ├── api/              # Axios client
     ├── components/       # PlayerSearch, ClueGrid (wide screens), GuessCards (phones), ClueLegend, ShareResult, StartupLoader, ErrorBoundary; scenery/ (each theme's background artwork)
@@ -178,8 +178,8 @@ id-the-athlete/
     ├── hooks/             # useGameTrivia (fetches a finished game's trivia blurb)
     ├── pages/             # HomeScreen, TourSelect, SportHome, GameBoard, PastChallenges, HowToPlay, NotFound (home → tour → sport → game flow)
     ├── routes/            # paths (each screen's address)
-    ├── admin/             # The Control Room: login gate, tab shell, players, settings, stats and recent changes tabs
-    ├── utils/              # clueState, dailyStreak, dailyCompletion, dailyInProgress, practiceInProgress, localDate (UTC-aligned "today" helpers)
+    ├── admin/             # The Control Room: login gate, tab shell, players (with the photo editor), settings, stats and recent changes tabs
+    ├── utils/              # commons (Wikimedia Commons photo addresses and credits), clueState, dailyStreak, dailyCompletion, dailyInProgress, practiceInProgress, localDate (UTC-aligned "today" helpers)
     ├── styles/             # index.css (Tailwind entry), themes.css (retro/stadium theme variables)
     └── types/
 ```
@@ -361,7 +361,7 @@ guess counting, practice-game expiry, settings fallbacks, the admin API, AI
 trivia); the frontend suite covers the game screens, both guess layouts,
 sharing, daily streaks and completions, trivia fetching and error messages;
 the end-to-end suite is still a single smoke test. The Python tests in
-`tools/` cover the agents' value checks.
+`tools/` cover the agents' value checks and the photo review's matching.
 
 ### Backend unit tests
 
@@ -413,8 +413,8 @@ push to it, in parallel jobs:
 
 - **Backend tests:** `dotnet test`.
 - **Frontend tests, type check and build:** `npm test`, `npm run build`.
-- **Roster agent checks:** every Python unit test in `tools/`, for both the
-  roster agent and the stat refresh.
+- **Roster agent checks:** every Python unit test in `tools/`, for the
+  roster agent, the stat refresh and the photo review's matching.
 - **Docker images build:** builds the backend and frontend images, then
   checks that the frontend image serves the site on an assigned port, with
   the API address baked in and no Node in the image.
@@ -476,6 +476,19 @@ nowhere else, so back it up.
   progress file, so it never mixes with the active refresh. Progress files
   (`tools/stat_refresh_<tour>[_retired].json`) are local and not in git.
   Details at the top of `tools/stat_refresh_agent.py`.
+- **Player photos:** `scripts/review-photos-prod.sh <tour>` (or `python
+  photo_review.py <tour>` in `tools/` for dev) suggests a photo for each
+  player without one. It looks the player up on Wikidata by name, sport, sex
+  and age at career start, takes the Wikimedia Commons photo linked there with
+  the credit and licence Commons lists, and opens the suggestions in your
+  browser, cropped as the game shows them. You leave out wrong people and
+  unusable photos, then type the database's name; the rest are written
+  through the Control Room's API, logged as "Photo review". It's free: no AI,
+  no subscription. Photos are stored as Commons file names, never copied.
+  Players it can't match, and photos that need re-centring, are done by hand
+  in the [Admin Tool](#admin-tool). On Windows, if Python can't check
+  Wikimedia's certificate, the production script points it at Git's CA
+  bundle; for a dev run, set `SSL_CERT_FILE` yourself.
 - **Correcting a player** or setting a difficulty override: use the
   [Admin Tool](#admin-tool).
 - **Backing up:** `scripts/db-backup.sh` writes a timestamped dump to
@@ -641,13 +654,19 @@ would leave the site unstyled; a new theme needs its CSS and an entry in
 
 An internal, key-protected admin interface, the **Control Room** — not
 linked from the public UI — lets a curator browse any sport's roster, edit a player's raw stats
-or set a difficulty override, and edit any existing `AppSettings` row
+or set a difficulty override, set a player's photo, and edit any existing
+`AppSettings` row
 (closeness feature flags and thresholds, AI trivia, the theme) directly
 against the running database, without a redeploy. Its Stats tab shows the
 anonymous [Game Stats](#game-stats). It authenticates via the `X-Admin-Key`
 header described in [Getting Started](#getting-started) above and has no
 other session or account system.
 
+- **Photos:** a player's photo is a Wikimedia Commons file, picked by its
+  file name. "Fill credit" reads the file's author and licence from Commons
+  (which the licence requires the game to show), and the two sliders move the
+  point the round crop is centred on, previewed at both sizes the game uses.
+  A photo is saved on its own, apart from the stats.
 - **Lockout:** 5 wrong (or missing) admin keys from one address within 15
   minutes lock that address out of the admin API, the right key included,
   until the oldest of those attempts is 15 minutes old. The login screen

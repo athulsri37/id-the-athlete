@@ -11,7 +11,8 @@ namespace IdTheAthlete.Api.Tests.Postgres;
 
 // What the real database guarantees, checked against Postgres itself: the
 // unique indexes the app relies on, the daily-puzzle race being handled,
-// and the stats table's foreign key and stored values.
+// the stats table's foreign key and stored values, and the photo centre's
+// default.
 [Collection(PostgresCollection.Name)]
 public class PostgresBehaviourTests
 {
@@ -163,5 +164,24 @@ public class PostgresBehaviourTests
         Assert.Equal(("Won", 6, 5), (row.GetString(0), row.GetInt32(1), row.GetInt32(2)));
 
         Assert.DoesNotContain(logger.Entries, e => e.Level >= LogLevel.Warning);
+    }
+    [Fact]
+    public async Task APhotoCentre_DefaultsToTheMiddle_ButAnEdgeIsKept()
+    {
+        await using var db = _postgres.CreateContext();
+        var men = SportId(db, "tennis-men");
+        // Inserted the way the roster agent does, without the photo columns.
+        var plain = Unique("No Photo Columns");
+        await db.Database.ExecuteSqlAsync(
+            $"""INSERT INTO "Players" ("Name", "SportId", "IsOverridden", "DifficultyOverride") VALUES ({plain}, {men}, false, NULL)""");
+        var edge = new Player { SportId = men, Name = Unique("Edge Centre"), PhotoFile = "Edge.jpg", PhotoFocusX = 0, PhotoFocusY = 100 };
+        db.Players.Add(edge);
+        await db.SaveChangesAsync();
+
+        await using var read = _postgres.CreateContext();
+        var stored = await read.Players.Where(p => p.Name == plain || p.Id == edge.Id)
+            .ToDictionaryAsync(p => p.Name, p => (p.PhotoFocusX, p.PhotoFocusY));
+        Assert.Equal((50, 50), stored[plain]);
+        Assert.Equal((0, 100), stored[edge.Name]);
     }
 }

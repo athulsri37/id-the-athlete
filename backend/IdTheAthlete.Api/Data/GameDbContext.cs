@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using IdTheAthlete.Api.Models;
+using IdTheAthlete.Api.Services;
 
 namespace IdTheAthlete.Api.Data;
 
@@ -49,6 +50,19 @@ public class GameDbContext : DbContext
         modelBuilder.Entity<Player>()
             .Property(p => p.IsOverridden)
             .HasDefaultValue(false);
+
+        modelBuilder.Entity<Player>(player =>
+        {
+            player.Property(p => p.PhotoFile).HasMaxLength(PlayerPhotoRules.MaxFileLength);
+            player.Property(p => p.PhotoCredit).HasMaxLength(PlayerPhotoRules.MaxCreditLength);
+            player.Property(p => p.PhotoLicense).HasMaxLength(PlayerPhotoRules.MaxLicenseLength);
+            // The default covers rows inserted outside EF (the roster agent).
+            // The sentinel is a value never stored, so EF always sends the
+            // value it's given: with the default sentinel of 0, a focus of 0%
+            // set on a new player would be swapped for 50.
+            player.Property(p => p.PhotoFocusX).HasDefaultValue(50).HasSentinel(-1);
+            player.Property(p => p.PhotoFocusY).HasDefaultValue(50).HasSentinel(-1);
+        });
 
         // A player's name is unique within a sport, not across sports, so two
         // tours can each have a player of the same name. Two different people

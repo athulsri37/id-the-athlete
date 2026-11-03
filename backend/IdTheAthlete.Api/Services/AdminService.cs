@@ -120,7 +120,15 @@ public class AdminService : IAdminService
                 })
                 .ToList(),
             IsOverridden = player.IsOverridden,
-            DifficultyOverride = player.DifficultyOverride
+            DifficultyOverride = player.DifficultyOverride,
+            Photo = player.PhotoFile is null ? null : new AdminPlayerPhotoDto
+            {
+                File = player.PhotoFile,
+                Credit = player.PhotoCredit ?? "",
+                License = player.PhotoLicense ?? "",
+                FocusX = player.PhotoFocusX,
+                FocusY = player.PhotoFocusY,
+            }
         };
     }
 
@@ -193,12 +201,86 @@ public class AdminService : IAdminService
 
         // Saving a player with nothing changed isn't a change worth logging.
         if (changes.Count > 0)
-        {
-            var sportName = await _db.Sports.Where(s => s.Id == player.SportId).Select(s => s.Name).FirstAsync();
-            Audit(action, $"{sportName}: {player.Name}", changes);
-        }
+            await AuditPlayerAsync(action, player, changes);
 
         await _db.SaveChangesAsync();
+    }
+
+    // AdminPlayerPhotoUpdateDto.Source -> the action its photos are logged under.
+    private static readonly Dictionary<string, string> PhotoEditActions = new()
+    {
+        ["photo-review"] = "Photo review",
+    };
+
+    // Sets or replaces a player's photo. The credit and licence are required:
+    // Commons' licences need both shown wherever the photo is.
+    public async Task SetPlayerPhotoAsync(int playerId, AdminPlayerPhotoUpdateDto request)
+    {
+        var player = await _db.Players.FirstOrDefaultAsync(p => p.Id == playerId)
+            ?? throw new NotFoundException("Player not found");
+
+        var action = "Photo edited";
+        if (!string.IsNullOrEmpty(request.Source) && !PhotoEditActions.TryGetValue(request.Source, out action!))
+            throw new InvalidRequestException($"Source must be one of: {string.Join(", ", PhotoEditActions.Keys)}.");
+
+        var file = PlayerPhotoRules.NormalizeFile(request.File)
+            ?? throw new InvalidRequestException(
+                "File must be a Wikimedia Commons image file name, e.g. \"Roger Federer 2015.jpg\" (up to " +
+                $"{PlayerPhotoRules.MaxFileLength} characters, ending in .jpg, .png, .gif, .webp, .tif or .svg).");
+        var credit = request.Credit.Trim();
+        if (credit.Length == 0 || credit.Length > PlayerPhotoRules.MaxCreditLength)
+            throw new InvalidRequestException($"Credit is required, up to {PlayerPhotoRules.MaxCreditLength} characters.");
+        var license = request.License.Trim();
+        if (license.Length == 0 || license.Length > PlayerPhotoRules.MaxLicenseLength)
+            throw new InvalidRequestException($"Licence is required, up to {PlayerPhotoRules.MaxLicenseLength} characters.");
+        if (!PlayerPhotoRules.IsValidFocus(request.FocusX) || !PlayerPhotoRules.IsValidFocus(request.FocusY))
+            throw new InvalidRequestException("FocusX and FocusY must be between 0 and 100.");
+
+        var changes = new List<string>();
+        if (player.PhotoFile != file)
+            changes.Add(Change("Photo", player.PhotoFile ?? "none", file));
+        if (player.PhotoCredit != credit)
+            changes.Add(Change("Photo credit", player.PhotoCredit ?? "none", credit));
+        if (player.PhotoLicense != license)
+            changes.Add(Change("Photo licence", player.PhotoLicense ?? "none", license));
+        if (player.PhotoFocusX != request.FocusX || player.PhotoFocusY != request.FocusY)
+            changes.Add(Change("Photo centre", $"{player.PhotoFocusX}% {player.PhotoFocusY}%", $"{request.FocusX}% {request.FocusY}%"));
+
+        player.PhotoFile = file;
+        player.PhotoCredit = credit;
+        player.PhotoLicense = license;
+        player.PhotoFocusX = request.FocusX;
+        player.PhotoFocusY = request.FocusY;
+
+        if (changes.Count > 0)
+            await AuditPlayerAsync(action, player, changes);
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task RemovePlayerPhotoAsync(int playerId)
+    {
+        var player = await _db.Players.FirstOrDefaultAsync(p => p.Id == playerId)
+            ?? throw new NotFoundException("Player not found");
+
+        // Removing a photo the player doesn't have changes nothing.
+        if (player.PhotoFile is null)
+            return;
+
+        var removed = player.PhotoFile;
+        player.PhotoFile = null;
+        player.PhotoCredit = null;
+        player.PhotoLicense = null;
+        player.PhotoFocusX = 50;
+        player.PhotoFocusY = 50;
+
+        await AuditPlayerAsync("Photo removed", player, [Change("Photo", removed, "none")]);
+        await _db.SaveChangesAsync();
+    }
+
+    private async Task AuditPlayerAsync(string action, Player player, IEnumerable<string> changes)
+    {
+        var sportName = await _db.Sports.Where(s => s.Id == player.SportId).Select(s => s.Name).FirstAsync();
+        Audit(action, $"{sportName}: {player.Name}", changes);
     }
 
     public async Task<List<AdminSettingDto>> GetSettingsAsync()

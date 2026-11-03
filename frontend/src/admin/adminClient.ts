@@ -70,6 +70,17 @@ export interface AdminPlayerDetail {
   attributes: AdminAttributeValue[];
   isOverridden: boolean;
   difficultyOverride: DifficultyOverride | null;
+  photo: AdminPlayerPhoto | null;
+}
+
+// A player's photo: a Wikimedia Commons file, its credit and licence, and
+// the point (0-100% across and down) a cropped circle is centred on.
+export interface AdminPlayerPhoto {
+  file: string;
+  credit: string;
+  license: string;
+  focusX: number;
+  focusY: number;
 }
 
 export interface AdminSetting {
@@ -154,6 +165,14 @@ export async function updateAdminPlayer(
   difficultyOverride: DifficultyOverride | null
 ): Promise<void> {
   await adminClient.put(`/players/${playerId}`, { attributes, isOverridden, difficultyOverride });
+}
+
+export async function setAdminPlayerPhoto(playerId: number, photo: AdminPlayerPhoto): Promise<void> {
+  await adminClient.put(`/players/${playerId}/photo`, photo);
+}
+
+export async function removeAdminPlayerPhoto(playerId: number): Promise<void> {
+  await adminClient.delete(`/players/${playerId}/photo`);
 }
 
 export async function fetchAdminStats({ sport, from, to }: AdminStatsFilter): Promise<AdminStats> {
