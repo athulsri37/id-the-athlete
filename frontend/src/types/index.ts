@@ -46,6 +46,31 @@ export interface GuessResponse {
   // Daily mode only (yyyy-MM-dd): the puzzle this game is for. A game
   // still being played after midnight UTC keeps its original puzzle.
   puzzleDate: string | null;
+  // Null when the player has none; missing on guesses saved before photos
+  // were added, which show the player's initials like a player without one.
+  guessedPlayerPhoto?: PlayerPhoto | null;
+  // Game over only: the mystery player's photo.
+  answerPhoto?: PlayerPhoto | null;
+}
+
+// A player's photo: a file on Wikimedia Commons (see utils/commons), its
+// author and licence, and the point to keep in view when it's cropped to a
+// circle (percent across and down).
+export interface PlayerPhoto {
+  file: string;
+  credit: string;
+  license: string;
+  focusX: number;
+  focusY: number;
+}
+
+// One photo on the Photo credits page.
+export interface PhotoCredit {
+  sportSlug: string;
+  playerName: string;
+  file: string;
+  credit: string;
+  license: string;
 }
 
 export type Difficulty = "daily" | "easy" | "medium" | "hard";

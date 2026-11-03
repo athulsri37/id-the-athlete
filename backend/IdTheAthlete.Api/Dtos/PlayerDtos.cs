@@ -1,3 +1,5 @@
+using IdTheAthlete.Api.Models;
+
 namespace IdTheAthlete.Api.Dtos;
 
 public class PlayerSummaryDto
@@ -37,6 +39,39 @@ public class GuessResponseDto
     public string? TriviaToken { get; set; } // populated only when game is over: pass to the trivia endpoint
     public string? GameToken { get; set; } // daily mode only: send back with the next guess or hint request
     public DateOnly? PuzzleDate { get; set; } // daily mode only: the puzzle this game is for, which can be yesterday's after midnight UTC
+    public PlayerPhotoDto? GuessedPlayerPhoto { get; set; } // null when the guessed player has no photo
+    public PlayerPhotoDto? AnswerPhoto { get; set; } // game over only, and null when the answer has no photo
+}
+
+// A player's photo, a file on Wikimedia Commons that the page shows a
+// resized copy of (see Player.PhotoFile), centred on FocusX/FocusY (0-100%).
+public class PlayerPhotoDto
+{
+    public string File { get; set; } = string.Empty;
+    public string Credit { get; set; } = string.Empty;
+    public string License { get; set; } = string.Empty;
+    public int FocusX { get; set; } = 50;
+    public int FocusY { get; set; } = 50;
+
+    // Null when the player has no photo.
+    public static PlayerPhotoDto? From(Player player) => player.PhotoFile is null ? null : new PlayerPhotoDto
+    {
+        File = player.PhotoFile,
+        Credit = player.PhotoCredit ?? "",
+        License = player.PhotoLicense ?? "",
+        FocusX = player.PhotoFocusX,
+        FocusY = player.PhotoFocusY,
+    };
+}
+
+// One photo on the Photo credits page: whose it is, and its author and licence.
+public class PhotoCreditDto
+{
+    public string SportSlug { get; set; } = string.Empty;
+    public string PlayerName { get; set; } = string.Empty;
+    public string File { get; set; } = string.Empty;
+    public string Credit { get; set; } = string.Empty;
+    public string License { get; set; } = string.Empty;
 }
 
 public class StartGameResponseDto

@@ -7,6 +7,7 @@
 //   /tennis/men/past           Past Challenges
 //   /tennis/men/past/2026-10-12  one Past Challenge
 //   /how-to-play               the rules (#tennis, #cricket: a sport's section)
+//   /photo-credits             who took the player photos
 // The sport part is the tour's family and the tour part its urlName (or its
 // slug when it has none), both from GET /api/sports, so a new tour gets its
 // addresses with no change here.
@@ -25,6 +26,7 @@ function tourPart(sport: Sport): string {
 export const paths = {
   home: () => "/",
   howToPlay: (family?: string) => (family ? `/how-to-play#${family}` : "/how-to-play"),
+  photoCredits: () => "/photo-credits",
   family: (family: string) => `/${family}`,
   tour: (sport: Sport) => `/${sport.family}/${tourPart(sport)}`,
   game: (sport: Sport, mode: Difficulty) => `${paths.tour(sport)}/${mode}`,

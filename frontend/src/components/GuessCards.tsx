@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ClueResult, GuessResponse } from "../types";
 import { CLUE_STATE_CLASSES, clueState } from "../utils/clueState";
+import PlayerPhoto from "./PlayerPhoto";
 import ResultIcon from "./ResultIcon";
 
 interface Props {
@@ -9,8 +10,8 @@ interface Props {
 }
 
 // The guesses on phones and portrait tablets, where ClueGrid's table is too
-// wide: newest first, the latest as an open card with every clue labelled,
-// earlier ones folded to their name and a coloured square per clue. Tapping
+// wide, each with the player's photo: newest first, the latest as an open
+// card with every clue labelled, earlier ones folded to their name and a coloured square per clue. Tapping
 // a folded guess opens it until it's tapped again; the next guess folds them
 // all again. Built from the theme's .card, so each theme styles it like its
 // other cards; only the latest gets the strong border.
@@ -47,7 +48,8 @@ export default function GuessCards({ guesses, revealedCountry }: Props) {
       >
         <div className="flex items-center gap-2.5">
           <GuessNumber n={latestIndex + 1} />
-          <span className="text-base font-semibold text-[var(--text-primary)]">{latest.guessedPlayerName}</span>
+          <PlayerPhoto name={latest.guessedPlayerName} photo={latest.guessedPlayerPhoto} size={40} />
+          <span className="min-w-0 text-base font-semibold text-[var(--text-primary)]">{latest.guessedPlayerName}</span>
         </div>
         <ClueCells clues={latest.clues} revealedCountry={revealedCountry} />
       </section>
@@ -63,6 +65,7 @@ export default function GuessCards({ guesses, revealedCountry }: Props) {
               className="flex min-h-11 items-center gap-2.5 text-left text-[var(--text-primary)]"
             >
               <GuessNumber n={index + 1} />
+              <PlayerPhoto name={guess.guessedPlayerName} photo={guess.guessedPlayerPhoto} size={40} />
               <span className="min-w-0 flex-1 text-base font-semibold">{guess.guessedPlayerName}</span>
               <Chevron open />
             </button>
@@ -77,6 +80,7 @@ export default function GuessCards({ guesses, revealedCountry }: Props) {
             className="card flex min-h-14 w-full items-center gap-2.5 rounded-2xl px-3 py-2 text-left text-[var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)]"
           >
             <GuessNumber n={index + 1} />
+            <PlayerPhoto name={guess.guessedPlayerName} photo={guess.guessedPlayerPhoto} size={32} />
             <span className="min-w-0 flex-1 truncate text-[15px] font-semibold">{guess.guessedPlayerName}</span>
             <span aria-hidden="true" className="flex flex-none gap-[3px]">
               {guess.clues.map((c) => {

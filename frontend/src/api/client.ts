@@ -1,5 +1,5 @@
 import axios from "axios";
-import { PlayerSummary, GuessResponse, Difficulty, AttributeDefinition, GameRef, Sport } from "../types";
+import { PlayerSummary, GuessResponse, Difficulty, AttributeDefinition, GameRef, Sport, PhotoCredit } from "../types";
 
 // VITE_API_BASE_URL is the backend's origin in a deployed build (e.g.
 // https://<api>.onrender.com). Left unset in local dev, requests stay
@@ -69,5 +69,12 @@ export async function fetchDailyPuzzleDates(sportSlug: string): Promise<string[]
 // source of truth for what they are.
 export async function fetchAttributeDefinitions(sportSlug: string): Promise<AttributeDefinition[]> {
   const res = await client.get(`/sports/${sportSlug}/attributes`);
+  return res.data;
+}
+
+// Every player photo's author and licence, by tour then player, for the
+// Photo credits page.
+export async function fetchPhotoCredits(): Promise<PhotoCredit[]> {
+  const res = await client.get(`/photo-credits`);
   return res.data;
 }

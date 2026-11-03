@@ -10,9 +10,10 @@ interface Props {
   loadFailed: boolean;
   onSelectFamily: (family: string) => void;
   onHowToPlay: () => void;
+  onPhotoCredits: () => void;
 }
 
-export default function HomeScreen({ families, loadFailed, onSelectFamily, onHowToPlay }: Props) {
+export default function HomeScreen({ families, loadFailed, onSelectFamily, onHowToPlay, onPhotoCredits }: Props) {
   useEffect(() => {
     document.title = "ID the Athlete";
   }, []);
@@ -63,6 +64,10 @@ export default function HomeScreen({ families, loadFailed, onSelectFamily, onHow
         >
           {FEEDBACK_EMAIL}
         </a>
+        <br />
+        <button onClick={onPhotoCredits} className="mt-2 underline hover:text-[var(--accent)] transition-colors">
+          Photo credits
+        </button>
       </footer>
     </div>
   );

@@ -107,4 +107,25 @@ describe("GameBoard practice games", () => {
     expect(await screen.findByPlaceholderText("Type a player name")).not.toBeDisabled();
     expect(screen.queryByText(/has expired/)).not.toBeInTheDocument();
   });
+
+  it("shows the mystery player's photo, credited, once the game is won", async () => {
+    const photo = { file: "Federer 2015.jpg", credit: "Jane Doe", license: "CC BY-SA 4.0", focusX: 50, focusY: 20 };
+    vi.mocked(client.submitGuess).mockResolvedValue({
+      ...guessOf("Roger Federer", 1),
+      isCorrect: true,
+      gameOver: true,
+      answerName: "Roger Federer",
+      guessedPlayerPhoto: photo,
+      answerPhoto: photo,
+    });
+    renderGame();
+
+    await guess("Roger Federer");
+
+    expect(await screen.findByText(/Nailed it!/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Photo: Jane Doe, CC BY-SA 4.0" })).toHaveAttribute(
+      "href",
+      "https://commons.wikimedia.org/wiki/File:Federer_2015.jpg"
+    );
+  });
 });

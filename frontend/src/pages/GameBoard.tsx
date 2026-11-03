@@ -9,6 +9,7 @@ import ClueGrid from "../components/ClueGrid";
 import GuessCards from "../components/GuessCards";
 import ClueLegend from "../components/ClueLegend";
 import ShareResult from "../components/ShareResult";
+import AnswerPhoto from "../components/AnswerPhoto";
 import { recordDailyResult, getStreak, StreakData } from "../utils/dailyStreak";
 import { getCompletionForDate, recordDailyCompletion, recordDailyTrivia } from "../utils/dailyCompletion";
 import { getInProgress, saveInProgress, clearInProgress } from "../utils/dailyInProgress";
@@ -165,6 +166,8 @@ export default function GameBoard({ mode, sport, dailyDate, startFresh = false, 
 
   const gameOver = guesses.length > 0 && (guesses[guesses.length - 1].isCorrect || guesses.length >= maxGuesses);
   const won = guesses.length > 0 && guesses[guesses.length - 1].isCorrect;
+  // The game-over guess, which names the mystery player (read once gameOver).
+  const answer = guesses[guesses.length - 1];
   // Daily games only: the server's signed record of this game's guess
   // count, always taken from the latest guess and sent back with the next
   // guess or hint request.
@@ -403,8 +406,9 @@ export default function GameBoard({ mode, sport, dailyDate, startFresh = false, 
                   : "You've already completed today's Daily Challenge. Here's your result."}
               </p>
             )}
+            <AnswerPhoto name={answer.answerName ?? ""} photo={answer.answerPhoto} />
             <p className="text-[var(--text-primary)] text-lg font-semibold">
-              {won ? `${winEmoji ? `${winEmoji} ` : ""}Nailed it!` : `The player was ${guesses[guesses.length - 1].answerName}`}
+              {won ? `${winEmoji ? `${winEmoji} ` : ""}Nailed it!` : `The player was ${answer.answerName}`}
             </p>
             {triviaBlurb && (
               <div className="mt-3 max-w-sm mx-auto flex items-start gap-3 text-left rounded-md border-l-4 border-[var(--accent)] bg-[var(--bg-card)] px-4 py-3">

@@ -166,20 +166,21 @@ id-the-athlete/
 │   │   ├── AiTriviaService.cs              # AI trivia blurb generation
 │   │   ├── GameTriviaService.cs            # Unlocks a finished game's trivia from its trivia token
 │   │   ├── GameStatsService.cs             # Anonymous per-game stats (GameRecords), never fails a guess
+│   │   ├── PhotoCreditsService.cs          # Every player photo's author and licence, for the Photo credits page
 │   │   └── AdminService.cs                 # Backs the internal admin tool
-│   ├── Controllers/      # PlayersController, GameController, SettingsController, AdminController
+│   ├── Controllers/      # PlayersController, GameController, PhotoCreditsController, SettingsController, AdminController
 │   └── Dtos/             # Request/response contracts
 ├── scripts/               # db-backup.sh / db-restore.sh (the database is the source of truth), add-players-prod.sh, refresh-stats-prod.sh, review-photos-prod.sh, check-attribution.sh
 ├── tools/                 # Python tools: the roster research agent (adds players), the stat refresh agent (updates their stats), the photo review (suggests photos)
 └── frontend/src/
     ├── api/              # Axios client
-    ├── components/       # PlayerSearch, ClueGrid (wide screens), GuessCards (phones), ClueLegend, ShareResult, StartupLoader, ErrorBoundary; scenery/ (each theme's background artwork)
+    ├── components/       # PlayerSearch, ClueGrid (wide screens), GuessCards (phones), PlayerPhoto and AnswerPhoto (player photos, or initials), ClueLegend, ShareResult, StartupLoader, ErrorBoundary; scenery/ (each theme's background artwork)
     ├── config/            # sportFamilies (per-family wording, legend examples, How to Play clue rules)
     ├── hooks/             # useGameTrivia (fetches a finished game's trivia blurb)
-    ├── pages/             # HomeScreen, TourSelect, SportHome, GameBoard, PastChallenges, HowToPlay, NotFound (home → tour → sport → game flow)
+    ├── pages/             # HomeScreen, TourSelect, SportHome, GameBoard, PastChallenges, HowToPlay, PhotoCredits, NotFound (home → tour → sport → game flow)
     ├── routes/            # paths (each screen's address)
     ├── admin/             # The Control Room: login gate, tab shell, players (with the photo editor), settings, stats and recent changes tabs
-    ├── utils/              # commons (Wikimedia Commons photo addresses and credits), clueState, dailyStreak, dailyCompletion, dailyInProgress, practiceInProgress, localDate (UTC-aligned "today" helpers)
+    ├── utils/              # commons (Wikimedia Commons photo addresses and credits), initials, clueState, dailyStreak, dailyCompletion, dailyInProgress, practiceInProgress, localDate (UTC-aligned "today" helpers)
     ├── styles/             # index.css (Tailwind entry), themes.css (retro/stadium theme variables)
     └── types/
 ```
@@ -486,7 +487,11 @@ nowhere else, so back it up.
   through the Control Room's API, logged as "Photo review". It's free: no AI,
   no subscription. Photos are stored as Commons file names, never copied.
   Players it can't match, and photos that need re-centring, are done by hand
-  in the [Admin Tool](#admin-tool). On Windows, if Python can't check
+  in the [Admin Tool](#admin-tool). The game shows each guessed player's
+  photo beside their name, and the mystery player's once the game is over,
+  credited underneath; players without one show their initials. Every
+  photo's author and licence is listed on the Photo credits page
+  (`/photo-credits`, linked from the home screen's footer). On Windows, if Python can't check
   Wikimedia's certificate, the production script points it at Git's CA
   bundle; for a dev run, set `SSL_CERT_FILE` yourself.
 - **Correcting a player** or setting a difficulty override: use the
@@ -607,9 +612,10 @@ Every gameplay route is sport-agnostic, parameterized by `{sportSlug}`
 - `GET /api/sports/{sportSlug}/attributes` — this sport's ordered clue columns
 - `GET /api/sports/{sportSlug}/daily-puzzles` — every date with an existing Daily Challenge, for Past Challenges
 - `POST /api/sports/{sportSlug}/game/start?difficulty=easy|medium|hard` — start a practice game, returns a `sessionId` (expires after 90 minutes without a guess or hint, or on restart)
-- `POST /api/sports/{sportSlug}/game/guess` — submit a guess, returns per-attribute clue feedback (daily games pass back the `gameToken` from the previous guess, and each daily response names its `puzzleDate`); the game-over guess also returns a `triviaToken`
+- `POST /api/sports/{sportSlug}/game/guess` — submit a guess, returns per-attribute clue feedback (daily games pass back the `gameToken` from the previous guess, and each daily response names its `puzzleDate`); each guess names the guessed player's photo (`guessedPlayerPhoto`, null without one) and the game-over guess the mystery player's (`answerPhoto`); the game-over guess also returns a `triviaToken`
 - `GET /api/sports/{sportSlug}/game/trivia?triviaToken=...` — the finished game's AI trivia blurb, or null when unavailable; fetched after the result is shown so the final guess never waits on the AI call
 - `GET /api/sports/{sportSlug}/game/hint/country?mode=...&sessionId=...&gameToken=...` — free hint after 5 guesses (enforced by the server), reveals only the mystery player's country
+- `GET /api/photo-credits` — every player photo's author and licence, by tour then player (the Photo credits page)
 - `GET /api/settings/theme` — the currently active visual theme
 - `GET /api/health` — `{"status":"ok"}` whenever the API is running; Render's Health Check Path, so it deliberately doesn't touch the database
 - `GET /api/health/ready` — `{"status":"ok"}` only when the API can also reach its database, otherwise a 503 (and a logged warning); for an uptime monitor, which also keeps the free API from sleeping
