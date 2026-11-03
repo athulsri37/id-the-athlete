@@ -14,9 +14,9 @@ const SPORTS: Sport[] = [
 describe("HomeScreen", () => {
   it("shows one button per family from the API data, in order", () => {
     const onSelectFamily = vi.fn();
-    render(<HomeScreen families={groupByFamily(SPORTS)} loadFailed={false} onSelectFamily={onSelectFamily} onHowToPlay={() => {}} />);
+    render(<HomeScreen families={groupByFamily(SPORTS)} loadFailed={false} onSelectFamily={onSelectFamily} onHowToPlay={() => {}} onPhotoCredits={() => {}} />);
 
-    const sportButtons = screen.getAllByRole("button").map((b) => b.textContent).filter((t) => t !== "How to play");
+    const sportButtons = screen.getAllByRole("button").map((b) => b.textContent).filter((t) => t !== "How to play" && t !== "Photo credits");
     expect(sportButtons).toEqual(["Tennis", "Cricket"]);
 
     fireEvent.click(screen.getByRole("button", { name: "Cricket" }));
@@ -24,22 +24,22 @@ describe("HomeScreen", () => {
   });
 
   it("says so when the sports couldn't be loaded", () => {
-    render(<HomeScreen families={null} loadFailed={true} onSelectFamily={() => {}} onHowToPlay={() => {}} />);
+    render(<HomeScreen families={null} loadFailed={true} onSelectFamily={() => {}} onHowToPlay={() => {}} onPhotoCredits={() => {}} />);
 
     expect(screen.getByText(/Couldn't load the sports/)).toBeInTheDocument();
-    expect(screen.queryAllByRole("button").map((b) => b.textContent)).toEqual(["How to play"]);
+    expect(screen.queryAllByRole("button").map((b) => b.textContent)).toEqual(["How to play", "Photo credits"]);
   });
 
   it("links to the rules", () => {
     const onHowToPlay = vi.fn();
-    render(<HomeScreen families={groupByFamily(SPORTS)} loadFailed={false} onSelectFamily={() => {}} onHowToPlay={onHowToPlay} />);
+    render(<HomeScreen families={groupByFamily(SPORTS)} loadFailed={false} onSelectFamily={() => {}} onHowToPlay={onHowToPlay} onPhotoCredits={() => {}} />);
 
     fireEvent.click(screen.getByRole("button", { name: "How to play" }));
     expect(onHowToPlay).toHaveBeenCalled();
   });
 
   it("offers one way to get in touch: the feedback email, written out", () => {
-    render(<HomeScreen families={groupByFamily(SPORTS)} loadFailed={false} onSelectFamily={() => {}} onHowToPlay={() => {}} />);
+    render(<HomeScreen families={groupByFamily(SPORTS)} loadFailed={false} onSelectFamily={() => {}} onHowToPlay={() => {}} onPhotoCredits={() => {}} />);
 
     const email = screen.getByRole("link", { name: "idtheathlete@gmail.com" });
     expect(email).toHaveAttribute("href", expect.stringMatching(/^mailto:idtheathlete@gmail\.com\?/));

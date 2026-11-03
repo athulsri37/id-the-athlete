@@ -52,6 +52,13 @@ describe("routes", () => {
     expect(screen.getByRole("heading", { name: "Tennis clues" })).toBeInTheDocument();
   });
 
+  it("/photo-credits shows the photo credits, linked from the home screen", async () => {
+    vi.mocked(client.fetchPhotoCredits).mockResolvedValue([]);
+    renderAt("/");
+    fireEvent.click(await screen.findByRole("button", { name: "Photo credits" }));
+    expect(await screen.findByRole("heading", { name: "Photo credits" })).toBeInTheDocument();
+  });
+
   it.each([
     "/football",                       // unknown sport
     "/tennis/mixed",                   // unknown tour

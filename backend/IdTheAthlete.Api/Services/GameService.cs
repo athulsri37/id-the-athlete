@@ -230,7 +230,9 @@ public class GameService : IGameService
             // GameTriviaService), so the final guess never waits on the AI call.
             TriviaToken = gameOver ? _gameTokens.IssueTrivia(new TriviaGrant(sport.Id, mysteryPlayer.Id)) : null,
             GameToken = isDaily ? _gameTokens.Issue(new DailyGameState(sport.Id, dailyPuzzleDate, guessNumber, gameId)) : null,
-            PuzzleDate = isDaily ? dailyPuzzleDate : null
+            PuzzleDate = isDaily ? dailyPuzzleDate : null,
+            GuessedPlayerPhoto = PlayerPhotoDto.From(guessedPlayer),
+            AnswerPhoto = gameOver ? PlayerPhotoDto.From(mysteryPlayer) : null
         };
     }
 

@@ -7,6 +7,7 @@ import PastChallenges from "./pages/PastChallenges";
 import GameBoard from "./pages/GameBoard";
 import NotFound from "./pages/NotFound";
 import HowToPlay from "./pages/HowToPlay";
+import PhotoCredits from "./pages/PhotoCredits";
 import ErrorBoundary from "./components/ErrorBoundary";
 import StartupLoader from "./components/StartupLoader";
 import { Sport } from "./types";
@@ -54,6 +55,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<HomePage {...data} />} />
           <Route path="/how-to-play" element={<HowToPlayPage {...data} />} />
+          <Route path="/photo-credits" element={<PhotoCreditsPage {...data} />} />
           <Route path="/:family" element={<FamilyPage {...data} />} />
           <Route path="/:family/:tour" element={<TourPage {...data} />} />
           <Route path="/:family/:tour/past" element={<PastPage {...data} />} />
@@ -74,6 +76,7 @@ function HomePage({ sports, loadFailed }: SportsData) {
       loadFailed={loadFailed}
       onSelectFamily={(family) => navigate(paths.family(family))}
       onHowToPlay={() => navigate(paths.howToPlay())}
+      onPhotoCredits={() => navigate(paths.photoCredits())}
     />
   );
 }
@@ -91,6 +94,18 @@ function HowToPlayPage(data: SportsData) {
           <NotFound />
         )
       }
+    </WaitForSports>
+  );
+}
+
+function PhotoCreditsPage(data: SportsData) {
+  const navigate = useNavigate();
+  const { key } = useLocation();
+  return (
+    <WaitForSports {...data}>
+      {(sports) => (
+        <PhotoCredits sports={sports} onBack={() => (key === "default" ? navigate(paths.home()) : navigate(-1))} />
+      )}
     </WaitForSports>
   );
 }

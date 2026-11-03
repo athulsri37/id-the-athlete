@@ -33,7 +33,7 @@ describe("ClueGrid", () => {
   it("pins the guess number and player while the clues scroll sideways", () => {
     render(<ClueGrid guesses={[guess]} attributes={attrs(2)} />);
 
-    const player = screen.getByText("Juan Carlos Ferrero").parentElement!;
+    const player = screen.getByText("Juan Carlos Ferrero").parentElement!.parentElement!;
     expect(player.className).toMatch(/\bsticky\b/);
     expect(screen.getByText("1").parentElement!.className).toMatch(/\bsticky\b/);
     expect(screen.getByText("Player").className).toMatch(/\bsticky\b/);
@@ -46,5 +46,15 @@ describe("ClueGrid", () => {
     expect(cell).toHaveTextContent("Switzerland✕");
     expect(cell.className).toMatch(/flex-wrap/);
     expect(cell.className).toMatch(/clue-miss/);
+  });
+
+  it("shows each guessed player's photo beside their name, or their initials", () => {
+    const photo = { file: "Ferrero.jpg", credit: "A", license: "CC0", focusX: 50, focusY: 50 };
+    const { container } = render(
+      <ClueGrid guesses={[{ ...guess, guessedPlayerPhoto: photo }, guess]} attributes={attrs(2)} />
+    );
+
+    expect(container.querySelector("img")!.getAttribute("src")).toContain("Special:FilePath/Ferrero.jpg");
+    expect(screen.getByTestId("player-initials").textContent).toBe("JF");
   });
 });

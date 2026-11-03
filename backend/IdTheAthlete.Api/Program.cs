@@ -42,6 +42,7 @@ builder.Services.AddScoped<AdminActor>();
 builder.Services.AddSingleton<IAdminLoginThrottle, AdminLoginThrottle>();
 builder.Services.AddScoped<IAdminStatsService, AdminStatsService>();
 builder.Services.AddScoped<ISportCatalogService, SportCatalogService>();
+builder.Services.AddScoped<IPhotoCreditsService, PhotoCreditsService>();
 builder.Services.AddOptions<AnthropicOptions>()
     .Bind(builder.Configuration.GetSection(AnthropicOptions.SectionName));
 builder.Services.AddHttpClient<IAiTriviaService, AiTriviaService>((services, client) =>

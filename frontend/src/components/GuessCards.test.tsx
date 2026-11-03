@@ -135,4 +135,16 @@ describe("GuessCards", () => {
 
     expect(screen.getByText("Australia").parentElement!.className).toMatch(/bg-\[var\(--accent\)\]/);
   });
+
+  it("shows each player's photo, open or folded", () => {
+    const photo = (file: string) => ({ file, credit: "A", license: "CC0", focusX: 50, focusY: 50 });
+    const { container } = render(
+      <GuessCards guesses={[{ ...root, guessedPlayerPhoto: photo("Root.jpg") }, { ...kane, guessedPlayerPhoto: photo("Kane.jpg") }, warner]} />
+    );
+
+    const sources = [...container.querySelectorAll("img")].map((img) => img.getAttribute("src"));
+    expect(sources).toEqual([expect.stringContaining("Kane.jpg"), expect.stringContaining("Root.jpg")]);
+    // The latest guess, David Warner, has none.
+    expect(screen.getByTestId("player-initials").textContent).toBe("DW");
+  });
 });
