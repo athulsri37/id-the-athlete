@@ -453,6 +453,11 @@ nowhere else, so back it up.
   `COUNTRY_ALIASES` in `tools/roster_validation.py`. See
   the instructions at the top of `tools/roster_research_agent.py`, e.g.
   `python roster_research_agent.py tennis-women 10 --tiers medium,hard`.
+  To ask for particular players, name them with `--names`: they're
+  researched first and count towards the total, and the agent picks the
+  rest, e.g. `scripts/add-players-prod.sh cricket-men-international 10
+  --names "Tillakaratne Dilshan, Lance Klusener"` gives those 2 and 8 more.
+  Misspelled names are fine; one already in the game is skipped.
 - **Adding players to production:** `scripts/add-players-prod.sh`, with the
   agent's arguments (e.g. `scripts/add-players-prod.sh tennis-men 20`). It
   asks for production's database URL and admin key (hidden, never saved),

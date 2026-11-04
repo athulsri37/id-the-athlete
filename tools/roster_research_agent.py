@@ -58,7 +58,7 @@ ENVIRONMENT VARIABLES
 
 USAGE
 -----
-    python roster_research_agent.py <sport> [count] [--tiers TIERS]
+    python roster_research_agent.py <sport> [count] [--tiers TIERS] [--names NAMES]
 
     sport    one of: cricket-men-international, cricket-women-international,
              tennis-men, tennis-women
@@ -68,11 +68,20 @@ USAGE
              medium, see DEFAULT_TIERS). This leans the research rather than
              enforcing it: players whose actual tier turns out different are
              marked "check" but can still be written.
+    --names  players you want, separated by commas (optional). They're
+             researched first, active or retired and whatever their tier,
+             and count towards count; the agent picks the rest. Misspellings
+             are fine: the agent works out who you mean and uses the source's
+             spelling. A named player already in the roster is skipped, and
+             the agent picks someone in their place, as it does for a name
+             it can't identify. The names researched and found are shown.
 
     Examples:
     python roster_research_agent.py tennis-men 10                     (aims for medium)
     python roster_research_agent.py tennis-men 10 --tiers medium,hard
     python roster_research_agent.py tennis-men 10 --tiers any
+    python roster_research_agent.py cricket-men-international 10 --names "Tillakaratne Dilshan, Lance Klusener"
+                                               (those 2 first, then 8 picked by the agent)
 
     Run with --help to see the valid options. The wording used to describe
     each tier to the model is TIER_DESCRIPTIONS in the CONFIG section.
@@ -114,7 +123,6 @@ import json
 import csv
 import asyncio
 import re
-import unicodedata
 from contextlib import closing
 import urllib.error
 import urllib.request
@@ -130,6 +138,8 @@ from roster_validation import (
     AttributeSpec,
     ValidationResult,
     describe_tiers,
+    normalize_name,
+    parse_names,
     parse_tiers,
     prompt_countries,
     schema_mismatch,
@@ -402,7 +412,29 @@ def build_tier_guidance(wanted: frozenset[str] | None) -> str | None:
     return "Aim for players who fit these difficulty tiers:\n- " + "\n- ".join(lines)
 
 
-def build_prompt(profile, batch_size, tier_guidance, existing_names, countries, note=None):
+def build_task(sport, source_name, batch_size, named):
+    """The prompt's TASK paragraph: players the agent picks itself, or the
+    ones the reviewer named (--names), researched whatever their tier or
+    activity, and never swapped for someone else."""
+    if not named:
+        return f"""TASK: Propose exactly {batch_size} real, currently or recently active {sport} players
+who are NOT already in the existing roster below. For each player, research their
+actual career statistics using web search - do not estimate or guess."""
+    named_list = "\n".join(f"- {name}" for name in named)
+    return f"""TASK: The reviewer asked for these {len(named)} {sport} players by name. Research
+exactly these players, active or retired, and their actual career statistics using
+web search - do not estimate or guess:
+{named_list}
+The names may be misspelled or shortened: identify the {sport} player meant and use
+their full name as {source_name} spells it. Leave a name out, and say why in your
+reasoning before the JSON, if it matches no {sport} player, if it could be more than
+one player, or if that player is already in the existing roster below. Never put
+anyone else in their place."""
+
+
+def build_prompt(profile, batch_size, tier_guidance, existing_names, countries, note=None, named=None):
+    """named: the reviewer's own players to research (--names), batch_size
+    of them; None for players the agent picks itself."""
     existing_list = "\n".join(f"- {name}" for name in existing_names)
     country_line = (
         "\n- country: write it exactly as the roster already spells it when it is one of these: "
@@ -410,7 +442,8 @@ def build_prompt(profile, batch_size, tier_guidance, existing_names, countries, 
         if countries
         else "\n- country: its common English name, not a code."
     )
-    tier_section = f"\nTIER GUIDANCE:\n{tier_guidance}\n" if tier_guidance else ""
+    # The reviewer picked named players themselves, so no tier steering.
+    tier_section = f"\nTIER GUIDANCE:\n{tier_guidance}\n" if tier_guidance and not named else ""
     sport = profile["display_name"]
     source_name = profile["source_name"]
     source_domain = profile["source_domain"]
@@ -421,12 +454,21 @@ def build_prompt(profile, batch_size, tier_guidance, existing_names, countries, 
         if note
         else ""
     )
+    appearances_line = profile["min_appearances_note"] + (
+        " The reviewer chose these players, so research them even if they fall short of that,"
+        " and say so in your reasoning."
+        if named
+        else ""
+    )
+    count_check = (
+        f"Double check you returned each of the {batch_size} named players you could identify, and no one else."
+        if named
+        else f"Double check your final count is exactly {batch_size} names before finishing."
+    )
 
     return f"""You are researching real athletes for a stats-guessing game covering {sport}.
 
-TASK: Propose exactly {batch_size} real, currently or recently active {sport} players
-who are NOT already in the existing roster below. For each player, research their
-actual career statistics using web search - do not estimate or guess.
+{build_task(sport, source_name, batch_size, named)}
 {tier_section}{note_line}
 SOURCE REQUIREMENT: This SDK version does not support a hard technical
 restriction to a single domain, so this is an explicit instruction instead -
@@ -454,7 +496,7 @@ IMPORTANT ACCURACY NOTES:
 - Cite your source for each player's stats where possible.
 - If you are not confident in a specific number, say so explicitly rather
   than inventing a plausible-sounding figure.
-- {profile["min_appearances_note"]}
+- {appearances_line}
 - The active_status field must be EXACTLY "Active" or "Retired" - no extra
   detail, dates, or parenthetical notes added to that value.
 - Include a source_url field for every player: the specific {source_domain}
@@ -462,7 +504,7 @@ IMPORTANT ACCURACY NOTES:
   different source because no {source_domain} profile exists, put that
   source's URL here instead and flag this exception clearly in your
   reasoning text before the JSON.
-- Double check your final count is exactly {batch_size} names before finishing.
+- {count_check}
 
 Return your answer as a JSON array, one object per player, with exactly these
 fields: {", ".join(fields)}
@@ -572,14 +614,6 @@ def parse_players(raw_text, required_key="name"):
         raise ValueError("No JSON array of players found in response")
 
     return found
-
-
-def normalize_name(name):
-    s = unicodedata.normalize("NFKD", name)
-    s = "".join(c for c in s if not unicodedata.combining(c))
-    s = s.casefold()
-    s = re.sub(r"[^a-z0-9]+", " ", s)
-    return " ".join(s.split())
 
 
 def filter_duplicates(chunk_players, seen_keys):
@@ -710,6 +744,14 @@ def build_arg_parser():
         help=f"number of players to research (1-{MAX_BATCH_SIZE}, default {DEFAULT_BATCH_SIZE})",
     )
     parser.add_argument(
+        "--names",
+        type=names_arg,
+        default=[],
+        help='players you want, separated by commas, e.g. "Tillakaratne Dilshan, Lance Klusener". '
+        "They're researched first and count towards the total; the agent picks the rest. "
+        "Spelling mistakes are fine: the agent works out who you mean.",
+    )
+    parser.add_argument(
         "--tiers",
         type=tiers_arg,
         default=DEFAULT_TIERS,
@@ -720,6 +762,28 @@ def build_arg_parser():
     return parser
 
 
+def parse_args(argv: list[str] | None = None, prog: str | None = None) -> argparse.Namespace:
+    """The command line, with the check argparse can't do alone: no more
+    named players than the total asked for."""
+    parser = build_arg_parser()
+    if prog:
+        parser.prog = prog
+    args = parser.parse_args(argv)
+    if len(args.names) > args.count:
+        parser.error(
+            f"--names gives {len(args.names)} players but the count is {args.count}: "
+            f"ask for at least {len(args.names)}"
+        )
+    return args
+
+
+def names_arg(value: str) -> list[str]:
+    try:
+        return parse_names(value)
+    except ValueError as e:
+        raise argparse.ArgumentTypeError(str(e))
+
+
 def tiers_arg(value: str) -> frozenset[str]:
     try:
         return parse_tiers(value)
@@ -727,10 +791,10 @@ def tiers_arg(value: str) -> frozenset[str]:
         raise argparse.ArgumentTypeError(str(e))
 
 
-async def research_players(profile, count, tier_guidance, exclusion_names, seen_keys, countries, note=None):
-    """Runs the chunked research loop for `count` players. The initial search
-    and every replacement search both go through here so they behave the
-    same. Mutates seen_keys via filter_duplicates. Returns
+async def research_players(profile, count, tier_guidance, exclusion_names, seen_keys, countries, note=None, named=None):
+    """Runs the chunked research loop for `count` players: the reviewer's
+    named players (named, count of them) or ones the agent picks. Every
+    search goes through here so they all behave the same. Mutates seen_keys via filter_duplicates. Returns
     (players, duplicates_dropped, agent_shortfall, status, reviewer_notes)
     where status is "ok", "usage_exhausted" or "chunk_failed", and
     reviewer_notes has one (chunk_num, [comment lines]) entry per chunk that
@@ -746,10 +810,12 @@ async def research_players(profile, count, tier_guidance, exclusion_names, seen_
 
     while remaining > 0:
         this_chunk_size = min(CHUNK_SIZE, remaining)
+        done = count - remaining
+        chunk_named = named[done:done + this_chunk_size] if named else None
         print(f"\n--- Chunk {chunk_num}: requesting {this_chunk_size} players ---")
 
         exclusion_list = exclusion_names + [p.get("name", "") for p in all_players]
-        prompt = build_prompt(profile, this_chunk_size, tier_guidance, exclusion_list, countries, note)
+        prompt = build_prompt(profile, this_chunk_size, tier_guidance, exclusion_list, countries, note, chunk_named)
 
         try:
             raw_response = await call_agent(prompt)
@@ -813,8 +879,9 @@ def report_reviewer_notes(reviewer_notes):
         print(f"  Chunk {chunk}: {text}" if label_chunks else f"  {text}")
 
 
-def report_search(requested, found, duplicates_dropped, agent_shortfall, status):
-    """Prints one search's result, reusing the earlier shortfall wording."""
+def report_search(requested, found, duplicates_dropped, agent_shortfall, status, next_step="Choose s to search for more."):
+    """Prints one search's result, reusing the earlier shortfall wording.
+    next_step says what happens about a shortfall."""
     print(f"\nSearch found {len(found)} of {requested} requested.")
     if len(found) >= requested:
         return
@@ -828,7 +895,7 @@ def report_search(requested, found, duplicates_dropped, agent_shortfall, status)
         reasons.append(f"the agent returned {agent_shortfall} fewer than requested")
     joined = " and ".join(reasons)
     explanation = f" {joined[0].upper()}{joined[1:]}." if reasons else ""
-    print(f"(Requested {requested}, got {len(found)}.{explanation} Choose s to search for more.)")
+    print(f"(Requested {requested}, got {len(found)}.{explanation} {next_step})")
 
 
 def parse_removal(raw, count):
@@ -877,20 +944,39 @@ async def main(args):
     proposed_names = []
     players = []
 
-    async def search(count, note=None):
+    async def search(count, note=None, named=None):
         found, dropped, shortfall, status, reviewer_notes = await research_players(
-            profile, count, tier_guidance, existing_names + proposed_names, seen_keys, countries, note
+            profile, count, tier_guidance, existing_names + proposed_names, seen_keys, countries, note, named
         )
         proposed_names.extend(p.get("name", "") for p in found)
         players.extend(found)
-        report_search(count, found, dropped, shortfall, status)
+        if named:
+            report_search(count, found, dropped, shortfall, status, "The agent picks players to fill the gap.")
+        else:
+            report_search(count, found, dropped, shortfall, status)
         if note:
             report_reviewer_notes(reviewer_notes)
+        return found
 
     def ask_note():
         return input("Optional note for this search, or press Enter to skip: ").strip() or None
 
-    await search(target)
+    # Players named with --names come first. One already in the roster isn't
+    # researched, and its place goes to the agent's own picks, as does one
+    # the agent couldn't identify.
+    named = [name for name in args.names if normalize_name(name) not in seen_keys]
+    for name in args.names:
+        if name not in named:
+            print(f"Already in the roster, not researched again: {name}")
+    if named:
+        print(f"\nResearching the {len(named)} player(s) you named first: {', '.join(named)}")
+        found = await search(len(named), named=named)
+        print(f"You named: {', '.join(named)}")
+        print(f"Found:     {', '.join(p.get('name', '') for p in found) or 'none'}")
+    if len(players) < target:
+        if args.names:
+            print(f"\nNow searching for {target - len(players)} more, picked by the agent.")
+        await search(target - len(players))
 
     while True:
         results = [validate_player(p, specs) for p in players]
@@ -968,5 +1054,4 @@ async def main(args):
 
 
 if __name__ == "__main__":
-    args = build_arg_parser().parse_args()
-    asyncio.run(main(args))
+    asyncio.run(main(parse_args()))

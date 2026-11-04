@@ -7,6 +7,8 @@ from roster_validation import (
     NUMERIC,
     AttributeSpec,
     describe_tiers,
+    normalize_name,
+    parse_names,
     parse_tiers,
     prompt_countries,
     schema_mismatch,
@@ -158,6 +160,27 @@ class TierTests(unittest.TestCase):
         self.assertIsNone(tier_warning("easy", None))  # no preference
         self.assertIsNone(tier_warning("?", wanted))  # tier unknown (API not available)
         self.assertIsNone(tier_warning("-", wanted))  # player has errors
+
+
+class NamesTests(unittest.TestCase):
+    def test_parse_names_keeps_the_order_given_and_tidies_spacing(self):
+        self.assertEqual(
+            parse_names(" Tillakaratne Dilshan,Lance  Klusener , "),
+            ["Tillakaratne Dilshan", "Lance Klusener"],
+        )
+
+    def test_parse_names_keeps_a_repeated_name_once(self):
+        self.assertEqual(parse_names("Lance Klusener, lance klusener, Lánce Klusener"), ["Lance Klusener"])
+
+    def test_parse_names_rejects_no_names(self):
+        for bad in ("", " , ,", "  "):
+            with self.subTest(bad=bad):
+                with self.assertRaises(ValueError):
+                    parse_names(bad)
+
+    def test_normalize_name_ignores_accents_case_and_punctuation(self):
+        self.assertEqual(normalize_name("Iga Świątek"), normalize_name("iga swiatek"))
+        self.assertEqual(normalize_name("M.S.  Dhoni"), "m s dhoni")
 
 
 class SchemaMismatchTests(unittest.TestCase):

@@ -99,7 +99,7 @@ Everything else (naming, structure, refactors within scope, test design, choices
 
 ## Adding player data
 
-Players are added with the roster research agent (`tools/roster_research_agent.py`, run by the user since it uses their Claude subscription): it researches candidates, checks every value against the sport's columns and existing values, shows each player's difficulty tier (`--tiers`, default leaning Medium), and writes only the players the user accepts, after confirming the target database (typing its name, for any database not on this PC). Production is the source of truth since launch: new players go there through `scripts/add-players-prod.sh`, which backs it up first, and dev is refreshed from it. Don't write player rows by hand.
+Players are added with the roster research agent (`tools/roster_research_agent.py`, run by the user since it uses their Claude subscription): it researches candidates, checks every value against the sport's columns and existing values, shows each player's difficulty tier (`--tiers`, default leaning Medium), researches any players the user names first (`--names`, the agent picking the rest), and writes only the players the user accepts, after confirming the target database (typing its name, for any database not on this PC). Production is the source of truth since launch: new players go there through `scripts/add-players-prod.sh`, which backs it up first, and dev is refreshed from it. Don't write player rows by hand.
 
 Active players' changing stats (titles, rankings, matches, runs, wickets, retirement) are refreshed with `scripts/refresh-stats-prod.sh`, also run by the user: research proposes, apply writes only what passes the checks in `tools/stat_refresh.py` and the user accepts, through the admin API.
 

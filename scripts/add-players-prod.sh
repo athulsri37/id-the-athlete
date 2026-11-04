@@ -47,7 +47,7 @@ if [[ -z "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]]; then
 fi
 # The agent's own argument check, run before anything is asked or backed up,
 # so a mistyped tour name fails now rather than after the backup.
-(cd tools && "$python" -c 'import sys, roster_research_agent as a; p = a.build_arg_parser(); p.prog = "scripts/add-players-prod.sh"; p.parse_args(sys.argv[1:])' "$@")
+(cd tools && "$python" -c 'import sys, roster_research_agent as a; a.parse_args(sys.argv[1:], prog="scripts/add-players-prod.sh")' "$@")
 
 # docker compose exec reads standard input, so every docker call here (and the
 # backups) gets </dev/null: otherwise it can swallow your answers to the prompts.

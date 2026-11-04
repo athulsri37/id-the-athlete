@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import difflib
 import re
+import unicodedata
 from dataclasses import dataclass, field
 
 NUMERIC = "numeric"
@@ -76,6 +77,33 @@ def parse_tiers(text: str) -> frozenset[str] | None:
             f"tiers must be '{ANY_TIER}' or a comma-separated list of {', '.join(TIERS)}; got '{text}'"
         )
     return frozenset(tiers)
+
+
+def normalize_name(name: str) -> str:
+    """A name reduced for comparison: accents, case and punctuation ignored,
+    so "Lance Klusener" and "lance  klusener" are the same player."""
+    s = unicodedata.normalize("NFKD", name)
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    s = s.casefold()
+    s = re.sub(r"[^a-z0-9]+", " ", s)
+    return " ".join(s.split())
+
+
+def parse_names(text: str) -> list[str]:
+    """Reads a --names value: player names separated by commas, in the
+    order given, each name's spacing tidied. A name given twice (ignoring
+    case and accents) is kept once. Raises ValueError when there's no name."""
+    names: list[str] = []
+    seen: set[str] = set()
+    for part in text.split(","):
+        name = " ".join(part.split())
+        key = normalize_name(name)
+        if key and key not in seen:
+            seen.add(key)
+            names.append(name)
+    if not names:
+        raise ValueError(f"names must be player names separated by commas; got '{text}'")
+    return names
 
 
 def describe_tiers(tiers: frozenset[str]) -> str:
