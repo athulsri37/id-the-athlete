@@ -34,13 +34,14 @@ public class AdminPlayerPhotoTests
             new AdminActor { Name = "Athul" });
     }
 
-    private static AdminPlayerPhotoUpdateDto Photo(string file = "Some Player 2015.jpg", int focusX = 50, int focusY = 50) => new()
+    private static AdminPlayerPhotoUpdateDto Photo(string file = "Some Player 2015.jpg", int focusX = 50, int focusY = 50, int zoom = 100) => new()
     {
         File = file,
         Credit = "Jane Doe",
         License = "CC BY-SA 4.0",
         FocusX = focusX,
         FocusY = focusY,
+        Zoom = zoom,
     };
 
     [Fact]
@@ -84,6 +85,27 @@ public class AdminPlayerPhotoTests
 
         var latest = (await _admin.GetRecentChangesAsync(10))[0];
         Assert.Equal("Photo centre: 50% 50% → 40% 20%", latest.Changes);
+    }
+
+    [Fact]
+    public async Task ZoomingIn_SavesItAndLogsOnlyThat()
+    {
+        await _admin.SetPlayerPhotoAsync(PlayerId, Photo());
+        Assert.Equal(100, (await _admin.GetPlayerAsync(PlayerId)).Photo!.Zoom);
+
+        await _admin.SetPlayerPhotoAsync(PlayerId, Photo(zoom: 180));
+
+        Assert.Equal(180, (await _admin.GetPlayerAsync(PlayerId)).Photo!.Zoom);
+        Assert.Equal("Photo zoom: 100% → 180%", (await _admin.GetRecentChangesAsync(10))[0].Changes);
+    }
+
+    [Theory]
+    [InlineData(99)]
+    [InlineData(301)]
+    [InlineData(0)]
+    public async Task AZoomOutside1To3Times_IsRefused(int zoom)
+    {
+        await Assert.ThrowsAsync<InvalidRequestException>(() => _admin.SetPlayerPhotoAsync(PlayerId, Photo(zoom: zoom)));
     }
 
     [Fact]
@@ -163,13 +185,13 @@ public class AdminPlayerPhotoTests
     [Fact]
     public async Task RemovingAPhoto_ClearsItAndLogsIt()
     {
-        await _admin.SetPlayerPhotoAsync(PlayerId, Photo(focusX: 10));
+        await _admin.SetPlayerPhotoAsync(PlayerId, Photo(focusX: 10, zoom: 250));
 
         await _admin.RemovePlayerPhotoAsync(PlayerId);
 
         Assert.Null((await _admin.GetPlayerAsync(PlayerId)).Photo);
         var player = await _db.Players.AsNoTracking().SingleAsync(p => p.Id == PlayerId);
-        Assert.Equal((null, null, 50, 50), (player.PhotoCredit, player.PhotoLicense, player.PhotoFocusX, player.PhotoFocusY));
+        Assert.Equal((null, null, 50, 50, 100), (player.PhotoCredit, player.PhotoLicense, player.PhotoFocusX, player.PhotoFocusY, player.PhotoZoom));
         var latest = (await _admin.GetRecentChangesAsync(10))[0];
         Assert.Equal(("Photo removed", "Photo: Some Player 2015.jpg → none"), (latest.Action, latest.Changes));
     }

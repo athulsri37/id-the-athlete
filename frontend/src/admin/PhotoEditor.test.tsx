@@ -8,7 +8,7 @@ vi.mock("./adminClient", () => ({
   removeAdminPlayerPhoto: vi.fn(),
 }));
 
-const saved = { file: "Federer 2015.jpg", credit: "Jane Doe", license: "CC BY-SA 4.0", focusX: 40, focusY: 20 };
+const saved = { file: "Federer 2015.jpg", credit: "Jane Doe", license: "CC BY-SA 4.0", focusX: 40, focusY: 20, zoom: 100 };
 
 function commonsAnswers(body: unknown, ok = true) {
   vi.stubGlobal(
@@ -34,6 +34,21 @@ describe("the Control Room's photo editor", () => {
     expect(preview.getAttribute("src")).toContain("Special:FilePath/Federer_2015.jpg");
     expect(preview.style.objectPosition).toBe("40% 20%");
     expect(screen.getByRole("button", { name: "Remove photo" })).toBeTruthy();
+  });
+
+  it("previews the zoom at every size the game shows, beside the slider, and saves it", async () => {
+    const { container } = render(<PhotoEditor playerId={7} photo={saved} />);
+
+    fireEvent.change(screen.getByLabelText(/^Zoom/), { target: { value: "180" } });
+
+    expect(screen.getByLabelText(/^Zoom/).closest("label, div")!.textContent).toContain("1.8×");
+    const previews = [...container.querySelectorAll("[data-testid=photo-preview] img")] as HTMLImageElement[];
+    expect(previews.map((img) => img.width)).toEqual([112, 56, 40]);
+    expect(previews.every((img) => img.style.transform === "scale(1.8)" && img.style.transformOrigin === "40% 20%")).toBe(true);
+
+    fireEvent.click(screen.getByRole("button", { name: "Save photo" }));
+    await screen.findByText("Photo saved.");
+    expect(setAdminPlayerPhoto).toHaveBeenCalledWith(7, { ...saved, zoom: 180 });
   });
 
   it("can't be saved without a credit and licence", () => {
@@ -67,6 +82,7 @@ describe("the Control Room's photo editor", () => {
       license: "CC BY 2.0",
       focusX: 0,
       focusY: 50,
+      zoom: 100,
     });
     expect(screen.getByRole("button", { name: "Remove photo" })).toBeTruthy();
   });

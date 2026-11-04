@@ -34,7 +34,7 @@ public class GameServicePhotoTests
         db.Players.Add(new Player
         {
             Id = WithPhotoId, SportId = 1, Name = "Pictured Guess",
-            PhotoFile = "Guess.jpg", PhotoCredit = "John Roe", PhotoLicense = "CC BY 2.0", PhotoFocusX = 0, PhotoFocusY = 100
+            PhotoFile = "Guess.jpg", PhotoCredit = "John Roe", PhotoLicense = "CC BY 2.0", PhotoFocusX = 0, PhotoFocusY = 100, PhotoZoom = 175
         });
         db.Players.Add(new Player { Id = WithoutPhotoId, SportId = 1, Name = "Unpictured Guess" });
         db.SaveChanges();
@@ -53,7 +53,7 @@ public class GameServicePhotoTests
         var result = await Guess(sessionId, WithPhotoId);
 
         var photo = result.GuessedPlayerPhoto!;
-        Assert.Equal(("Guess.jpg", "John Roe", "CC BY 2.0", 0, 100), (photo.File, photo.Credit, photo.License, photo.FocusX, photo.FocusY));
+        Assert.Equal(("Guess.jpg", "John Roe", "CC BY 2.0", 0, 100, 175), (photo.File, photo.Credit, photo.License, photo.FocusX, photo.FocusY, photo.Zoom));
         Assert.Null(result.AnswerPhoto);
     }
 
