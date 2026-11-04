@@ -57,6 +57,9 @@ public class AdminPlayerPhotoUpdateDto
 
 public class AdminPlayerUpdateDto
 {
+    // The player's new name; omitted (null) keeps the current one, so tools
+    // that only write clue values (the stat refresh) never send it.
+    public string? Name { get; set; }
     // AttributeDefinition.Key -> new value
     public Dictionary<string, string> Attributes { get; set; } = new();
     public bool IsOverridden { get; set; }

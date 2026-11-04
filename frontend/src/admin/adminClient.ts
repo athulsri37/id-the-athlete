@@ -160,13 +160,16 @@ export async function fetchAdminPlayer(playerId: number): Promise<AdminPlayerDet
   return res.data;
 }
 
-export async function updateAdminPlayer(
-  playerId: number,
-  attributes: Record<string, string>,
-  isOverridden: boolean,
-  difficultyOverride: DifficultyOverride | null
-): Promise<void> {
-  await adminClient.put(`/players/${playerId}`, { attributes, isOverridden, difficultyOverride });
+// name is left out to keep the player's current name.
+export interface AdminPlayerUpdate {
+  name?: string;
+  attributes: Record<string, string>;
+  isOverridden: boolean;
+  difficultyOverride: DifficultyOverride | null;
+}
+
+export async function updateAdminPlayer(playerId: number, update: AdminPlayerUpdate): Promise<void> {
+  await adminClient.put(`/players/${playerId}`, update);
 }
 
 export async function setAdminPlayerPhoto(playerId: number, photo: AdminPlayerPhoto): Promise<void> {
