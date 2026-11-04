@@ -462,8 +462,8 @@ nowhere else, so back it up.
   agent's arguments (e.g. `scripts/add-players-prod.sh tennis-men 20`). It
   asks for production's database URL and admin key (hidden, never saved),
   wakes the production API for the tier column, backs production up, runs
-  the agent against it, and then offers to copy production into your local
-  dev database. Writing to any database not on this PC needs its name typed,
+  the agent against it, then offers the photo review (below) for just the
+  players you added, and to copy production into your local dev database. Writing to any database not on this PC needs its name typed,
   not just `yes`. Production is the real data now, so add players there
   rather than to dev.
 - **Refreshing active players' stats:** `scripts/refresh-stats-prod.sh

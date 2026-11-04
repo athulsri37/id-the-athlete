@@ -25,7 +25,9 @@ where the face sits elsewhere. A player who got a photo since the lookup is
 skipped. Photos you leave out are suggested again next run.
 
 --limit N looks up at most N players this run (the ones without a photo,
-in ID order).
+in ID order). --after-id N looks up only players added after the one with
+ID N: scripts/add-players-prod.sh uses it to offer photos for the players
+it just added.
 
 Needs ROSTER_DB_URL (default: the local dev database), ROSTER_API_URL and
 ROSTER_ADMIN_KEY: the same variables as the other tools. On a PC where
@@ -83,8 +85,20 @@ SEARCH_RESULTS = 10
 # DATABASE (read only: every write goes through the API)
 # ============================================================
 
-def load_players_without_photo(sport_slug: str) -> list[dict]:
-    """The tour's players with no photo: id, name, country, career start."""
+def latest_player_id() -> int:
+    """The highest player ID in the database (0 if it has none): players added
+    later get higher IDs."""
+    try:
+        with closing(psycopg2.connect(DB_URL)) as conn, conn.cursor() as cur:
+            cur.execute('SELECT coalesce(max("Id"), 0) FROM "Players";')
+            return cur.fetchone()[0]
+    except psycopg2.OperationalError as e:
+        sys.exit(f"ERROR: couldn't connect to {describe_db_target()}. If it's the local one, is Docker/Postgres running?\n{e}")
+
+
+def load_players_without_photo(sport_slug: str, after_id: int = 0) -> list[dict]:
+    """The tour's players with no photo, added after player after_id: id, name,
+    country, career start."""
     query_sql = """
         SELECT p."Id", p."Name",
                max(v."Value") FILTER (WHERE ad."Key" = 'country'),
@@ -93,13 +107,13 @@ def load_players_without_photo(sport_slug: str) -> list[dict]:
         JOIN "Sports" s ON s."Id" = p."SportId"
         LEFT JOIN "PlayerAttributeValues" v ON v."PlayerId" = p."Id"
         LEFT JOIN "AttributeDefinitions" ad ON ad."Id" = v."AttributeDefinitionId"
-        WHERE s."Slug" = %s AND p."PhotoFile" IS NULL
+        WHERE s."Slug" = %s AND p."PhotoFile" IS NULL AND p."Id" > %s
         GROUP BY p."Id", p."Name"
         ORDER BY p."Id";
     """
     try:
         with closing(psycopg2.connect(DB_URL)) as conn, conn.cursor() as cur:
-            cur.execute(query_sql, (sport_slug,))
+            cur.execute(query_sql, (sport_slug, after_id))
             rows = cur.fetchall()
     except psycopg2.OperationalError as e:
         sys.exit(f"ERROR: couldn't connect to {describe_db_target()}. If it's the local one, is Docker/Postgres running?\n{e}")
@@ -267,15 +281,15 @@ def write_photo(player: dict, match: Match, credit: Credit) -> str:
     return "written"
 
 
-def review(sport_slug: str, limit: int | None) -> None:
+def review(sport_slug: str, limit: int | None, after_id: int = 0) -> None:
     if not ADMIN_KEY:
         sys.exit("ROSTER_ADMIN_KEY isn't set: photos are written through the Control Room's API and need its key.")
     print(f"Reading {describe_db_target()}; writing through the API at {API_URL}.")
     check_admin_key()
 
-    players = load_players_without_photo(sport_slug)
+    players = load_players_without_photo(sport_slug, after_id)
     if not players:
-        print("Every player of this tour has a photo.")
+        print("Every new player has a photo." if after_id else "Every player of this tour has a photo.")
         return
     if limit:
         players = players[:limit]
@@ -342,9 +356,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Suggest a Wikimedia Commons photo for each player without one.")
     parser.add_argument("sport", choices=sorted(PHOTO_PROFILES), help="which tour")
     parser.add_argument("--limit", type=positive_int, help="look up at most N players this run")
+    parser.add_argument("--after-id", type=positive_int, default=0, metavar="N",
+                        help="look up only players added after the one with ID N")
     return parser
 
 
 if __name__ == "__main__":
     args = build_arg_parser().parse_args()
-    review(args.sport, args.limit)
+    review(args.sport, args.limit, args.after_id)
