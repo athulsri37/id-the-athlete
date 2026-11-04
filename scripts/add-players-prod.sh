@@ -7,7 +7,9 @@
 #   3. backs production up to backups/ (stops here if that fails)
 #   4. runs the agent against production: you review the players as usual, and
 #      writing them needs production's database name typed, not just "yes"
-#   5. offers to copy production into your local dev database, so dev keeps
+#   5. offers to look up photos for the players just added (the photo review
+#      of scripts/review-photos-prod.sh: free, no AI), after another backup
+#   6. offers to copy production into your local dev database, so dev keeps
 #      matching it
 #
 # Usage (Git Bash, from anywhere in the repo), taking the agent's arguments:
@@ -21,18 +23,27 @@
 # Render: the database's Connect menu, External.
 #
 # PROD_API_URL overrides the production API's address. DB_NAME picks the local
-# database step 5 copies into (default: the dev database, idtheathlete).
+# database step 6 copies into (default: the dev database, idtheathlete).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 if [[ $# -eq 0 || "$1" == "-h" || "$1" == "--help" ]]; then
-  sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//'
   exit 0
 fi
 
 api_url="${PROD_API_URL:-https://id-the-athlete-api.onrender.com}"
 api_url="${api_url%/}"
 python="${PYTHON:-python}"
+tour="$1"
+
+# For the photo review: Python on Windows can fail to check Wikimedia's
+# certificate against the system's store; Git's own CA bundle is kept up to
+# date with Git.
+git_bundle="/mingw64/etc/ssl/certs/ca-bundle.crt"
+if [[ -z "${SSL_CERT_FILE:-}" && -f "$git_bundle" ]] && command -v cygpath >/dev/null; then
+  export SSL_CERT_FILE="$(cygpath -w "$git_bundle")"
+fi
 
 # Checked now rather than by the agent after the backup, so a missing token
 # doesn't cost a backup. The agent checks again.
@@ -85,12 +96,44 @@ $awake && echo "The API is up." || echo "The API didn't answer: carrying on, but
 echo "Backing up production first..."
 DATABASE_URL="$db_url" bash scripts/db-backup.sh </dev/null
 
+# Players added from here on get higher IDs, which is how the photo review
+# finds them.
+latest_id() {
+  (cd tools && ROSTER_DB_URL="$db_url" "$python" -c 'import photo_review as r; print(r.latest_player_id())')
+}
+id_before="$(latest_id)"
+
 echo "Starting the roster agent against production..."
 (
   cd tools
   ROSTER_DB_URL="$db_url" ROSTER_API_URL="$api_url" ROSTER_ADMIN_KEY="$admin_key" \
     "$python" roster_research_agent.py "$@"
 )
+
+if (($(latest_id) > id_before)); then
+  echo
+  read -r -p "Look up photos for the players you just added? Free, no AI. (y/N) " answer
+  if [[ "$answer" =~ ^[Yy] ]]; then
+    if [[ -z "$admin_key" ]]; then
+      read -r -s -p "Production admin key, needed to write photos (hidden): " admin_key
+      echo
+      admin_key="$(tr -d '[:space:]' <<<"$admin_key")"
+    fi
+    if [[ -z "$admin_key" ]]; then
+      echo "No admin key, so no photos. Run scripts/review-photos-prod.sh $tour later."
+    elif ! curl -fsS --max-time 60 "$api_url/api/health" >/dev/null 2>&1; then
+      echo "The API didn't answer, and photos are written through it. Run scripts/review-photos-prod.sh $tour later."
+    else
+      echo "Backing up production again, now with the new players..."
+      DATABASE_URL="$db_url" bash scripts/db-backup.sh </dev/null
+      (
+        cd tools
+        ROSTER_DB_URL="$db_url" ROSTER_API_URL="$api_url" ROSTER_ADMIN_KEY="$admin_key" \
+          "$python" photo_review.py "$tour" --after-id "$id_before"
+      )
+    fi
+  fi
+fi
 
 echo
 read -r -p "Copy production into your local dev database now, so dev matches it? (y/N) " answer
