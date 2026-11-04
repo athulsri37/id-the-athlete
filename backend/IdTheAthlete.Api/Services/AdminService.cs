@@ -135,6 +135,10 @@ public class AdminService : IAdminService
 
     private static readonly HashSet<string> ValidDifficultyOverrides = new() { "Easy", "Medium", "Hard" };
 
+    // Room for the longest real names plus a disambiguation suffix, e.g.
+    // "John Smith (New Zealand)".
+    private const int MaxPlayerNameLength = 100;
+
     // AdminPlayerUpdateDto.Source -> the action its edits are logged under.
     private static readonly Dictionary<string, string> PlayerEditActions = new()
     {
@@ -159,6 +163,33 @@ public class AdminService : IAdminService
             throw new InvalidRequestException($"Source must be one of: {string.Join(", ", PlayerEditActions.Keys)}.");
 
         var changes = new List<string>();
+        var renamed = false;
+        if (request.Name is not null)
+        {
+            var name = request.Name.Trim();
+            if (name.Length == 0 || name.Length > MaxPlayerNameLength)
+                throw new InvalidRequestException($"Name is required, up to {MaxPlayerNameLength} characters.");
+
+            if (name != player.Name)
+            {
+                // Names are unique per sport (the (SportId, Name) index). Checked
+                // ignoring case too, so a rename can't make two players differ
+                // only in capitals; the player's own name is excluded, so fixing
+                // its capitals or accents is allowed. The exact comparison is
+                // kept as well: the database may lowercase accented capitals
+                // (the Ć in Ćorić) differently from .NET, and an exact clash
+                // must be refused here, not fail on the index.
+                var lowered = name.ToLowerInvariant();
+                if (await _db.Players.AnyAsync(p => p.SportId == player.SportId && p.Id != player.Id
+                        && (p.Name == name || p.Name.ToLower() == lowered)))
+                    throw new InvalidRequestException($"Another player in this tour is already called \"{name}\".");
+
+                changes.Add(Change("Name", player.Name, name));
+                player.Name = name;
+                renamed = true;
+            }
+        }
+
         foreach (var (key, value) in request.Attributes)
         {
             var attributeValue = player.AttributeValues.FirstOrDefault(v => v.AttributeDefinition?.Key == key)
@@ -176,8 +207,9 @@ public class AdminService : IAdminService
 
         // Player-level "last touched" timestamp -- lets consumers like
         // AiTriviaService detect that cached derived content (e.g. a trivia
-        // blurb) predates this edit and should be regenerated.
-        if (request.Attributes.Count > 0)
+        // blurb) predates this edit and should be regenerated. A rename
+        // counts: the blurb is written from the player's name.
+        if (request.Attributes.Count > 0 || renamed)
             player.LastModifiedAt = _timeProvider.GetUtcNow().UtcDateTime;
 
         player.IsOverridden = request.IsOverridden;

@@ -664,7 +664,7 @@ would leave the site unstyled; a new theme needs its CSS and an entry in
 ## Admin Tool
 
 An internal, key-protected admin interface, the **Control Room** — not
-linked from the public UI — lets a curator browse any sport's roster, edit a player's raw stats
+linked from the public UI — lets a curator browse any sport's roster, rename a player, edit a player's raw stats
 or set a difficulty override, set a player's photo, and edit any existing
 `AppSettings` row
 (closeness feature flags and thresholds, AI trivia, the theme) directly
@@ -673,6 +673,12 @@ anonymous [Game Stats](#game-stats). It authenticates via the `X-Admin-Key`
 header described in [Getting Started](#getting-started) above and has no
 other session or account system.
 
+- **Names:** a player's name is saved with their stats. It must be unique in
+  its tour, ignoring capitals, so a rename can fix a spelling or add accents
+  (`Rainer Schuettler` → `Rainer Schüttler`) but can't make two players
+  share a name; a different person with the same name gets the
+  disambiguated form in [Adding player data](CLAUDE.md#adding-player-data).
+  Puzzles and game stats refer to players by ID, so a rename keeps them.
 - **Photos:** a player's photo is a Wikimedia Commons file, picked by its
   file name. "Fill credit" reads the file's author and licence from Commons
   (which the licence requires the game to show). Beside the previews, at the

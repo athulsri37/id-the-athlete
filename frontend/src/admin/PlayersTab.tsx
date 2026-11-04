@@ -25,6 +25,7 @@ export default function PlayersTab() {
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
 
   const [playerDetail, setPlayerDetail] = useState<AdminPlayerDetail | null>(null);
+  const [nameValue, setNameValue] = useState("");
   const [formValues, setFormValues] = useState<Record<string, string>>({});
   const [distinctValuesByKey, setDistinctValuesByKey] = useState<Record<string, string[]>>({});
   const [loadingPlayer, setLoadingPlayer] = useState(false);
@@ -62,6 +63,7 @@ export default function PlayersTab() {
     fetchAdminPlayer(selectedPlayerId).then(async (detail) => {
       if (cancelled) return;
       setPlayerDetail(detail);
+      setNameValue(detail.name);
       setFormValues(Object.fromEntries(detail.attributes.map((a) => [a.key, a.value])));
       setOverrideEnabled(detail.isOverridden);
       setOverrideValue(detail.difficultyOverride ?? "Easy");
@@ -99,14 +101,32 @@ export default function PlayersTab() {
     });
   };
 
+  const trimmedName = nameValue.trim();
+  const nameError = trimmedName === "" ? "Name is required." : "";
+  const hasErrors = nameError !== "" || Object.keys(numericErrors).length > 0;
+
   const handleSave = async () => {
     if (!playerDetail) return;
-    if (Object.keys(numericErrors).length > 0) return;
+    if (hasErrors) return;
 
+    const renamed = trimmedName !== playerDetail.name;
     setSaveStatus("saving");
     setSaveError("");
     try {
-      await updateAdminPlayer(playerDetail.id, formValues, overrideEnabled, overrideEnabled ? overrideValue : null);
+      await updateAdminPlayer(playerDetail.id, {
+        name: renamed ? trimmedName : undefined,
+        attributes: formValues,
+        isOverridden: overrideEnabled,
+        difficultyOverride: overrideEnabled ? overrideValue : null,
+      });
+      if (renamed) {
+        const id = playerDetail.id;
+        setPlayerDetail({ ...playerDetail, name: trimmedName });
+        setPlayers((prev) =>
+          prev.map((p) => (p.id === id ? { ...p, name: trimmedName } : p)).sort((a, b) => a.name.localeCompare(b.name))
+        );
+      }
+      setNameValue(trimmedName);
       setSaveStatus("success");
     } catch (err) {
       setSaveStatus("error");
@@ -167,6 +187,22 @@ export default function PlayersTab() {
             <h2 className="text-lg font-semibold mb-4">{playerDetail.name}</h2>
 
             <div className="flex flex-col gap-3">
+              <div>
+                <label htmlFor="player-name" className="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+                  Name
+                </label>
+                <input
+                  id="player-name"
+                  type="text"
+                  value={nameValue}
+                  onChange={(e) => setNameValue(e.target.value)}
+                  className={`w-full rounded-md border bg-slate-800 px-3 py-2 text-sm ${
+                    nameError ? "border-red-500" : "border-slate-600"
+                  }`}
+                />
+                {nameError && <p className="text-red-400 text-xs mt-1">{nameError}</p>}
+              </div>
+
               {playerDetail.attributes.map((attr) => (
                 <div key={attr.key}>
                   <label className="block text-xs uppercase tracking-wide text-slate-400 mb-1">{attr.label}</label>
@@ -233,7 +269,7 @@ export default function PlayersTab() {
             <div className="flex items-center gap-3 mt-5">
               <button
                 onClick={handleSave}
-                disabled={saveStatus === "saving" || Object.keys(numericErrors).length > 0}
+                disabled={saveStatus === "saving" || hasErrors}
                 className="rounded-md bg-slate-100 text-slate-900 font-semibold px-4 py-2 text-sm disabled:opacity-50"
               >
                 {saveStatus === "saving" ? "Saving…" : "Save"}
