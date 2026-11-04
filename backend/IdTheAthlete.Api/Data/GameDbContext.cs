@@ -62,6 +62,8 @@ public class GameDbContext : DbContext
             // set on a new player would be swapped for 50.
             player.Property(p => p.PhotoFocusX).HasDefaultValue(50).HasSentinel(-1);
             player.Property(p => p.PhotoFocusY).HasDefaultValue(50).HasSentinel(-1);
+            // 0 is never a valid zoom, so the default sentinel is safe here.
+            player.Property(p => p.PhotoZoom).HasDefaultValue(PlayerPhotoRules.DefaultZoom);
         });
 
         // A player's name is unique within a sport, not across sports, so two

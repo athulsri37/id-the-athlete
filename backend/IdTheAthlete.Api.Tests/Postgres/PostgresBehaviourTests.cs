@@ -166,7 +166,7 @@ public class PostgresBehaviourTests
         Assert.DoesNotContain(logger.Entries, e => e.Level >= LogLevel.Warning);
     }
     [Fact]
-    public async Task APhotoCentre_DefaultsToTheMiddle_ButAnEdgeIsKept()
+    public async Task APhotoCentreAndZoom_DefaultToTheWholePhoto_ButAnEdgeIsKept()
     {
         await using var db = _postgres.CreateContext();
         var men = SportId(db, "tennis-men");
@@ -174,14 +174,14 @@ public class PostgresBehaviourTests
         var plain = Unique("No Photo Columns");
         await db.Database.ExecuteSqlAsync(
             $"""INSERT INTO "Players" ("Name", "SportId", "IsOverridden", "DifficultyOverride") VALUES ({plain}, {men}, false, NULL)""");
-        var edge = new Player { SportId = men, Name = Unique("Edge Centre"), PhotoFile = "Edge.jpg", PhotoFocusX = 0, PhotoFocusY = 100 };
+        var edge = new Player { SportId = men, Name = Unique("Edge Centre"), PhotoFile = "Edge.jpg", PhotoFocusX = 0, PhotoFocusY = 100, PhotoZoom = 300 };
         db.Players.Add(edge);
         await db.SaveChangesAsync();
 
         await using var read = _postgres.CreateContext();
         var stored = await read.Players.Where(p => p.Name == plain || p.Id == edge.Id)
-            .ToDictionaryAsync(p => p.Name, p => (p.PhotoFocusX, p.PhotoFocusY));
-        Assert.Equal((50, 50), stored[plain]);
-        Assert.Equal((0, 100), stored[edge.Name]);
+            .ToDictionaryAsync(p => p.Name, p => (p.PhotoFocusX, p.PhotoFocusY, p.PhotoZoom));
+        Assert.Equal((50, 50, 100), stored[plain]);
+        Assert.Equal((0, 100, 300), stored[edge.Name]);
     }
 }

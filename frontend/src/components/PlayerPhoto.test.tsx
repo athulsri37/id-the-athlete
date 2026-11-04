@@ -24,6 +24,20 @@ describe("a player's photo", () => {
     expect(result.querySelector("img")!.getAttribute("src")).toMatch(/\?width=330$/);
   });
 
+  it("zooms in on its centre, with a sharper thumbnail to match", () => {
+    const { container } = render(<PlayerPhoto name="Roger Federer" photo={{ ...photo, zoom: 250 }} size={56} />);
+
+    const img = container.querySelector("img")!;
+    expect(img.style.transform).toBe("scale(2.5)");
+    expect(img.style.transformOrigin).toBe("40% 20%");
+    expect(img.getAttribute("src")).toMatch(/\?width=500$/);
+  });
+
+  it("shows the whole photo when saved before zoom was added", () => {
+    const { container } = render(<PlayerPhoto name="Roger Federer" photo={photo} size={56} />);
+    expect(container.querySelector("img")!.style.transform).toBe("");
+  });
+
   it("is the player's initials when there's no photo", () => {
     render(<PlayerPhoto name="John Smith (New Zealand)" photo={null} size={32} />);
     expect(screen.getByTestId("player-initials").textContent).toBe("JS");

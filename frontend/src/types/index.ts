@@ -54,14 +54,17 @@ export interface GuessResponse {
 }
 
 // A player's photo: a file on Wikimedia Commons (see utils/commons), its
-// author and licence, and the point to keep in view when it's cropped to a
-// circle (percent across and down).
+// author and licence, the point to keep in view when it's cropped to a
+// circle (percent across and down), and how far to zoom in on that point.
 export interface PlayerPhoto {
   file: string;
   credit: string;
   license: string;
   focusX: number;
   focusY: number;
+  // Percent, 100 (the whole photo) to 300. Missing on guesses saved before
+  // it was added, which show the whole photo.
+  zoom?: number;
 }
 
 // One photo on the Photo credits page.

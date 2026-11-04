@@ -128,6 +128,7 @@ public class AdminService : IAdminService
                 License = player.PhotoLicense ?? "",
                 FocusX = player.PhotoFocusX,
                 FocusY = player.PhotoFocusY,
+                Zoom = player.PhotoZoom,
             }
         };
     }
@@ -235,6 +236,8 @@ public class AdminService : IAdminService
             throw new InvalidRequestException($"Licence is required, up to {PlayerPhotoRules.MaxLicenseLength} characters.");
         if (!PlayerPhotoRules.IsValidFocus(request.FocusX) || !PlayerPhotoRules.IsValidFocus(request.FocusY))
             throw new InvalidRequestException("FocusX and FocusY must be between 0 and 100.");
+        if (!PlayerPhotoRules.IsValidZoom(request.Zoom))
+            throw new InvalidRequestException($"Zoom must be between {PlayerPhotoRules.DefaultZoom} and {PlayerPhotoRules.MaxZoom} (percent).");
 
         var changes = new List<string>();
         if (player.PhotoFile != file)
@@ -245,12 +248,15 @@ public class AdminService : IAdminService
             changes.Add(Change("Photo licence", player.PhotoLicense ?? "none", license));
         if (player.PhotoFocusX != request.FocusX || player.PhotoFocusY != request.FocusY)
             changes.Add(Change("Photo centre", $"{player.PhotoFocusX}% {player.PhotoFocusY}%", $"{request.FocusX}% {request.FocusY}%"));
+        if (player.PhotoZoom != request.Zoom)
+            changes.Add(Change("Photo zoom", $"{player.PhotoZoom}%", $"{request.Zoom}%"));
 
         player.PhotoFile = file;
         player.PhotoCredit = credit;
         player.PhotoLicense = license;
         player.PhotoFocusX = request.FocusX;
         player.PhotoFocusY = request.FocusY;
+        player.PhotoZoom = request.Zoom;
 
         if (changes.Count > 0)
             await AuditPlayerAsync(action, player, changes);
@@ -272,6 +278,7 @@ public class AdminService : IAdminService
         player.PhotoLicense = null;
         player.PhotoFocusX = 50;
         player.PhotoFocusY = 50;
+        player.PhotoZoom = PlayerPhotoRules.DefaultZoom;
 
         await AuditPlayerAsync("Photo removed", player, [Change("Photo", removed, "none")]);
         await _db.SaveChangesAsync();

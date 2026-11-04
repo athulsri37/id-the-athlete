@@ -39,6 +39,7 @@ public class AdminPlayerPhotoDto
     public string License { get; set; } = string.Empty;
     public int FocusX { get; set; } = 50;
     public int FocusY { get; set; } = 50;
+    public int Zoom { get; set; } = 100; // percent: 100 = the whole photo, up to 300
 }
 
 public class AdminPlayerPhotoUpdateDto
@@ -48,6 +49,7 @@ public class AdminPlayerPhotoUpdateDto
     public string License { get; set; } = string.Empty;
     public int FocusX { get; set; } = 50;
     public int FocusY { get; set; } = 50;
+    public int Zoom { get; set; } = 100; // percent: 100 = the whole photo, up to 300
     // Omitted for a Control Room edit, "photo-review" for the photo review
     // tool. Any other value is refused.
     public string? Source { get; set; }

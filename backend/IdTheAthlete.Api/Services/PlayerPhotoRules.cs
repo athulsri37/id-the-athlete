@@ -39,4 +39,10 @@ public static partial class PlayerPhotoRules
     }
 
     public static bool IsValidFocus(int percent) => percent is >= 0 and <= 100;
+
+    // Zoom in percent: 100 shows the whole photo, 300 zooms in 3x.
+    public const int DefaultZoom = 100;
+    public const int MaxZoom = 300;
+
+    public static bool IsValidZoom(int percent) => percent is >= DefaultZoom and <= MaxZoom;
 }

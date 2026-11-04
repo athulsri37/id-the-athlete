@@ -73,14 +73,16 @@ export interface AdminPlayerDetail {
   photo: AdminPlayerPhoto | null;
 }
 
-// A player's photo: a Wikimedia Commons file, its credit and licence, and
-// the point (0-100% across and down) a cropped circle is centred on.
+// A player's photo: a Wikimedia Commons file, its credit and licence, the
+// point (0-100% across and down) a cropped circle is centred on, and the
+// zoom on that point (percent, 100-300).
 export interface AdminPlayerPhoto {
   file: string;
   credit: string;
   license: string;
   focusX: number;
   focusY: number;
+  zoom: number;
 }
 
 export interface AdminSetting {

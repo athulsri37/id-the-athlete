@@ -238,6 +238,11 @@ namespace IdTheAthlete.Api.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<int>("PhotoZoom")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(100);
+
                     b.Property<int>("SportId")
                         .HasColumnType("integer");
 

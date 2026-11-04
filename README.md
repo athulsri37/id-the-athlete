@@ -670,8 +670,10 @@ other session or account system.
 
 - **Photos:** a player's photo is a Wikimedia Commons file, picked by its
   file name. "Fill credit" reads the file's author and licence from Commons
-  (which the licence requires the game to show), and the two sliders move the
-  point the round crop is centred on, previewed at both sizes the game uses.
+  (which the licence requires the game to show). Beside the previews, at the
+  three sizes the game uses (result screen, desktop table, phone cards), the
+  zoom slider (1× to 3×, for wide shots where the face is small) and the two
+  centre sliders set what the round crop shows.
   A photo is saved on its own, apart from the stats.
 - **Lockout:** 5 wrong (or missing) admin keys from one address within 15
   minutes lock that address out of the admin API, the right key included,

@@ -44,7 +44,8 @@ public class GuessResponseDto
 }
 
 // A player's photo, a file on Wikimedia Commons that the page shows a
-// resized copy of (see Player.PhotoFile), centred on FocusX/FocusY (0-100%).
+// resized copy of (see Player.PhotoFile), centred on FocusX/FocusY (0-100%)
+// and zoomed in on that point by Zoom (percent, 100-300).
 public class PlayerPhotoDto
 {
     public string File { get; set; } = string.Empty;
@@ -52,6 +53,7 @@ public class PlayerPhotoDto
     public string License { get; set; } = string.Empty;
     public int FocusX { get; set; } = 50;
     public int FocusY { get; set; } = 50;
+    public int Zoom { get; set; } = 100;
 
     // Null when the player has no photo.
     public static PlayerPhotoDto? From(Player player) => player.PhotoFile is null ? null : new PlayerPhotoDto
@@ -61,6 +63,7 @@ public class PlayerPhotoDto
         License = player.PhotoLicense ?? "",
         FocusX = player.PhotoFocusX,
         FocusY = player.PhotoFocusY,
+        Zoom = player.PhotoZoom,
     };
 }
 

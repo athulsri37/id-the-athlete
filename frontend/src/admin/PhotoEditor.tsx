@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { problemDetail } from "../api/problemDetails";
-import { commonsPageUrl, commonsThumbUrl, fetchCommonsCredit } from "../utils/commons";
+import { commonsPageUrl, fetchCommonsCredit } from "../utils/commons";
+import PlayerPhoto from "../components/PlayerPhoto";
 import { AdminPlayerPhoto, removeAdminPlayerPhoto, setAdminPlayerPhoto } from "./adminClient";
 
 type Status = { kind: "idle" } | { kind: "busy"; what: string } | { kind: "done"; message: string } | { kind: "error"; message: string };
@@ -13,9 +14,16 @@ interface Props {
 const inputClass = "w-full rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm";
 const labelClass = "block text-xs uppercase tracking-wide text-slate-400 mb-1";
 
+// The game's photo sizes: the result screen, the desktop table, the phone cards.
+const PREVIEWS = [
+  { size: 112, label: "Result" },
+  { size: 56, label: "Table" },
+  { size: 40, label: "Phone" },
+];
+
 // The player's photo, a Wikimedia Commons file: pick it by file name, fill
-// its credit and licence from Commons, and move the centre until the face
-// sits in the middle of the circles the game shows. Saved on its own, apart
+// its credit and licence from Commons, then zoom and move the centre until
+// the face fills the circles the game shows, previewed beside the sliders. Saved on its own, apart
 // from the player's stats. The parent keys it by player, so switching
 // players starts afresh.
 export default function PhotoEditor({ playerId, photo }: Props) {
@@ -25,6 +33,7 @@ export default function PhotoEditor({ playerId, photo }: Props) {
   const [license, setLicense] = useState(photo?.license ?? "");
   const [focusX, setFocusX] = useState(photo?.focusX ?? 50);
   const [focusY, setFocusY] = useState(photo?.focusY ?? 50);
+  const [zoom, setZoom] = useState(photo?.zoom ?? 100);
   const [brokenFile, setBrokenFile] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
 
@@ -52,7 +61,7 @@ export default function PhotoEditor({ playerId, photo }: Props) {
   const save = async () => {
     setStatus({ kind: "busy", what: "Saving…" });
     try {
-      await setAdminPlayerPhoto(playerId, { file: trimmedFile, credit, license, focusX, focusY });
+      await setAdminPlayerPhoto(playerId, { file: trimmedFile, credit, license, focusX, focusY, zoom });
       setSaved(true);
       setStatus({ kind: "done", message: "Photo saved." });
     } catch (err) {
@@ -70,47 +79,20 @@ export default function PhotoEditor({ playerId, photo }: Props) {
       setLicense("");
       setFocusX(50);
       setFocusY(50);
+      setZoom(100);
       setStatus({ kind: "done", message: "Photo removed." });
     } catch (err) {
       setStatus({ kind: "error", message: problemDetail(err, "Removing the photo failed.") });
     }
   };
 
-  const objectPosition = `${focusX}% ${focusY}%`;
+  const preview = { file: trimmedFile, credit, license, focusX, focusY, zoom };
 
   return (
     <section className="mt-5 pt-4 border-t border-slate-700" aria-labelledby="photo-heading">
       <h3 id="photo-heading" className="text-sm font-semibold text-slate-200 mb-3">
         Photo
       </h3>
-
-      {trimmedFile !== "" && !imageBroken && (
-        <div className="flex items-end gap-4 mb-3" data-testid="photo-preview">
-          {[96, 40].map((size) => (
-            <img
-              key={size}
-              src={commonsThumbUrl(trimmedFile, 250)}
-              alt={size === 96 ? "Photo preview" : ""}
-              width={size}
-              height={size}
-              onError={() => setBrokenFile(trimmedFile)}
-              className="flex-shrink-0 max-w-none rounded-full object-cover bg-slate-800 border border-slate-600"
-              style={{ width: size, height: size, objectPosition }}
-            />
-          ))}
-          <a
-            href={commonsPageUrl(trimmedFile)}
-            target="_blank"
-            rel="noreferrer"
-            className="text-xs text-sky-400 underline mb-1"
-          >
-            Open on Wikimedia Commons
-          </a>
-        </div>
-      )}
-      {imageBroken && (
-        <p className="text-amber-400 text-xs mb-3">Wikimedia Commons has no image by this name.</p>
-      )}
 
       <div className="flex flex-col gap-3">
         <div>
@@ -166,34 +148,85 @@ export default function PhotoEditor({ playerId, photo }: Props) {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="photo-focus-x" className={labelClass}>
-              Centre across: {focusX}%
-            </label>
-            <input
-              id="photo-focus-x"
-              type="range"
-              min={0}
-              max={100}
-              value={focusX}
-              onChange={(e) => setFocusX(Number(e.target.value))}
-              className="w-full"
-            />
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+          <div className="flex-none">
+            {trimmedFile !== "" && !imageBroken ? (
+              <div className="flex items-end gap-4" data-testid="photo-preview">
+                {PREVIEWS.map(({ size, label }) => (
+                  <div key={size} className="flex flex-col items-center gap-1">
+                    <PlayerPhoto
+                      name=""
+                      photo={preview}
+                      size={size}
+                      alt={size === PREVIEWS[0].size ? "Photo preview" : ""}
+                      onError={() => setBrokenFile(trimmedFile)}
+                    />
+                    <span className="text-[10px] uppercase tracking-wide text-slate-500">{label}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex h-[112px] w-[112px] items-center justify-center rounded-full border border-dashed border-slate-600 text-center text-xs text-slate-500">
+                {imageBroken ? "No image" : "No photo"}
+              </div>
+            )}
+            {trimmedFile !== "" && !imageBroken && (
+              <a
+                href={commonsPageUrl(trimmedFile)}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 inline-block text-xs text-sky-400 underline"
+              >
+                Open on Wikimedia Commons
+              </a>
+            )}
+            {imageBroken && <p className="text-amber-400 text-xs mt-2">Wikimedia Commons has no image by this name.</p>}
           </div>
-          <div>
-            <label htmlFor="photo-focus-y" className={labelClass}>
-              Centre down: {focusY}%
-            </label>
-            <input
-              id="photo-focus-y"
-              type="range"
-              min={0}
-              max={100}
-              value={focusY}
-              onChange={(e) => setFocusY(Number(e.target.value))}
-              className="w-full"
-            />
+
+          <div className="flex min-w-0 flex-1 flex-col gap-3">
+            <div>
+              <label htmlFor="photo-zoom" className={labelClass}>
+                Zoom: {(zoom / 100).toFixed(2).replace(/\.?0+$/, "")}×
+              </label>
+              <input
+                id="photo-zoom"
+                type="range"
+                min={100}
+                max={300}
+                step={5}
+                value={zoom}
+                onChange={(e) => setZoom(Number(e.target.value))}
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label htmlFor="photo-focus-x" className={labelClass}>
+                Centre across: {focusX}%
+              </label>
+              <input
+                id="photo-focus-x"
+                type="range"
+                min={0}
+                max={100}
+                value={focusX}
+                onChange={(e) => setFocusX(Number(e.target.value))}
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label htmlFor="photo-focus-y" className={labelClass}>
+                Centre down: {focusY}%
+              </label>
+              <input
+                id="photo-focus-y"
+                type="range"
+                min={0}
+                max={100}
+                value={focusY}
+                onChange={(e) => setFocusY(Number(e.target.value))}
+                className="w-full"
+              />
+            </div>
           </div>
         </div>
       </div>
