@@ -389,81 +389,85 @@ export default function GameBoard({ mode, sport, dailyDate, startFresh = false, 
         )}
 
         {/* The table on wide screens; cards on phones and portrait tablets,
-            where the table would scroll sideways. */}
-        <div className="hidden w-full justify-center lg:flex">
-          <ClueGrid guesses={guesses} revealedCountry={revealedCountry} attributes={attributes} />
-        </div>
-        <div className="flex w-full justify-center lg:hidden">
-          <GuessCards guesses={guesses} revealedCountry={revealedCountry} />
-        </div>
+            where the table would scroll sideways. The cards put the newest
+            guess first, so there the result goes above them, where the game
+            ended; the table is oldest first, with the result after it. */}
+        <div className="flex w-full flex-col items-center">
+          <div className="hidden w-full justify-center lg:flex">
+            <ClueGrid guesses={guesses} revealedCountry={revealedCountry} attributes={attributes} />
+          </div>
+          <div className="flex w-full justify-center lg:hidden">
+            <GuessCards guesses={guesses} revealedCountry={revealedCountry} />
+          </div>
 
-        {gameOver && (
-          <div className="mt-6 text-center">
-            {isDailyReplay && (
-              <p className="text-[var(--text-muted)] text-xs italic mb-2">
-                {isPastDate
-                  ? `Here's your result from ${effectiveDate}. This doesn't affect your streak.`
-                  : "You've already completed today's Daily Challenge. Here's your result."}
+          {gameOver && (
+            <div className="order-first mt-6 text-center lg:order-none">
+              {isDailyReplay && (
+                <p className="text-[var(--text-muted)] text-xs italic mb-2">
+                  {isPastDate
+                    ? `Here's your result from ${effectiveDate}. This doesn't affect your streak.`
+                    : "You've already completed today's Daily Challenge. Here's your result."}
+                </p>
+              )}
+              <AnswerPhoto name={answer.answerName ?? ""} photo={answer.answerPhoto} />
+              <p className="text-[var(--text-primary)] text-lg font-semibold">
+                {won ? `${winEmoji ? `${winEmoji} ` : ""}Nailed it!` : `The player was ${answer.answerName}`}
               </p>
-            )}
-            <AnswerPhoto name={answer.answerName ?? ""} photo={answer.answerPhoto} />
-            <p className="text-[var(--text-primary)] text-lg font-semibold">
-              {won ? `${winEmoji ? `${winEmoji} ` : ""}Nailed it!` : `The player was ${answer.answerName}`}
-            </p>
-            {triviaBlurb && (
-              <div className="mt-3 max-w-sm mx-auto flex items-start gap-3 text-left rounded-md border-l-4 border-[var(--accent)] bg-[var(--bg-card)] px-4 py-3">
-                <span
-                  className="flex-shrink-0 flex items-center justify-center w-6 h-6 text-lg"
-                  aria-hidden="true"
-                >
-                  💡
-                </span>
-                <div>
-                  <p className="text-[var(--accent)] text-[11px] font-bold uppercase tracking-wider mb-1">
-                    Did you know?
-                  </p>
-                  <p className="text-[var(--text-primary)] text-sm leading-relaxed text-justify">
-                    {triviaBlurb}
-                  </p>
+              {triviaBlurb && (
+                <div className="mt-3 max-w-sm mx-auto flex items-start gap-3 text-left rounded-md border-l-4 border-[var(--accent)] bg-[var(--bg-card)] px-4 py-3">
+                  <span
+                    className="flex-shrink-0 flex items-center justify-center w-6 h-6 text-lg"
+                    aria-hidden="true"
+                  >
+                    💡
+                  </span>
+                  <div>
+                    <p className="text-[var(--accent)] text-[11px] font-bold uppercase tracking-wider mb-1">
+                      Did you know?
+                    </p>
+                    <p className="text-[var(--text-primary)] text-sm leading-relaxed text-justify">
+                      {triviaBlurb}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )}
-            {mode === "daily" && !isPastDate && streak && (
-              <p className="text-[var(--text-primary)] text-sm font-semibold mt-2">
-                🔥 {streak.currentStreak} day streak
-                {streak.maxStreak > 0 && (
-                  <span className="text-[var(--text-muted)] font-normal"> · Best streak: {streak.maxStreak}</span>
+              )}
+              {mode === "daily" && !isPastDate && streak && (
+                <p className="text-[var(--text-primary)] text-sm font-semibold mt-2">
+                  🔥 {streak.currentStreak} day streak
+                  {streak.maxStreak > 0 && (
+                    <span className="text-[var(--text-muted)] font-normal"> · Best streak: {streak.maxStreak}</span>
+                  )}
+                </p>
+              )}
+              <ShareResult
+                guesses={guesses}
+                won={won}
+                sport={sport}
+                mode={mode}
+                puzzleDate={mode === "daily" ? gameDate : undefined}
+                isPastDate={isPastDate}
+                winEmoji={winEmoji}
+                revealedCountry={revealedCountry}
+              />
+              <div className="flex items-center justify-center gap-4 mt-3">
+                {mode !== "daily" && (
+                  <button
+                    onClick={() => startNewGame(true)}
+                    className="text-sm text-[var(--text-secondary)] underline hover:text-[var(--text-primary)]"
+                  >
+                    Play another
+                  </button>
                 )}
-              </p>
-            )}
-            <ShareResult
-              guesses={guesses}
-              won={won}
-              sport={sport}
-              mode={mode}
-              puzzleDate={mode === "daily" ? gameDate : undefined}
-              isPastDate={isPastDate}
-              winEmoji={winEmoji}
-              revealedCountry={revealedCountry}
-            />
-            <div className="flex items-center justify-center gap-4 mt-3">
-              {mode !== "daily" && (
                 <button
-                  onClick={() => startNewGame(true)}
+                  onClick={onBackToHome}
                   className="text-sm text-[var(--text-secondary)] underline hover:text-[var(--text-primary)]"
                 >
-                  Play another
+                  Back to Home
                 </button>
-              )}
-              <button
-                onClick={onBackToHome}
-                className="text-sm text-[var(--text-secondary)] underline hover:text-[var(--text-primary)]"
-              >
-                Back to Home
-              </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {showHintModal && (
