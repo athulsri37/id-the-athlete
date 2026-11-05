@@ -174,7 +174,7 @@ id-the-athlete/
 ├── tools/                 # Python tools: the roster research agent (adds players), the stat refresh agent (updates their stats), the photo review (suggests photos)
 └── frontend/src/
     ├── api/              # Axios client
-    ├── components/       # PlayerSearch, ClueGrid (wide screens), GuessCards (phones), PlayerPhoto and AnswerPhoto (player photos, or initials), ClueLegend, ShareResult, StartupLoader, ErrorBoundary; scenery/ (each theme's background artwork)
+    ├── components/       # PlayerSearch, ClueGrid (wide screens), GuessCards (phones), PlayerPhoto (player photos, or initials), ClueLegend, ShareResult, StartupLoader, ErrorBoundary; scenery/ (each theme's background artwork)
     ├── config/            # sportFamilies (per-family wording, legend examples, How to Play clue rules)
     ├── hooks/             # useGameTrivia (fetches a finished game's trivia blurb)
     ├── pages/             # HomeScreen, TourSelect, SportHome, GameBoard, PastChallenges, HowToPlay, PhotoCredits, NotFound (home → tour → sport → game flow)
@@ -493,8 +493,8 @@ nowhere else, so back it up.
   no subscription. Photos are stored as Commons file names, never copied.
   Players it can't match, and photos that need re-centring, are done by hand
   in the [Admin Tool](#admin-tool). The game shows each guessed player's
-  photo beside their name, and the mystery player's once the game is over,
-  credited underneath; players without one show their initials. Every
+  photo beside their name, and the mystery player's once the game is over;
+  players without one show their initials. Every
   photo's author and licence is listed on the Photo credits page
   (`/photo-credits`, linked from the home screen's footer). On Windows, if Python can't check
   Wikimedia's certificate, the production script points it at Git's CA
