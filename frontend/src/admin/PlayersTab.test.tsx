@@ -65,6 +65,24 @@ describe("the Control Room's player editor", () => {
     vi.clearAllMocks();
   });
 
+  it("finds players by name whether or not the search is typed with their accents", async () => {
+    vi.mocked(fetchAdminPlayers).mockResolvedValue([
+      { id: 9, name: "Iga Świątek" },
+      { id: 10, name: "Borna Ćorić" },
+      { id: 8, name: "Ivan Lendl" },
+    ]);
+    render(<PlayersTab />);
+    const search = await screen.findByPlaceholderText("Type a name…");
+    await screen.findByRole("button", { name: "Iga Świątek" });
+
+    fireEvent.change(search, { target: { value: "swiatek" } });
+    expect(playerList()).toEqual(["Iga Świątek"]);
+    fireEvent.change(search, { target: { value: "Ćor" } });
+    expect(playerList()).toEqual(["Borna Ćorić"]);
+    fireEvent.change(search, { target: { value: "I" } });
+    expect(playerList()).toEqual(["Iga Świątek", "Borna Ćorić", "Ivan Lendl"]);
+  });
+
   it("renames a player, trimmed, and shows the new name in the heading and the list", async () => {
     const name = await openNastase();
 
