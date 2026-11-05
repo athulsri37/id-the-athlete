@@ -11,6 +11,7 @@ import {
   fetchAdminSports,
   updateAdminPlayer,
 } from "./adminClient";
+import { nameMatches } from "../utils/searchText";
 import PhotoEditor from "./PhotoEditor";
 
 type SaveStatus = "idle" | "saving" | "success" | "error";
@@ -84,8 +85,7 @@ export default function PlayersTab() {
 
   const filteredPlayers = useMemo(() => {
     if (!search.trim()) return players;
-    const q = search.trim().toLowerCase();
-    return players.filter((p) => p.name.toLowerCase().includes(q));
+    return players.filter((p) => nameMatches(p.name, search));
   }, [players, search]);
 
   const handleNumericChange = (key: string, value: string) => {
