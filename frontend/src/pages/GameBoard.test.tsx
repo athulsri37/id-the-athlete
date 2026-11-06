@@ -108,7 +108,7 @@ describe("GameBoard practice games", () => {
     expect(screen.queryByText(/has expired/)).not.toBeInTheDocument();
   });
 
-  it("shows the mystery player's photo, credited, once the game is won", async () => {
+  it("shows the mystery player's photo once the game is won, credited on hover only", async () => {
     const photo = { file: "Federer 2015.jpg", credit: "Jane Doe", license: "CC BY-SA 4.0", focusX: 50, focusY: 20 };
     vi.mocked(client.submitGuess).mockResolvedValue({
       ...guessOf("Roger Federer", 1),
@@ -123,9 +123,8 @@ describe("GameBoard practice games", () => {
     await guess("Roger Federer");
 
     expect(await screen.findByText(/Nailed it!/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Photo: Jane Doe, CC BY-SA 4.0" })).toHaveAttribute(
-      "href",
-      "https://commons.wikimedia.org/wiki/File:Federer_2015.jpg"
-    );
+    const photos = screen.getAllByTitle("Photo: Jane Doe, CC BY-SA 4.0");
+    expect(photos.some((img) => img.getAttribute("width") === "112")).toBe(true);
+    expect(screen.queryByRole("link", { name: /Photo:/ })).toBeNull();
   });
 });

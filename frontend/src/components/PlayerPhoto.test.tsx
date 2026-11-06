@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import PlayerPhoto from "./PlayerPhoto";
-import AnswerPhoto from "./AnswerPhoto";
 
 const photo = { file: "Federer WM16 (37).jpg", credit: "si.robi", license: "CC BY-SA 2.0", focusX: 40, focusY: 20 };
 
@@ -50,22 +49,5 @@ describe("a player's photo", () => {
 
     expect(container.querySelector("img")).toBeNull();
     expect(screen.getByTestId("player-initials").textContent).toBe("RF");
-  });
-});
-
-describe("the mystery player's photo on the result screen", () => {
-  it("credits the photo, linking to its file on Commons", () => {
-    render(<AnswerPhoto name="Roger Federer" photo={photo} />);
-
-    const link = screen.getByRole("link", { name: "Photo: si.robi, CC BY-SA 2.0" });
-    expect(link).toHaveAttribute("href", "https://commons.wikimedia.org/wiki/File:Federer_WM16_(37).jpg");
-    expect(link).toHaveAttribute("target", "_blank");
-  });
-
-  it("shows the initials and no credit when there's no photo", () => {
-    render(<AnswerPhoto name="Roger Federer" photo={undefined} />);
-
-    expect(screen.getByTestId("player-initials").textContent).toBe("RF");
-    expect(screen.queryByRole("link")).toBeNull();
   });
 });

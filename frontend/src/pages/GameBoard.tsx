@@ -9,7 +9,7 @@ import ClueGrid from "../components/ClueGrid";
 import GuessCards from "../components/GuessCards";
 import ClueLegend from "../components/ClueLegend";
 import ShareResult from "../components/ShareResult";
-import AnswerPhoto from "../components/AnswerPhoto";
+import PlayerPhoto from "../components/PlayerPhoto";
 import { recordDailyResult, getStreak, StreakData } from "../utils/dailyStreak";
 import { getCompletionForDate, recordDailyCompletion, recordDailyTrivia } from "../utils/dailyCompletion";
 import { getInProgress, saveInProgress, clearInProgress } from "../utils/dailyInProgress";
@@ -409,7 +409,10 @@ export default function GameBoard({ mode, sport, dailyDate, startFresh = false, 
                     : "You've already completed today's Daily Challenge. Here's your result."}
                 </p>
               )}
-              <AnswerPhoto name={answer.answerName ?? ""} photo={answer.answerPhoto} />
+              {/* Credited on hover and on the Photo credits page, like the guesses' photos. */}
+              <div className="mb-3 flex justify-center">
+                <PlayerPhoto name={answer.answerName ?? ""} photo={answer.answerPhoto} size={112} />
+              </div>
               <p className="text-[var(--text-primary)] text-lg font-semibold">
                 {won ? `${winEmoji ? `${winEmoji} ` : ""}Nailed it!` : `The player was ${answer.answerName}`}
               </p>
