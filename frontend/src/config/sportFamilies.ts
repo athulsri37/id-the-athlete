@@ -15,8 +15,8 @@ export interface ClueExample {
 
 // One clue column and when it counts as close, for the How to Play page.
 // The rules themselves live in the backend (TennisRules, CricketRules and
-// the Cricket closeness settings); these describe them and must change with
-// them.
+// the closeness settings); these describe them, with the settings' default
+// values, and must change with them.
 export interface ClueRule {
   column: string; // the column's label, as AttributeDefinitions has it
   close: string;
@@ -97,7 +97,7 @@ const FAMILY_DISPLAY: Record<string, FamilyDisplay> = {
       { column: "Matches", close: "Within 15% of the answer, or 20 matches if that's more" },
       { column: "Runs", close: "Within 15% of the answer, or 500 runs if that's more" },
       { column: "Wickets", close: "Within 15% of the answer, or 15 wickets if that's more" },
-      { column: "Debut Year", close: `${EXACT_ONLY}; the arrow still shows earlier or later` },
+      { column: "Debut Year", close: "Within 3 years" },
     ],
     difficultyBasis: "career matches, runs and wickets",
   },

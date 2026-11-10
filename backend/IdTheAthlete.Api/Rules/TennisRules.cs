@@ -5,7 +5,8 @@ using IdTheAthlete.Api.Services;
 namespace IdTheAthlete.Api.Rules;
 
 // Scoring rules shared by every Tennis tour (Men's and Women's). Registered
-// Scoped (depends on ISettingsService for the country-closeness flag).
+// Scoped (depends on ISettingsService for the country-closeness flag and
+// the Turned Pro closeness years).
 public sealed class TennisRules : ISportRules
 {
     private const string CountryClosenessFlag = "CountryClosenessEnabled";
@@ -17,9 +18,13 @@ public sealed class TennisRules : ISportRules
     {
         ["grand_slam_titles"] = 2,
         ["career_high_ranking"] = 5,
-        ["turned_pro_year"] = 3,
         ["career_titles"] = 5,
     };
+
+    // Turned Pro is close within this many years: an AppSetting, so it can be
+    // retuned live from the admin tool. Missing or unparseable means no
+    // closeness for it. The How to Play text describes its default.
+    private const string TurnedProClosenessKey = "TennisTurnedProClosenessYears";
 
     private readonly ISettingsService _settings;
 
@@ -66,21 +71,28 @@ public sealed class TennisRules : ISportRules
         return "hard";
     }
 
+    // The flag and the Turned Pro years in one query.
     public async Task<IClosenessJudge> LoadClosenessJudgeAsync()
     {
-        return new Judge(await _settings.IsEnabledAsync(CountryClosenessFlag));
+        return new Judge(await _settings.GetBatchAsync(new[] { CountryClosenessFlag, TurnedProClosenessKey }));
     }
 
-    private sealed class Judge(bool countryClosenessEnabled) : IClosenessJudge
+    private sealed class Judge(SettingsBatch settings) : IClosenessJudge
     {
-        public bool IsNumericClose(string attributeKey, decimal guessed, decimal mystery) =>
-            NumericCloseThresholds.TryGetValue(attributeKey, out var threshold) &&
-            Math.Abs(mystery - guessed) <= threshold;
+        public bool IsNumericClose(string attributeKey, decimal guessed, decimal mystery)
+        {
+            if (attributeKey == "turned_pro_year")
+                return settings.TryGetDecimal(TurnedProClosenessKey, out var years) &&
+                    Math.Abs(mystery - guessed) <= years;
+
+            return NumericCloseThresholds.TryGetValue(attributeKey, out var threshold) &&
+                Math.Abs(mystery - guessed) <= threshold;
+        }
 
         // Country is close when the two share a real land border (or a curated
         // pair like Australia-New Zealand), when the flag is on. Tennis's other
         // categorical clues (Plays, Backhand, Status) have no closeness tier.
         public bool IsCategoricalClose(string attributeKey, string guessed, string mystery) =>
-            attributeKey == "country" && countryClosenessEnabled && CountryProximity.IsClose(guessed, mystery);
+            attributeKey == "country" && settings.IsEnabled(CountryClosenessFlag) && CountryProximity.IsClose(guessed, mystery);
     }
 }

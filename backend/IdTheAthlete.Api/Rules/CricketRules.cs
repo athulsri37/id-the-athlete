@@ -33,7 +33,7 @@ public sealed class CricketRules : ISportRules
     // Numeric closeness: within a percentage of the mystery player's value,
     // with a floor so a small value (e.g. a bowler on 8 wickets) doesn't get an
     // unreasonably tiny window. Both numbers are AppSettings, so they can be
-    // retuned live from the admin tool. debut_year deliberately has none.
+    // retuned live from the admin tool.
     private static readonly Dictionary<string, (string PercentKey, string FloorKey)> NumericClosenessSettingKeys = new()
     {
         ["combined_matches"] = ("CricketMatchesClosenessPercent", "CricketMatchesClosenessFloor"),
@@ -41,9 +41,14 @@ public sealed class CricketRules : ISportRules
         ["combined_wickets"] = ("CricketWicketsClosenessPercent", "CricketWicketsClosenessFloor"),
     };
 
+    // Debut year is close within a fixed number of years (a percentage of a
+    // year means nothing), also an AppSetting so it can be retuned live.
+    private const string DebutYearClosenessKey = "CricketDebutYearClosenessYears";
+
     // The How to Play page describes these closeness rules, the regions,
-    // roles and bowling types below and the default percent/floor settings
-    // (frontend/src/config/sportFamilies.ts, clueRules): change it with them.
+    // roles and bowling types below and the default percent/floor and
+    // debut-year settings (frontend/src/config/sportFamilies.ts, clueRules):
+    // change it with them.
     //
     // Country closeness by cricket region, NOT land borders (which are wrong
     // for cricket: Pakistan and Bangladesh are closely linked cricket nations
@@ -124,13 +129,14 @@ public sealed class CricketRules : ISportRules
         return "hard";
     }
 
-    // Both flags and every percent/floor value in one query, so a guess costs
-    // one settings round trip however many clues it has. A missing or
-    // unparseable percent/floor means no closeness for that clue.
+    // Both flags and every percent/floor/years value in one query, so a guess
+    // costs one settings round trip however many clues it has. A missing or
+    // unparseable percent, floor or years means no closeness for that clue.
     public async Task<IClosenessJudge> LoadClosenessJudgeAsync()
     {
         var keys = NumericClosenessSettingKeys.Values
             .SelectMany(k => new[] { k.PercentKey, k.FloorKey })
+            .Append(DebutYearClosenessKey)
             .Append(RoleClosenessFlag)
             .Append(BowlingStyleClosenessFlag);
 
@@ -141,6 +147,10 @@ public sealed class CricketRules : ISportRules
     {
         public bool IsNumericClose(string attributeKey, decimal guessed, decimal mystery)
         {
+            if (attributeKey == "debut_year")
+                return settings.TryGetDecimal(DebutYearClosenessKey, out var years) &&
+                    Math.Abs(mystery - guessed) <= years;
+
             if (!NumericClosenessSettingKeys.TryGetValue(attributeKey, out var keys) ||
                 !settings.TryGetDecimal(keys.PercentKey, out var percent) ||
                 !settings.TryGetDecimal(keys.FloorKey, out var floor))

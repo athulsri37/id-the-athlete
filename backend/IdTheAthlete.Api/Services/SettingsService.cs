@@ -22,9 +22,9 @@ public class SettingsService : ISettingsService
 
     // Used only when the numeric settings query itself fails, so a database
     // problem doesn't fail a live guess. These match the values in the
-    // database and in the AddReferenceData migration when this was written;
-    // retune them together, or closeness judged during an outage will drift
-    // from closeness judged normally.
+    // database and in the AddReferenceData and AddYearClosenessSettings
+    // migrations when this was written; retune them together, or closeness
+    // judged during an outage will drift from closeness judged normally.
     private static readonly Dictionary<string, decimal> NumericFallbacks = new()
     {
         ["CricketMatchesClosenessPercent"] = 15m,
@@ -33,6 +33,8 @@ public class SettingsService : ISettingsService
         ["CricketRunsClosenessFloor"] = 500m,
         ["CricketWicketsClosenessPercent"] = 15m,
         ["CricketWicketsClosenessFloor"] = 15m,
+        ["CricketDebutYearClosenessYears"] = 3m,
+        ["TennisTurnedProClosenessYears"] = 3m,
     };
 
     // Used only when the query for an on/off flag itself fails, so an outage

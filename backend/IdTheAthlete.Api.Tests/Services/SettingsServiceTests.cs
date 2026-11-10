@@ -119,6 +119,7 @@ public class SettingsServiceTests
             "CricketMatchesClosenessPercent", "CricketMatchesClosenessFloor",
             "CricketRunsClosenessPercent", "CricketRunsClosenessFloor",
             "CricketWicketsClosenessPercent", "CricketWicketsClosenessFloor",
+            "CricketDebutYearClosenessYears", "TennisTurnedProClosenessYears",
             "SomeFutureSetting",
         };
         var batch = await settings.GetBatchAsync(numericKeys.Concat(new[] { "CricketRoleClosenessEnabled", "AiTriviaEnabled", "SomeFutureFlag" }));
@@ -128,6 +129,7 @@ public class SettingsServiceTests
             ["CricketMatchesClosenessPercent"] = 15m, ["CricketMatchesClosenessFloor"] = 20m,
             ["CricketRunsClosenessPercent"] = 15m, ["CricketRunsClosenessFloor"] = 500m,
             ["CricketWicketsClosenessPercent"] = 15m, ["CricketWicketsClosenessFloor"] = 15m,
+            ["CricketDebutYearClosenessYears"] = 3m, ["TennisTurnedProClosenessYears"] = 3m,
         }, Decimals(batch, numericKeys));
         Assert.True(batch.IsEnabled("CricketRoleClosenessEnabled"));
         Assert.False(batch.IsEnabled("AiTriviaEnabled"));
