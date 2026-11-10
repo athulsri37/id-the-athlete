@@ -27,6 +27,8 @@ public class ClueClosenessTests
         ["CricketRunsClosenessFloor"] = "500",
         ["CricketWicketsClosenessPercent"] = "15",
         ["CricketWicketsClosenessFloor"] = "15",
+        ["CricketDebutYearClosenessYears"] = "3",
+        ["TennisTurnedProClosenessYears"] = "3",
     };
 
     // Builds a one-attribute game for the given sport, guesses the player
@@ -68,20 +70,34 @@ public class ClueClosenessTests
         Assert.Equal(direction, clue.Direction);
     }
 
-    // ---- Tennis numeric: fixed absolute thresholds ----
+    // ---- Tennis numeric: absolute thresholds (Turned Pro's is a setting) ----
 
     [Theory]
     [InlineData("grand_slam_titles", "3", "5", true, "up")]      // within 2
     [InlineData("grand_slam_titles", "2", "5", false, "up")]     // 3 away
     [InlineData("career_high_ranking", "15", "10", true, "down")] // within 5
     [InlineData("career_high_ranking", "16", "10", false, "down")]
-    [InlineData("turned_pro_year", "2000", "2003", true, "up")]  // within 3
+    [InlineData("turned_pro_year", "2000", "2003", true, "up")]  // within 3 (the setting's default)
+    [InlineData("turned_pro_year", "2006", "2003", true, "down")]
     [InlineData("turned_pro_year", "1999", "2003", false, "up")]
+    [InlineData("turned_pro_year", "2007", "2003", false, "down")]
     [InlineData("career_titles", "25", "20", true, "down")]      // within 5
     [InlineData("career_titles", "26", "20", false, "down")]
     public async Task Tennis_Numeric_FixedThresholds(string key, string guessed, string mystery, bool isClose, string direction)
     {
         AssertClue(await Judge(TennisMen, key, AttributeType.Numeric, guessed, mystery), isMatch: false, isClose, direction);
+    }
+
+    [Theory]
+    [InlineData("1", "2002", true)]
+    [InlineData("1", "2001", false)]
+    [InlineData("0", "2002", false)]            // 0: only an exact year
+    [InlineData("not a number", "2002", false)] // unreadable: no closeness
+    public async Task Tennis_TurnedPro_FollowsSetting(string years, string guessed, bool isClose)
+    {
+        var clue = await Judge(TennisMen, "turned_pro_year", AttributeType.Numeric, guessed, "2003",
+            new() { ["TennisTurnedProClosenessYears"] = years });
+        AssertClue(clue, isMatch: false, isClose, direction: "up");
     }
 
     [Fact]
@@ -142,10 +158,25 @@ public class ClueClosenessTests
     [InlineData("combined_wickets", "24", "8", false, "down")]
     [InlineData("combined_matches", "80", "100", true, "up")]    // floor 20 beats 15
     [InlineData("combined_matches", "79", "100", false, "up")]
-    [InlineData("debut_year", "2010", "2011", false, "up")]      // deliberately no closeness
+    [InlineData("debut_year", "2010", "2013", true, "up")]       // within 3 years (the setting's default)
+    [InlineData("debut_year", "2016", "2013", true, "down")]
+    [InlineData("debut_year", "2009", "2013", false, "up")]
+    [InlineData("debut_year", "2017", "2013", false, "down")]
     public async Task Cricket_Numeric_PercentWithFloor(string key, string guessed, string mystery, bool isClose, string direction)
     {
         AssertClue(await Judge(CricketMen, key, AttributeType.Numeric, guessed, mystery), isMatch: false, isClose, direction);
+    }
+
+    [Theory]
+    [InlineData("5", "2018", true)]
+    [InlineData("5", "2019", false)]
+    [InlineData("0", "2012", false)]            // 0: only an exact year
+    [InlineData("not a number", "2012", false)] // unreadable: no closeness
+    public async Task Cricket_DebutYear_FollowsSetting(string years, string guessed, bool isClose)
+    {
+        var clue = await Judge(CricketMen, "debut_year", AttributeType.Numeric, guessed, "2013",
+            new() { ["CricketDebutYearClosenessYears"] = years });
+        AssertClue(clue, isMatch: false, isClose, direction: guessed.CompareTo("2013") < 0 ? "up" : "down");
     }
 
     [Fact]

@@ -57,7 +57,10 @@ stats current. The game has been live on Render since October 2026.
     within 5); dynamic percent-of-value-plus-floor thresholds for
     Cricket, tuned per stat via `AppSettings` (e.g. wickets within 15%
     of the answer, or 15 wickets, whichever is larger — so low counts
-    still get a sane floor)
+    still get a sane floor). Year clues (Tennis's Turned Pro, Cricket's
+    Debut Year) are close within a number of years set in `AppSettings`
+    (`TennisTurnedProClosenessYears`, `CricketDebutYearClosenessYears`,
+    both 3 by default)
   - **Categorical** — Cricket's Role and Bowling Style clues use
     tag-based matching (e.g. "Batting All-rounder" reads close to
     "Bowling All-rounder" since both share the All-Rounder tag; a pace
